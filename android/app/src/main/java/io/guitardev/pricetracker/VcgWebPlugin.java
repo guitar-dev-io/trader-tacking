@@ -21,6 +21,9 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.activity.OnBackPressedCallback;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -128,6 +131,12 @@ public class VcgWebPlugin extends Plugin {
         overlay.addView(bar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         overlay.addView(web, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         overlay.setVisibility(View.INVISIBLE);
+        // keep the login page clear of the status bar, gesture bar and on-screen keyboard
+        ViewCompat.setOnApplyWindowInsetsListener(overlay, (v, insets) -> {
+            Insets b = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout() | WindowInsetsCompat.Type.ime());
+            v.setPadding(b.left, b.top, b.right, b.bottom);
+            return WindowInsetsCompat.CONSUMED;
+        });
         ViewGroup root = getActivity().findViewById(android.R.id.content);
         root.addView(overlay, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     }
@@ -176,7 +185,7 @@ public class VcgWebPlugin extends Plugin {
 
     @PluginMethod
     public void show(PluginCall call) {
-        getActivity().runOnUiThread(() -> { create(); overlay.setVisibility(View.VISIBLE); overlay.bringToFront(); call.resolve(); });
+        getActivity().runOnUiThread(() -> { create(); overlay.setVisibility(View.VISIBLE); overlay.bringToFront(); ViewCompat.requestApplyInsets(overlay); call.resolve(); });
     }
 
     @PluginMethod

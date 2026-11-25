@@ -10,9 +10,10 @@ for (const f of files) {
   let s = fs.readFileSync(path.join(root, f), 'utf8');
   if (f === 'index.html') {
     s = s.replace('<script src="vcg-inject.js"></script>', '<script src="version.js"></script>\n<script src="vcg-inject.js"></script>')
-      .replace('<meta charset="UTF-8">', '<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">')
-      // Android/web: allow https/wss to the data sources used by the bridge
-      .replace("default-src 'self';", "default-src 'self' https: wss:; connect-src 'self' https: wss:;");
+      // no viewport-fit=cover: Capacitor then pads the WebView so nothing is drawn under the Android status/gesture bars
+      .replace('<meta charset="UTF-8">', '<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">')
+      // the app's local pages don't need a CSP here (and it must never block Capacitor's own bridge script)
+      .replace(/<meta http-equiv="Content-Security-Policy"[^>]*>\n?/, '');
   }
   fs.writeFileSync(path.join(out, f), s);
 }

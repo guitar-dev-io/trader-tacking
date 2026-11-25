@@ -2,8 +2,17 @@
   "appId": "io.guitardev.pricetracker",
   "appName": "Price Tracker",
   "webDir": "www",
-  "android": { "allowMixedContent": false },
+  "android": {
+    "allowMixedContent": false
+  },
   "plugins": {
-    "CapacitorHttp": { "enabled": true }
-  }
+    "CapacitorHttp": {
+      "enabled": true
+    },
+    "SystemBars": {
+      "style": "DARK",
+      "insetsHandling": "css"
+    }
+  },
+  "backgroundColor": "#0f1115"
 }

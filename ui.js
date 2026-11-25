@@ -74,5 +74,21 @@
     else if (S.ui.side && mobile) window.setUI('side', false);
     else vcg.minimize();
   });
+  // phones: tabs become a bottom navigation bar (กราฟ | ราคา | วิเคราะห์ | ฝึก | คำนวณ | บทเรียน | Log)
+  if (mobile) {
+    const tabs = $('tabs'); document.body.appendChild(tabs); tabs.classList.add('mnav');
+    const IC = { market: 'list', analysis: 'brain', practice: 'play', calc: 'calc', learn: 'book', log: 'logs' };
+    tabs.querySelectorAll('button[data-tab]').forEach((b) => {
+      const name = b.dataset.tab === 'log' ? 'Log' : b.textContent.trim();
+      b.innerHTML = ICON.svg(IC[b.dataset.tab], 20) + `<span>${name}</span>` + (b.dataset.tab === 'log' ? '<span id="log-badge"></span>' : '');
+    });
+    tabs.insertAdjacentHTML('afterbegin', `<button data-mtab="chart">${ICON.svg('candles', 20)}<span>กราฟ</span></button>`);
+    const chartBtn = tabs.querySelector('[data-mtab="chart"]');
+    const sync = () => { chartBtn.classList.toggle('active', !S.ui.side); tabs.querySelectorAll('button[data-tab]').forEach((b) => b.classList.toggle('on', S.ui.side && b.classList.contains('active'))); };
+    chartBtn.onclick = () => { window.setUI('side', false); sync(); };
+    tabs.querySelectorAll('button[data-tab]').forEach((b) => b.addEventListener('click', () => setTimeout(sync, 0)));
+    const _set = window.setUI; window.setUI = (k, v) => { _set(k, v); sync(); };
+    sync();
+  }
   apply(); syncSettings();
 })();
