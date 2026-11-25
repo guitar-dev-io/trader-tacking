@@ -501,6 +501,7 @@ function renderBounce() {
       <ul class="bn-why">${z.why.map((w) => `<li class="${w.neg ? 'neg' : ''}">${esc(w.txt)}</li>`).join('')}</ul>
       <div class="muted bn-stat">${st}</div>
       <div class="btns"><button data-bz="calc" data-sd="${sd}" data-k="${k}">คำนวณ lot</button><button data-bz="sim" data-sd="${sd}" data-k="${k}">ตั้งคำสั่งฝึก</button></div>
+      <div class="btns"><button data-bz="layer" data-sd="${sd}" data-k="${k}" title="ไม้ 1 ขอบโซน · ไม้ 2 กลางโซน · ไม้ 3 ปลายโซน · SL เดียวกัน">แบ่ง 3 ไม้ในโซน</button><button data-bz="pyr" data-sd="${sd}" data-k="${k}" title="ไม้แรกที่โซน แล้วเข้าต่อเมื่อราคาไปทางเรา">เข้าแล้วเข้าต่อ (Pyramid)</button></div>
     </div>`;
   };
   let summary = '';
@@ -538,6 +539,14 @@ function bindBounce(box) {
   box.querySelectorAll('[data-bs]').forEach((b) => (b.onclick = () => { S.an.bounceSide = b.dataset.bs; store.set('an', S.an); renderBounce(); dirty = true; }));
   box.querySelectorAll('[data-bz]').forEach((b) => (b.onclick = () => {
     const sd = b.dataset.sd, z = S.B && S.B[sd] && S.B[sd][+b.dataset.k]; if (!z) return;
+    if (b.dataset.bz === 'layer' || b.dataset.bz === 'pyr') {
+      const lay = b.dataset.bz === 'layer', h = Math.abs(z.hi - z.lo), risk = Math.abs(z.entry - z.sl);
+      Object.assign(S.plan, { side: sd, entry: fmt(z.entry), sl: fmt(z.sl), tp1: fmt(z.tp1), tp2: fmt(z.tp2), adds: '2', mode: lay ? 'avg' : 'pyramid',
+        spacing: fmt(lay ? Math.max(h / 2, risk * 0.25) : risk), weight: 'equal', trail: lay ? (S.plan.trail || 'none') : 'prev' });
+      savePlan(); renderPlanner(); dirty = true; document.querySelector('#tabs [data-tab="calc"]').click();
+      toast(lay ? 'แบ่ง 3 ไม้ในโซน: ความเสี่ยงรวมทุกไม้ = ที่ตั้งไว้ (ไม่ใช่ไม้ละเท่านั้น)' : 'Pyramid: เข้าต่อทุก 1R ที่ราคาไปทางเรา และเลื่อน SL ไปที่ไม้ก่อนหน้า', 'ok');
+      return;
+    }
     if (b.dataset.bz === 'calc') {
       Object.assign(S.plan, { side: sd, entry: fmt(z.entry), sl: fmt(z.sl), tp1: fmt(z.tp1), tp2: fmt(z.tp2) });
       savePlan(); renderPlanner(); dirty = true; document.querySelector('#tabs [data-tab="calc"]').click();

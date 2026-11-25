@@ -3,8 +3,11 @@
 // loss at SL, profit at TP, and the plan drawn on the chart.
 
 S.plan = { balance: 1000, riskMode: 'pct', risk: 1, side: 'buy', entry: '', sl: '', tp1: '', tp2: '', vpp: '', lotStep: 0.01, minLot: 0.01,
-  adds: 0, spacing: '', mode: 'avg', weight: 'equal', mult: 1.5, show: true, ...store.get('plan', {}) };
+  adds: 0, spacing: '', mode: 'avg', weight: 'equal', mult: 1.5, show: true, trail: 'none', ...store.get('plan', {}) };
 const savePlan = () => store.set('plan', S.plan);
+// broker "point" = smallest price step (XAUUSD 2 digits → 0.01, so 1000 points = 10.00)
+const pointSize = () => 10 ** -digits();
+const toPts = (d) => Math.round(Math.abs(d) / pointSize());
 
 // Contract size per 1.0 lot (typical; check your broker's contract specification)
 function contractSize(sym) {
@@ -70,13 +73,16 @@ function computePlan() {
     cumLot += L.lot; cumCost += L.lot * L.price;
     const avg = cumLot ? cumCost / cumLot : null;
     const pnl = (target) => (isFinite(target) && cumLot ? (target - avg) * dir * cumLot * v : null);
-    out.rows.push({ ...L, cumLot, avg, slLoss: pnl(sl), tp1: pnl(tp1), tp2: pnl(tp2), dist: (L.price - entry) * dir });
+    // pyramid (เข้าต่อ): after adding, SL of the whole position is usually trailed up
+    let trailSL = null;
+    if (p.mode === 'pyramid' && L.i > 0 && p.trail !== 'none') trailSL = p.trail === 'be' ? avg : levels[L.i - 1].price;
+    out.rows.push({ ...L, cumLot, avg, slLoss: pnl(sl), trailSL, trailPnl: trailSL != null ? pnl(trailSL) : null, tp1: pnl(tp1), tp2: pnl(tp2), dist: (L.price - entry) * dir });
   }
   const last = out.rows[out.rows.length - 1];
   out.totalLot = cumLot; out.avg = last && last.avg; out.maxLoss = last && last.slLoss; out.v = v; out.spacing = spacing; out.risk = risk;
   out.firstOnly = out.rows[0];
   if (p.mode === 'avg' && adds) out.warn.push('การเติมไม้เฉลี่ยต้นทุน (สวนทาง) จะเพิ่มขนาดสถานะตอนราคาวิ่งผิดทาง — ต้องตั้ง SL รวมเสมอ ห้ามเลื่อน SL ออก');
-  if (p.mode === 'pyramid' && adds) out.warn.push('Pyramid: ปกติควรเลื่อน SL ตามขึ้นมาเมื่อเติมไม้ ตารางนี้คิดแบบ SL เดิม (กรณีแย่สุด)');
+  if (p.mode === 'pyramid' && adds && p.trail === 'none') out.warn.push('Pyramid: ปกติควรเลื่อน SL ตามขึ้นมาเมื่อเติมไม้ — เลือก "เลื่อน SL เมื่อเข้าต่อ" เพื่อดูผลแบบเลื่อน SL (ตาราง "โดน SL" ยังเป็นกรณีแย่สุดเสมอ)');
   if (out.maxLoss != null && Math.abs(out.maxLoss) > +p.balance * 0.05) out.warn.push(`ขาดทุนสูงสุด ${money(out.maxLoss)} เกิน 5% ของทุน`);
   return out;
 }
@@ -98,6 +104,11 @@ function renderPlanner() {
       ${inp('tp1', 'TP1')}
       ${inp('tp2', 'TP2')}
     </div>
+    <div class="grid" style="margin-top:6px">
+      <label>SL เป็นจุด (points)<input id="pl-slpts" type="number" step="1" min="0" value="${isFinite(parseFloat(p.entry)) && isFinite(parseFloat(p.sl)) ? toPts(parseFloat(p.entry) - parseFloat(p.sl)) : ''}" placeholder="เช่น 1000"></label>
+      <label>TP เป็นจุด (points)<input id="pl-tppts" type="number" step="1" min="0" value="${isFinite(parseFloat(p.entry)) && isFinite(parseFloat(p.tp1)) ? toPts(parseFloat(p.tp1) - parseFloat(p.entry)) : ''}" placeholder="เช่น 2000"></label>
+    </div>
+    <div class="btns pts">SL: ${[300, 500, 1000, 1500, 2000].map((n) => `<button data-slpts="${n}">${n}</button>`).join('')}<span class="muted">จุด · 1 จุด = ${fmt(pointSize())} → 1000 จุด = ${fmt(1000 * pointSize())}</span></div>
     <div class="btns" style="margin-top:8px">
       <button id="pl-now">ใช้ราคาตอนนี้</button><button id="pl-sig">จากสัญญาณล่าสุด</button><button id="pl-atr">SL = 1.5 ATR</button><button id="pl-rr">TP = 1R / 2R</button>
     </div>
@@ -106,6 +117,8 @@ function renderPlanner() {
     <div class="grid" style="margin-top:8px">
       ${inp('adds', 'จำนวนไม้เติม', '0')}
       ${inp('spacing', 'ระยะห่างแต่ละไม้ (ราคา)', r.spacing ? fmt(r.spacing) : 'อัตโนมัติ')}
+      <label>ระยะห่างเป็นจุด<input id="pl-sppts" type="number" step="1" min="0" value="${parseFloat(p.spacing) > 0 ? toPts(parseFloat(p.spacing)) : ''}" placeholder="${r.spacing ? toPts(r.spacing) : 'อัตโนมัติ'}"></label>
+      ${p.mode === 'pyramid' ? `<label>เลื่อน SL เมื่อเข้าต่อ<select data-k="trail"><option value="none">ไม่เลื่อน (SL เดิม)</option><option value="prev">ไปที่ราคาไม้ก่อนหน้า</option><option value="be">ไปที่ทุนเฉลี่ย (BE)</option></select></label>` : '<span></span>'}
       <label>แบ่ง lot<select data-k="weight"><option value="equal">เท่ากันทุกไม้</option><option value="mult">ไม้หลังใหญ่ขึ้น ×</option><option value="down">ไม้หลังเล็กลง ×</option></select></label>
       ${inp('mult', 'ตัวคูณ', '1.5')}
     </div>
@@ -126,15 +139,23 @@ function renderPlanner() {
       ${r.rows[r.rows.length - 1].tp2 != null ? `<span class="up">กำไรที่ TP2 (ครบทุกไม้)</span><b class="up">${money(r.rows[r.rows.length - 1].tp2)}</b>` : ''}
       ${r.firstOnly.tp2 != null ? `<span>ถ้าได้แค่ไม้แรก → TP2</span><b>${money(r.firstOnly.tp2)} · RR ${(r.firstOnly.tp2 / -r.firstOnly.slLoss).toFixed(2)}</b>` : ''}
     </div>
-    <table><thead><tr><th>#</th><th>ราคา</th><th>ระยะ</th><th>lot</th><th>รวม</th><th>เฉลี่ย</th><th>โดน SL</th><th>TP2</th></tr></thead><tbody>
-    ${r.rows.map((x) => `<tr><td>${x.i + 1}</td><td>${fmt(x.price)}</td><td>${x.i ? (x.dist >= 0 ? '+' : '') + fmt(x.dist) : '—'}</td><td>${lotFmt(x.lot, step)}</td><td>${lotFmt(x.cumLot, step)}</td>
-      <td>${fmt(x.avg)}</td><td class="down">${money(x.slLoss)}</td><td class="up">${money(x.tp2)}</td></tr>`).join('')}
+    <div class="muted" style="margin-top:4px">ระยะ SL ไม้แรก: <b>${toPts(parseFloat(p.entry) - parseFloat(p.sl)).toLocaleString()} จุด</b> (${fmt(Math.abs(parseFloat(p.entry) - parseFloat(p.sl)))}) · ทุก 0.01 lot เสีย ${money(Math.abs(parseFloat(p.entry) - parseFloat(p.sl)) * r.v * 0.01)}</div>
+    <table><thead><tr><th>#</th><th>ราคา</th><th>ระยะ (จุด)</th><th>lot</th><th>รวม</th><th>เฉลี่ย</th><th>โดน SL</th>${r.rows.some((x) => x.trailSL != null) ? '<th>SL เลื่อน</th>' : ''}<th>TP2</th></tr></thead><tbody>
+    ${r.rows.map((x) => `<tr><td>${x.i + 1}</td><td>${fmt(x.price)}</td><td>${x.i ? (x.dist >= 0 ? '+' : '-') + toPts(x.dist) : '—'}</td><td>${lotFmt(x.lot, step)}</td><td>${lotFmt(x.cumLot, step)}</td>
+      <td>${fmt(x.avg)}</td><td class="down">${money(x.slLoss)}</td>${r.rows.some((y) => y.trailSL != null) ? `<td class="${x.trailPnl >= 0 ? 'up' : 'down'}" title="SL ใหม่ ${x.trailSL != null ? fmt(x.trailSL) : ''}">${x.trailSL != null ? money(x.trailPnl) : '—'}</td>` : ''}<td class="up">${money(x.tp2)}</td></tr>`).join('')}
     </tbody></table>
-    <p class="muted">แต่ละแถว = ผลถ้าได้ไม้ถึงแถวนั้น (ไม้ 1..n) · ระยะ = ห่างจากไม้แรก</p>` : ''}
+    <p class="muted">แต่ละแถว = ผลถ้าได้ไม้ถึงแถวนั้น (ไม้ 1..n) · ระยะ = ห่างจากไม้แรก (จุด) · โดน SL = กรณีแย่สุดด้วย SL เดิม${r.rows.some((x) => x.trailSL != null) ? ' · SL เลื่อน = ผลถ้าเลื่อน SL ตามแล้วโดนหลังเข้าต่อไม้นั้น' : ''}</p>` : ''}
     <label class="chk"><input type="checkbox" id="pl-show" ${p.show ? 'checked' : ''}> แสดงแผนบนกราฟ</label>
     <p class="disclaimer" style="margin-top:8px">ตัวเลขเป็นการประมาณ ไม่รวมสเปรด/ค่าคอมมิชชัน/swap · ไม่ใช่คำแนะนำการลงทุน</p>`;
 
   const sel = $('planner').querySelector('select[data-k="weight"]'); sel.value = p.weight;
+  const trs = $('planner').querySelector('select[data-k="trail"]'); if (trs) trs.value = p.trail || 'none';
+  const dirN = () => (p.side === 'buy' ? 1 : -1), entryNow = () => { const e = parseFloat(p.entry); if (isFinite(e)) return e; const qq = S.quotes[S.symbol]; if (!qq) return null; p.entry = fmt(p.side === 'buy' ? qq.ask : qq.bid); return parseFloat(p.entry); };
+  const setSlPts = (n) => { const e = entryNow(); if (e == null || !(n > 0)) return; p.sl = fmt(e - dirN() * n * pointSize()); savePlan(); renderPlanner(); dirty = true; };
+  $('pl-slpts').onchange = () => setSlPts(+$('pl-slpts').value);
+  $('pl-tppts').onchange = () => { const e = entryNow(), n = +$('pl-tppts').value; if (e == null || !(n > 0)) return; p.tp1 = fmt(e + dirN() * n * pointSize()); const s = parseFloat(p.sl); if (isFinite(s)) p.tp2 = fmt(e + dirN() * 2 * n * pointSize()); savePlan(); renderPlanner(); dirty = true; };
+  $('pl-sppts').onchange = () => { const n = +$('pl-sppts').value; p.spacing = n > 0 ? fmt(n * pointSize()) : ''; savePlan(); renderPlanner(); dirty = true; };
+  $('planner').querySelectorAll('[data-slpts]').forEach((b) => (b.onclick = () => setSlPts(+b.dataset.slpts)));
   $('planner').querySelectorAll('input[data-k], select[data-k]').forEach((i) => (i.onchange = () => { p[i.dataset.k] = i.value; savePlan(); renderPlanner(); dirty = true; }));
   $('planner').querySelectorAll('[data-seg]').forEach((b) => (b.onclick = () => { p[b.dataset.seg] = b.dataset.v; savePlan(); renderPlanner(); dirty = true; }));
   $('pl-show').onchange = () => { p.show = $('pl-show').checked; savePlan(); dirty = true; };
