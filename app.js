@@ -30,8 +30,8 @@ let UP = '#26a69a', DOWN = '#ef5350';
 
 
 // Clean chart by default: analysis overlays are opt-in from the 🧠 menu.
-const AN_DEFAULT = { bounce: false, bounceSide: 'buy', swing: false, legs: false, structure: false, zones: false, patterns: false, signals: false, history: false, td: false, learnOnly: false, notify: false, swingLen: 5 };
-const AN_VIEW_KEYS = ['bounce', 'swing', 'legs', 'structure', 'zones', 'patterns', 'signals', 'history', 'td'];
+const AN_DEFAULT = { bounce: false, liquidity: false, bounceSide: 'buy', swing: false, legs: false, structure: false, zones: false, patterns: false, signals: false, history: false, td: false, learnOnly: false, notify: false, swingLen: 5 };
+const AN_VIEW_KEYS = ['bounce', 'liquidity', 'swing', 'legs', 'structure', 'zones', 'patterns', 'signals', 'history', 'td'];
 // one-time migration (v2.0.3): switch existing installs to the clean default
 if (store.get('defaultsV', 1) < 2) {
   const an = store.get('an', null);
@@ -350,6 +350,7 @@ document.querySelectorAll('[data-close]').forEach((b) => (b.onclick = () => b.cl
 // ---------------------------------------------------------------- analysis menu
 const AN_ITEMS = [
   ['bounce', 'จุดเด้ง / จุดเข้าซื้อ-ขาย (โซนรอเข้า)'],
+  ['liquidity', 'จุด SL เม่า / สภาพคล่อง ($$$) + การกวาด'],
   ['swing', 'Swing + HH/HL/LH/LL'], ['legs', 'จำนวนแท่งในแต่ละขา'], ['structure', 'โครงสร้าง BOS / CHoCH'],
   ['zones', 'แนวรับ / แนวต้าน (โซน)'], ['patterns', 'แพทเทิร์นแท่งเทียน'], ['td', 'นับแท่ง TD Sequential 1–9'],
   ['signals', 'สัญญาณ Entry / SL / TP'], ['history', 'สัญญาณย้อนหลัง + ผลลัพธ์'],
@@ -470,7 +471,7 @@ function sigPayload(s) {
 function runBounce() {
   const closed = S.candles.slice(0, -1);
   const q = !S.replay && S.quotes[S.symbol], live = S.candles[S.candles.length - 1];
-  S.B = S.A ? BOUNCE.find(closed, S.A, { price: q ? (q.bid + q.ask) / 2 : live ? live.close : undefined, slBuf: +S.prefs.slBuf, rr1: +S.prefs.rr1, rr2: +S.prefs.rr2, maxBars: +S.prefs.maxBars }) : null;
+  S.B = S.A ? BOUNCE.find(closed, S.A, { F: fmt, price: q ? (q.bid + q.ask) / 2 : live ? live.close : undefined, slBuf: +S.prefs.slBuf, rr1: +S.prefs.rr1, rr2: +S.prefs.rr2, maxBars: +S.prefs.maxBars }) : null;
   renderBounce(); checkBounce();
 }
 const BSTAT_TH = { wait: ['รอราคา', ''], in: ['ราคาอยู่ในโซน · รอแท่งยืนยัน', 'warn'], confirmed: ['ยืนยันแล้ว · เข้าได้', 'ok'] };
@@ -502,12 +503,24 @@ function renderBounce() {
     </div>`;
   };
   const html = head + (zs.length ? zs.map(card).join('') : `<p class="muted">ยังไม่พบโซน${buy ? 'รับ' : 'ต้าน'}ที่ยังใช้ได้ในระยะ 10 ATR ลองเปลี่ยน timeframe หรือโหลดข้อมูลเพิ่ม</p>`) +
-    `<p class="muted bn-note">วิธีใช้: ตั้ง ${buy ? 'Buy' : 'Sell'} Limit ที่ Entry หรือรอให้สถานะเป็น ✅ (แท่งเทียนกลับตัวในโซน) แล้วค่อยเข้า · ★ มาก = เหตุผลซ้อนกันมาก + ตามเทรนด์ · ไม่ใช่คำแนะนำการลงทุน</p>`;
+    liqHtml() + `<p class="muted bn-note">วิธีใช้: ตั้ง ${buy ? 'Buy' : 'Sell'} Limit ที่ Entry หรือรอให้สถานะเป็น ✅ (แท่งเทียนกลับตัวในโซน) แล้วค่อยเข้า · ★ มาก = เหตุผลซ้อนกันมาก + ตามเทรนด์ · ไม่ใช่คำแนะนำการลงทุน</p>`;
   if (html !== box._html) { box._html = html; box.innerHTML = html; bindBounce(box); } // unchanged → keep DOM (buttons/clicks stay stable)
   zs.forEach((z, k) => { const d = box.querySelector(`[data-bd="${k}"]`); if (d) d.textContent = z.status === 'wait' ? `ห่าง ${fmt(Math.abs(z.dist))} (${Math.abs(z.distAtr).toFixed(1)} ATR)` : ''; });
 }
+function liqHtml() {
+  const L = S.B && S.B.liq; if (!L) return '';
+  const row = (p) => `<tr><td>${p.side === 'high' ? '<span class="down">▲</span>' : '<span class="up">▼</span>'} <b>${fmt(p.price)}</b></td><td>${BOUNCE.poolName(p, false)}</td><td>${'$'.repeat(Math.min(3, p.strength))}</td></tr>`;
+  const ups = L.highs.slice(0, 3).reverse(), dns = L.lows.slice(0, 3);
+  const sw = L.sweeps.slice(0, 3).map((x) => `<li>🧹 กวาด SL ${x.side === 'low' ? 'ใต้' : 'เหนือ'} ${fmt(x.price)} แล้วปิดกลับ · ${S.B && S.A ? S.A.n - 1 - x.j : '?'} แท่งก่อน → ${x.side === 'low' ? '<span class="up">มักเด้งขึ้น</span>' : '<span class="down">มักร่วงลง</span>'}</li>`).join('');
+  return `<div class="panel-h bn-h" style="margin-top:12px"><span>💰 จุดที่มีเงิน (SL เม่ากองอยู่)</span>
+      <label class="chk"><input type="checkbox" id="lq-show" ${S.an.liquidity ? 'checked' : ''}> บนกราฟ</label></div>
+    <table class="stat lq"><tbody>${ups.map(row).join('')}<tr class="lq-now"><td colspan="3">— ราคาปัจจุบัน —</td></tr>${dns.map(row).join('')}</tbody></table>
+    ${sw ? `<ul class="bn-why">${sw}</ul>` : ''}
+    <p class="muted bn-note">▲ เหนือ Swing High / Equal Highs = SL ของคนที่ Sell กองอยู่ · ▼ ใต้ Swing Low / Equal Lows = SL ของคนที่ Buy · ยิ่ง $ มาก (ยอดเท่ากันหลายจุด, PDH/PDL) ยิ่งมีเงินเยอะ ราคามักวิ่งไปกวาดก่อนกลับตัว — อย่าวาง SL ตรงนั้นพอดี และใช้เป็นเป้า TP ได้</p>`;
+}
 function bindBounce(box) {
   const sw = $('bn-show'); if (sw) sw.onchange = () => { S.an.bounce = sw.checked; store.set('an', S.an); dirty = true; };
+  const lq = $('lq-show'); if (lq) lq.onchange = () => { S.an.liquidity = lq.checked; store.set('an', S.an); dirty = true; };
   box.querySelectorAll('[data-bs]').forEach((b) => (b.onclick = () => { S.an.bounceSide = b.dataset.bs; store.set('an', S.an); renderBounce(); dirty = true; }));
   box.querySelectorAll('[data-bz]').forEach((b) => (b.onclick = () => {
     const sd = S.an.bounceSide === 'sell' ? 'sell' : 'buy', z = S.B && S.B[sd][+b.dataset.k]; if (!z) return;
@@ -530,6 +543,22 @@ function drawBounce(W) {
       if (ytp != null) { el('line', { x1: x0, y1: ytp, x2: W, y2: ytp, stroke: UP, 'stroke-dasharray': '4 3' }); txt(x0 + 4, ytp - 4, `TP ${fmt(z.tp1)} (${z.rr1.toFixed(1)}R)`, UP, 'start', 10); }
     }
   });
+}
+function drawLiquidity(W) {
+  const L = S.B.liq, AMB = '#f6c343';
+  const used = [];
+  for (const p of [...L.highs.slice(0, 4), ...L.lows.slice(0, 4)]) {
+    const y = yOf(p.price); if (y == null) continue;
+    const x0 = Math.max(0, xIdx(p.first) ?? 0);
+    el('line', { x1: x0, y1: y, x2: W, y2: y, stroke: AMB, 'stroke-width': p.strength >= 2 ? 1.5 : 1, 'stroke-dasharray': '6 4', opacity: p.strength >= 2 ? 0.95 : 0.6 });
+    const ly = p.side === 'high' ? y - 4 : y + 12; if (used.some((u) => Math.abs(u - ly) < 12)) continue; used.push(ly);
+    txt(W - 8, ly, `${'$'.repeat(Math.min(3, p.strength))} SL ${p.side === 'high' ? 'Sell' : 'Buy'} · ${BOUNCE.poolName(p, false)}`, AMB, 'end', 10, p.strength >= 2 ? 700 : 400);
+  }
+  for (const x of L.sweeps) {
+    const xx = xIdx(x.j), y = yOf(x.price); if (xx == null || y == null) continue;
+    el('line', { x1: xx - 14, y1: y, x2: xx + 14, y2: y, stroke: AMB, 'stroke-width': 2 });
+    txt(xx, x.side === 'low' ? y + 22 : y - 12, '🧹 กวาด', AMB, 'middle', 10, 700);
+  }
 }
 let bounceTimer = 0;
 function bounceTick() { // re-evaluate status as the live price moves (throttled)
@@ -905,6 +934,7 @@ function drawAnalysis(W, H) {
   const a = A.atr[A.n - 1] || 0;
   const pad = 14;
 
+  if (S.an.liquidity && S.B) drawLiquidity(W);
   if (S.an.bounce && S.B) drawBounce(W);
   if (S.an.zones) for (const z of A.zones) {
     const yt = yOf(z.top), yb = yOf(z.bottom); if (yt == null || yb == null) continue;

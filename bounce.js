@@ -101,6 +101,48 @@
     return st;
   }
 
+  // Liquidity map ("SL เม่า"): untaken swing highs/lows, equal highs/lows and previous-day high/low are where
+  // retail stop-losses pile up. Sweeps = a wick runs those stops and the bar closes back (stop hunt).
+  function liquidity(c, piv, atr, n, price) {
+    const a = atr[n - 1] || 1, pools = { lows: [], highs: [] }, sweeps = [];
+    const lvls = [];
+    for (const p of piv) if (p.conf < n && p.i > n - 400) lvls.push({ price: p.price, side: p.type === 'L' ? 'low' : 'high', i: p.i, conf: p.conf, kind: 'swing' });
+    // previous day high/low (intraday timeframes only)
+    const step = n > 1 ? c[n - 1].time - c[n - 2].time : 86400;
+    if (step < 86400) {
+      const day = (t) => Math.floor(t / 86400), d0 = day(c[n - 1].time);
+      let k = n - 1; while (k >= 0 && day(c[k].time) === d0) k--;
+      if (k >= 0) { const d1 = day(c[k].time); let hi = -Infinity, lo = Infinity, hiI = k, loI = k;
+        for (let j = k; j >= 0 && day(c[j].time) === d1; j--) { if (c[j].high > hi) { hi = c[j].high; hiI = j; } if (c[j].low < lo) { lo = c[j].low; loI = j; } }
+        lvls.push({ price: hi, side: 'high', i: hiI, conf: k + 1, kind: 'pd' }, { price: lo, side: 'low', i: loI, conf: k + 1, kind: 'pd' }); }
+    }
+    for (const L of lvls) {
+      let taken = null;
+      for (let j = L.conf; j < n; j++) {
+        const through = L.side === 'low' ? c[j].low < L.price : c[j].high > L.price;
+        if (!through) continue;
+        const back = L.side === 'low' ? c[j].close > L.price : c[j].close < L.price;
+        if (back && n - 1 - j <= 40) sweeps.push({ j, side: L.side, price: L.price, kind: L.kind, depth: Math.abs((L.side === 'low' ? c[j].low : c[j].high) - L.price) });
+        taken = j; break;
+      }
+      if (taken == null && Math.abs(L.price - price) <= 15 * a) (L.side === 'low' ? pools.lows : pools.highs).push(L);
+    }
+    // merge equal highs / lows
+    const merge = (arr) => { arr.sort((x, y) => x.price - y.price); const out = [];
+      for (const L of arr) { const g = out[out.length - 1];
+        if (g && L.price - g.max <= 0.15 * a) { g.m.push(L); g.max = L.price; g.min = Math.min(g.min, L.price); }
+        else out.push({ m: [L], min: L.price, max: L.price }); }
+      return out.map((g) => { const sw = g.m.filter((x) => x.kind === 'swing').length, pd = g.m.some((x) => x.kind === 'pd');
+        return { price: g.m[0].side === 'low' ? g.min : g.max, side: g.m[0].side, count: sw, pd, first: Math.min(...g.m.map((x) => x.i)),
+          strength: sw + (pd ? 1 : 0) + (sw >= 2 ? 1 : 0) }; }); };
+    pools.lows = merge(pools.lows).filter((p) => p.price < price).sort((x, y) => y.price - x.price);
+    pools.highs = merge(pools.highs).filter((p) => p.price > price).sort((x, y) => x.price - y.price);
+    sweeps.sort((x, y) => y.j - x.j);
+    return { ...pools, sweeps: sweeps.slice(0, 6) };
+  }
+  const poolName = (p, sell) => { const lowWord = sell ? 'High' : 'Low', highWord = sell ? 'Low' : 'High'; const w = p.side === 'low' ? lowWord : highWord;
+    return p.count >= 2 ? `Equal ${w}s ×${p.count}${p.pd ? ' + ' + (p.side === 'low' ? (sell ? 'PDH' : 'PDL') : (sell ? 'PDL' : 'PDH')) : ''}` : p.pd && !p.count ? (p.side === 'low' ? (sell ? 'PDH' : 'PDL') : (sell ? 'PDL' : 'PDH')) + ' (ของเมื่อวาน)' : `Swing ${w}${p.pd ? ' + ' + (p.side === 'low' ? (sell ? 'PDH' : 'PDL') : (sell ? 'PDL' : 'PDH')) : ''}`; };
+
   function side(c, A, piv, trendAt, o) {
     const n = c.length, atr = A.atr, a = atr[n - 1] || (c[n - 1].high - c[n - 1].low), price = o.price;
     const all = rawZones(c, atr, piv, n).map((z) => ({ ...z, trend: trendAt[z.at] || 0 }));
@@ -116,6 +158,7 @@
     }
     const trendNow = trendAt[n - 1] || 0;
     const highs = piv.filter((p) => p.type === 'H' && p.conf < n);
+    const LQ = liquidity(c, piv, atr, n, price);
     const out = areas.map((g) => {
       const types = [...new Set(g.parts.map((p) => p.type))].sort((x, y) => PRIO.indexOf(x) - PRIO.indexOf(y));
       const main = g.parts.find((p) => p.type === types[0]);
@@ -138,40 +181,55 @@
       else if (trendNow === -1) { score -= 2; why.push({ t: 'trend', txt: (o.sell ? 'สวนเทรนด์ขาขึ้น' : 'สวนเทรนด์ขาลง') + ' — เสี่ยงกว่า ควรรอแท่งยืนยัน', neg: true }); }
       else why.push({ t: 'trend', txt: 'ตลาดยังไม่มีเทรนด์ชัด (ไซด์เวย์) — เด้งในกรอบ เป้าไม่ควรไกล' });
       const dA = (price - g.hi) / a;
-      if (dA > 3) { const pen = Math.floor(dA / 3); score -= pen; why.push({ t: 'far', txt: `ยังอยู่ไกลจากราคาปัจจุบัน (เกิน ${pen * 3} ATR)`, neg: true }); }
-      const entry = g.hi, sl = g.lo - o.slBuf * a, risk = Math.max(entry - sl, 0.3 * a);
-      const tgt = highs.filter((p) => p.price > entry + 0.5 * risk).sort((x, y) => x.price - y.price)[0];
+      if (dA > 3) { const pen = Math.floor(dA / 2) - 1; score -= pen; why.push({ t: 'far', txt: `ยังอยู่ไกลจากราคาปัจจุบัน (เกิน ${(pen + 1) * 2} ATR)`, neg: true }); }
+      // stops resting just above the zone → price often dips to grab them, then bounces from the zone
+      const above = LQ.lows.find((p) => p.price > g.hi && p.price - g.hi <= 1.5 * a);
+      if (above) { score += 1; why.push({ t: 'liq', txt: `เหนือโซนมี SL เม่ากองอยู่ (${poolName(above, o.sell)} ที่ ${o.F(above.price)}) — ราคามักมากวาดตรงนั้นก่อนแล้วเด้งในโซน` }); }
+      const entry = g.hi; let sl = g.lo - o.slBuf * a;
+      // our SL must not sit on an obvious stop cluster (it would be hunted together with everyone else's)
+      const trap = LQ.lows.find((p) => p.price <= g.lo && p.price > sl - 0.4 * a);
+      if (trap) { sl = Math.min(sl, trap.price - 0.3 * a); why.push({ t: 'slhunt', txt: `ขยับ SL ลงไปใต้ ${poolName(trap, o.sell)} (${o.F(trap.price)}) ที่คนวาง SL กันเยอะ — กันโดนกวาด` }); }
+      const risk = Math.max(entry - sl, 0.3 * a);
+      // target = the nearest untaken opposite pool ("ที่ที่มีเงิน"), else the nearest swing high
+      const pool = LQ.highs.find((p) => p.price > entry + 0.5 * risk && p.price - entry <= 6 * risk);
+      const tgt = pool || highs.filter((p) => p.price > entry + 0.5 * risk).sort((x, y) => x.price - y.price)[0];
       const tp1 = tgt ? tgt.price : entry + o.rr1 * risk;
+      if (pool) why.push({ t: 'tgt', txt: `TP1 = ${poolName(pool, o.sell)} ที่ ${o.F(pool.price)} — มี SL ฝั่งตรงข้ามกองอยู่ ราคามักวิ่งไปเก็บ` });
       if (tp1 - entry < risk) { score -= 1; why.push({ t: 'rr', txt: 'เป้าแรก (Swing ถัดไป) ใกล้กว่า 1R — ผลตอบแทนไม่คุ้มความเสี่ยง', neg: true }); }
       const tp2 = Math.max(entry + o.rr2 * risk, tp1);
       // status from the live price and the last closed bar
       const b = c[n - 1];
       let status = 'wait';
       if (price <= g.hi) status = 'in';
+      const sw = LQ.sweeps.find((x) => x.side === 'low' && n - 1 - x.j <= 3 && x.price >= g.lo - 0.5 * a && x.price <= g.hi + 1.5 * a);
+      if (sw) { score += 2; why.push({ t: 'sweep', txt: `เพิ่งกวาด SL เม่าใต้ ${o.F(sw.price)} แล้วปิดกลับ (${n - 1 - sw.j === 0 ? 'แท่งล่าสุด' : n - 1 - sw.j + ' แท่งก่อน'}) — สัญญาณเด้งที่ดี` }); }
       const pat = (A.patterns[n - 1] || []).filter((p) => (o.sell ? ['bearEng', 'star', 'evening'] : ['bullEng', 'hammer', 'morning']).includes(p));
       if (b.low <= g.hi && b.close > g.hi - 0.1 * (g.hi - g.lo) && b.close >= b.open && (pat.length || b.close > g.hi)) status = 'confirmed';
+      if (sw && sw.j === n - 1 && b.close >= g.lo) status = 'confirmed';
       const st = stats[main.type + (trendNow === 1 ? '+' : '')] && stats[main.type + (trendNow === 1 ? '+' : '')].n >= 5 ? stats[main.type + (trendNow === 1 ? '+' : '')] : stats[main.type];
       return { lo: g.lo, hi: g.hi, born: Math.min(...g.parts.map((p) => p.at)), types, main: main.type, score, stars: Math.max(1, Math.min(5, Math.round(score / 2))),
         why, entry, sl, risk, tp1, tp2, rr1: (tp1 - entry) / risk, rr2: (tp2 - entry) / risk, dist: price - g.hi, distAtr: (price - g.hi) / a, status, pattern: pat[0] || null, stat: st || null };
     });
     out.sort((x, y) => y.score - x.score || x.dist - y.dist);
-    return { zones: out.slice(0, o.max), stats };
+    return { zones: out.slice(0, o.max), stats, LQ };
   }
 
   function find(c, A, opt = {}) {
     if (!A || c.length < 60) return null;
     const o = { slBuf: 0.2, rr1: 1, rr2: 2, maxBars: 100, max: 4, swingLen: 5, ...opt };
     const n = c.length; if (o.price == null) o.price = c[n - 1].close;
+    const F = o.F || ((v) => String(+Number(v).toPrecision(8)));
+    o.F = (v) => F(Math.abs(v)); // prices in the mirrored run are negative
     const buy = side(c, A, A.pivots, A.trendAt, { ...o, sell: false });
     const fc = flip(c), fpiv = A.pivots.map((p) => ({ ...p, type: p.type === 'H' ? 'L' : 'H', price: -p.price }));
     const fA = { ...A, patterns: A.patterns };
     const sellRaw = side(fc, fA, fpiv, A.trendAt.map((t) => -t), { ...o, price: -o.price, sell: true });
     const un = (z) => ({ ...z, lo: -z.hi, hi: -z.lo, entry: -z.entry, sl: -z.sl, tp1: -z.tp1, tp2: -z.tp2 });
     // in the mirrored run "bullish close" means a bearish close in reality — status logic already mirrored via flip
-    return { buy: buy.zones, sell: sellRaw.zones.map(un), stats: { buy: buy.stats, sell: sellRaw.stats }, price: o.price, atr: A.atr[n - 1] };
+    return { buy: buy.zones, sell: sellRaw.zones.map(un), stats: { buy: buy.stats, sell: sellRaw.stats }, price: o.price, atr: A.atr[n - 1], liq: buy.LQ };
   }
 
-  const api = { find, TYPE };
+  const api = { find, TYPE, poolName };
   if (typeof window !== 'undefined') window.BOUNCE = api;
   if (typeof module !== 'undefined') module.exports = api;
 })();

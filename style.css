@@ -376,3 +376,6 @@ body.mobile #toasts { bottom: 70px; }
 .bn-why { margin: 6px 0 4px; padding-left: 18px; font-size: 12px; } .bn-why li { margin: 1px 0; } .bn-why li.neg { color: #ffb4b4; }
 .bn-stat { font-size: 11.5px; } .bn-note { font-size: 11px; margin-top: 8px; }
 .bn-card .btns { margin-top: 6px; display: flex; gap: 6px; } .bn-card .btns button { flex: 1; }
+
+.lq td { padding: 3px 4px; } .lq td:last-child { color: #f6c343; text-align: right; letter-spacing: 1px; }
+.lq .lq-now td { text-align: center; color: var(--muted); font-size: 11px; border-top: 1px dashed var(--line); border-bottom: 1px dashed var(--line); }
