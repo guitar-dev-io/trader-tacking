@@ -221,3 +221,11 @@ button.danger { color: #ff8a80; }
 @media (max-width: 1450px) { #hint { display: none; } }
 @media (max-width: 1320px) { #toolbar .chk { display: none; } #toolbar .tb-btn { padding: 4px 6px; } }
 #wl tr.invalid td { opacity: .45; text-decoration: line-through; }
+
+.sess-tbl { width: 100%; border-collapse: collapse; margin-top: 8px; }
+.sess-tbl th { color: var(--muted); font-weight: 400; text-align: left; padding: 3px; font-size: 11px; }
+.sess-tbl td { padding: 3px; }
+.sess-tbl input[type=text] { width: 100px; } .sess-tbl input[type=time] { width: 92px; } .sess-tbl input[type=color] { width: 30px; padding: 0; height: 24px; }
+.sess-tbl select { width: 150px; } .sess-tbl .pv { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sess-tbl button { background: none; border: none; color: var(--muted); }
+.sess-tbl input.hm { width: 62px; text-align: center; font-variant-numeric: tabular-nums; }

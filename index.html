@@ -161,6 +161,7 @@
         <button data-st="general" class="active">ทั่วไป</button>
         <button data-st="conn">การเชื่อมต่อ</button>
         <button data-st="notif">แจ้งเตือน</button>
+        <button data-st="sess">ช่วงเวลาตลาด</button>
         <button data-st="an">การวิเคราะห์</button>
         <button data-st="api">API / Webhook</button>
         <button data-st="data">ข้อมูล</button>
@@ -190,6 +191,12 @@
           <label class="chk"><input type="checkbox" id="st-signotify"> แจ้งเตือนเมื่อมีสัญญาณใหม่</label>
           <label class="chk"><input type="checkbox" id="st-learnonly"> เฉพาะสัญญาณที่ผ่านโหมดเรียนรู้</label>
           <p class="muted">ส่งต่อไป Telegram / Webhook ตั้งได้ที่แท็บ "API / Webhook"</p>
+        </section>
+        <section data-sec="sess" class="hidden">
+          <p class="muted">ตั้งเวลาเปิด–ปิดตาม "เขตเวลา" ที่เลือก · ถ้าเลือกเขตเวลาของตลาดนั้น (เช่น London) เวลาฤดูร้อน (DST) จะปรับให้อัตโนมัติ · ถ้าอยากล็อกเป็นเวลาไทยตายตัว เลือก Bangkok</p>
+          <div class="row"><label>ชุดสำเร็จรูป</label><select id="sess-preset"><option value="">— เลือก —</option><option value="fx">Forex มาตรฐาน</option><option value="fx7">Forex (London 07:00 GMT)</option><option value="stock">เวลาตลาดหุ้น</option><option value="ict">ICT Killzones</option></select></div>
+          <table class="sess-tbl"><thead><tr><th></th><th>ชื่อ</th><th>สี</th><th>เปิด</th><th>ปิด</th><th>เขตเวลา</th><th>= เวลาไทยวันนี้</th><th></th></tr></thead><tbody id="sess-rows"></tbody></table>
+          <div class="row"><button id="sess-add">+ เพิ่มช่วงเวลา</button></div>
         </section>
         <section data-sec="an" class="hidden">
           <div class="row"><label>Swing length</label><input id="st-swing" type="number" min="2" max="30"><span class="muted">แท่งซ้าย/ขวา สำหรับหาสวิง</span></div>

@@ -62,6 +62,7 @@ async function openSettings(section) {
   $('st-csv').checked = $('csv').checked;
   $('st-ver').textContent = `Price Tracker v${mainCfg.version} · ข้อมูลแอป: ${mainCfg.userData}`;
   $('st-msg').textContent = ''; $('st-reset-msg').textContent = ''; resetArmed = false; $('st-reset').textContent = 'ล้างข้อมูลในแอปทั้งหมด';
+  sessDraft = JSON.parse(JSON.stringify(SESSIONS_ALL)); renderSessRows();
   renderNetNow();
   showSection(section || 'general');
   $('modal-settings').classList.remove('hidden');
@@ -86,6 +87,7 @@ async function saveSettingsUI() {
   });
   S.an.notify = chk('st-signotify'); S.an.learnOnly = chk('st-learnonly'); S.an.swingLen = clampNum(v('st-swing'), 2, 30, 5);
   store.set('prefs', P); store.set('an', S.an);
+  setSessions(sessDraft.filter((x) => x.name && /^\d{1,2}:\d{2}$/.test(x.open) && /^\d{1,2}:\d{2}$/.test(x.close)).map((x) => ({ ...x })));
   await vcg.setSettings({
     api: { enabled: chk('st-api-on'), port: +v('st-api-port') || 8787, token: v('st-api-token').trim(), lan: chk('st-api-lan') },
     webhook: { url: v('st-wh-url').trim(), onSignal: chk('st-wh-sig'), onAlert: chk('st-wh-alert') },
@@ -118,6 +120,51 @@ $('st-signout').onclick = async () => {
 };
 $('st-open-csv').onclick = () => vcg.openCsv();
 $('st-open-log').onclick = () => vcg.openLogFolder();
+
+// ---------------------------------------------------------------- sessions editor
+const SESS_ZONES = [['Australia/Sydney', 'Sydney'], ['Asia/Tokyo', 'Tokyo'], ['Asia/Hong_Kong', 'Hong Kong'], ['Asia/Singapore', 'Singapore'], ['Asia/Bangkok', 'Bangkok (เวลาไทยตายตัว)'],
+  ['Europe/Frankfurt', 'Frankfurt'], ['Europe/London', 'London'], ['America/New_York', 'New York'], ['America/Chicago', 'Chicago'], ['UTC', 'UTC']];
+const SESS_PRESETS = {
+  fx: DEFAULT_SESSIONS,
+  fx7: DEFAULT_SESSIONS.map((x) => (x.name === 'London' ? { ...x, open: '07:00', close: '16:00' } : x)),
+  stock: [
+    { name: 'Tokyo', zone: 'Asia/Tokyo', open: '09:00', close: '15:00', color: '#ef5350', on: true },
+    { name: 'London', zone: 'Europe/London', open: '08:00', close: '16:30', color: '#2962ff', on: true },
+    { name: 'New York', zone: 'America/New_York', open: '09:30', close: '16:00', color: '#ff9800', on: true },
+  ],
+  ict: [
+    { name: 'Asia KZ', zone: 'America/New_York', open: '20:00', close: '00:00', color: '#ab47bc', on: true },
+    { name: 'London KZ', zone: 'America/New_York', open: '02:00', close: '05:00', color: '#2962ff', on: true },
+    { name: 'NY AM KZ', zone: 'America/New_York', open: '07:00', close: '10:00', color: '#ff9800', on: true },
+    { name: 'NY PM KZ', zone: 'America/New_York', open: '13:30', close: '16:00', color: '#26a69a', on: true },
+  ],
+};
+let sessDraft = [];
+function bkkHM(sec) { const d = new Date((sec + 7 * 3600) * 1000); return String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0'); }
+function sessPreview(x) {
+  const n = new Date();
+  try { const [a, b] = _sessionWindow(x, n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()); return `${bkkHM(a)}–${bkkHM(b)}`; } catch (_) { return '—'; }
+}
+function renderSessRows() {
+  $('sess-rows').innerHTML = sessDraft.map((x, i) => `<tr data-i="${i}">
+    <td><input type="checkbox" data-f="on" ${x.on ? 'checked' : ''}></td>
+    <td><input type="text" data-f="name" value="${esc(x.name)}"></td>
+    <td><input type="color" data-f="color" value="${x.color}"></td>
+    <td><input type="text" class="hm" data-f="open" value="${x.open}" placeholder="HH:MM" maxlength="5"></td>
+    <td><input type="text" class="hm" data-f="close" value="${x.close}" placeholder="HH:MM" maxlength="5"></td>
+    <td><select data-f="zone">${SESS_ZONES.map(([z, n]) => `<option value="${z}" ${z === x.zone ? 'selected' : ''}>${n}</option>`).join('')}</select></td>
+    <td class="pv">${sessPreview(x)}</td>
+    <td><button data-del="${i}" title="ลบ">✕</button></td></tr>`).join('');
+  $('sess-rows').querySelectorAll('[data-f]').forEach((inp) => (inp.oninput = inp.onchange = () => {
+    const i = +inp.closest('tr').dataset.i, f = inp.dataset.f;
+    sessDraft[i][f] = f === 'on' ? inp.checked : inp.value;
+    if (inp.classList.contains('hm')) inp.style.borderColor = /^([01]?\d|2[0-4]):[0-5]\d$/.test(inp.value) ? '' : '#ef5350';
+    inp.closest('tr').querySelector('.pv').textContent = sessPreview(sessDraft[i]);
+  }));
+  $('sess-rows').querySelectorAll('[data-del]').forEach((b) => (b.onclick = () => { sessDraft.splice(+b.dataset.del, 1); renderSessRows(); }));
+}
+$('sess-add').onclick = () => { sessDraft.push({ name: 'Session', zone: 'Asia/Bangkok', open: '09:00', close: '12:00', color: '#00bcd4', on: true }); renderSessRows(); };
+$('sess-preset').onchange = () => { const p = SESS_PRESETS[$('sess-preset').value]; if (p) { sessDraft = JSON.parse(JSON.stringify(p)); renderSessRows(); } $('sess-preset').value = ''; };
 
 // ---------------------------------------------------------------- backup / restore / reset
 const SCHEMA = 3;

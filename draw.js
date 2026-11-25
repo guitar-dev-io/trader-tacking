@@ -478,12 +478,17 @@ document.querySelectorAll('#bottombar [data-scale]').forEach((b) => (b.onclick =
 
 // timezone selector + clock + sessions status
 const ZONES = [['local', 'เวลาเครื่อง'], ['Asia/Bangkok', 'Bangkok (UTC+7)'], ['UTC', 'UTC'], ['Europe/London', 'London'], ['America/New_York', 'New York'], ['Asia/Tokyo', 'Tokyo'], ['Australia/Sydney', 'Sydney']];
-const SESSIONS = [
-  { name: 'Sydney', zone: 'Australia/Sydney', open: 7, close: 16, color: '#ab47bc' },
-  { name: 'Tokyo', zone: 'Asia/Tokyo', open: 9, close: 18, color: '#ef5350' },
-  { name: 'London', zone: 'Europe/London', open: 8, close: 17, color: '#2962ff' },
-  { name: 'New York', zone: 'America/New_York', open: 8, close: 17, color: '#ff9800' },
+// Trading sessions — editable in Settings → ช่วงเวลาตลาด. Times are in `zone` (a market's own zone follows its DST).
+const DEFAULT_SESSIONS = [
+  { name: 'Sydney', zone: 'Australia/Sydney', open: '07:00', close: '16:00', color: '#ab47bc', on: true },
+  { name: 'Tokyo', zone: 'Asia/Tokyo', open: '09:00', close: '18:00', color: '#ef5350', on: true },
+  { name: 'London', zone: 'Europe/London', open: '08:00', close: '17:00', color: '#2962ff', on: true },
+  { name: 'New York', zone: 'America/New_York', open: '08:00', close: '17:00', color: '#ff9800', on: true },
 ];
+let SESSIONS_ALL = store.get('sessionsCfg', DEFAULT_SESSIONS);
+let SESSIONS = SESSIONS_ALL.filter((x) => x.on);
+function setSessions(list) { SESSIONS_ALL = list; SESSIONS = list.filter((x) => x.on); store.set('sessionsCfg', list); _sessCache.clear(); tickClock(); dirty = true; }
+const hmParse = (t) => { const [h, m] = String(t || '0:0').split(':').map((x) => parseInt(x, 10) || 0); return [Math.max(0, Math.min(24, h)), Math.max(0, Math.min(59, m))]; };
 const curZone = () => store.get('tz', 'local');
 $('clock').insertAdjacentHTML('beforebegin', `<span id="sess-status" title="คลิกเพื่อดูตารางเวลาตลาด" style="cursor:pointer"></span><span class="sep"></span>
   <select id="tz-sel" title="Timezone ของกราฟ">${ZONES.map(([z, n]) => `<option value="${z}">${n}</option>`).join('')}</select>`);
@@ -493,14 +498,17 @@ $('tz-sel').onchange = () => { store.set('tz', $('tz-sel').value); TZ = zoneOffs
 // session [startUTC, endUTC] (seconds) for the session's local calendar day containing `dayUTC`
 const _sessCache = new Map();
 function sessionWindow(s, y, m, d) {
-  const key = `${s.name}|${y}-${m}-${d}|${TZ}`, hit = _sessCache.get(key); if (hit) return hit;
+  const key = `${s.name}|${s.zone}|${s.open}|${s.close}|${y}-${m}-${d}|${TZ}`, hit = _sessCache.get(key); if (hit) return hit;
   if (_sessCache.size > 2000) _sessCache.clear();
   const r = _sessionWindow(s, y, m, d); _sessCache.set(key, r); return r;
 }
 function _sessionWindow(s, y, m, d) {
   const guess = Date.UTC(y, m, d, 12) / 1000;
   const off = zoneOffsetSec(s.zone, new Date(guess * 1000));
-  const start = Date.UTC(y, m, d, s.open) / 1000 - off, end = Date.UTC(y, m, d, s.close) / 1000 - off;
+  const [oh, om] = hmParse(s.open), [ch, cm] = hmParse(s.close);
+  const start = Date.UTC(y, m, d, oh, om) / 1000 - off;
+  let end = Date.UTC(y, m, d, ch, cm) / 1000 - off;
+  if (end <= start) end += 86400;   // crosses midnight
   return [start, end];
 }
 function sessionsAround(nowSec) {
@@ -534,7 +542,9 @@ $('sess-status').onclick = (e) => {
     SESSIONS.map((s) => { const x = today.find((q) => q.s === s) || sessionsAround(now).find((q) => q.s === s && q.b > now);
       const isOpen = now >= x.a && now < x.b;
       return `<div class="item"><span style="color:${s.color}">● ${s.name}</span><span>${hm(x.a)}–${hm(x.b)} ${isOpen ? '<b class="up">เปิดอยู่</b>' : `<small>เปิดอีก ${fmtDur(x.a - now)}</small>`}</span></div>`; }).join('') +
-    `<div class="item muted" style="display:block;line-height:1.5">ช่วง London+New York ซ้อนกันมักผันผวนสูงสุด · เวลาปรับตามเวลาฤดูร้อน (DST) อัตโนมัติ</div>`;
+    `<div class="item muted" style="display:block;line-height:1.5">ช่วง London+New York ซ้อนกันมักผันผวนสูงสุด · เวลาปรับตามเวลาฤดูร้อน (DST) อัตโนมัติ</div>
+    <div class="item"><button id="sess-edit">⚙ แก้ไขช่วงเวลา…</button></div>`;
+  $('sess-edit').onclick = () => { p.classList.add('hidden'); openSettings('sess'); };
   p.classList.remove('hidden'); p.style.left = 'auto'; p.style.right = '10px'; p.style.top = 'auto'; p.style.bottom = '6px';
   setTimeout(() => { p.style.left = ''; }, 0);
 };
