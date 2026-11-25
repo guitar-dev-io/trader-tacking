@@ -220,3 +220,4 @@ button.danger { color: #ff8a80; }
 #toolbar .grow { min-width: 4px; }
 @media (max-width: 1450px) { #hint { display: none; } }
 @media (max-width: 1320px) { #toolbar .chk { display: none; } #toolbar .tb-btn { padding: 4px 6px; } }
+#wl tr.invalid td { opacity: .45; text-decoration: line-through; }

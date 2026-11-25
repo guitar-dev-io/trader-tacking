@@ -12,7 +12,6 @@ const notify = require('./notify');
 
 const WEBTRADER_URL = 'https://vcgmarkets.com/webtrader';
 const WS_HOST = 'prod-ws-server.anttix.app';
-const FRAME_RE = /^42\/symbol,\d*(\[[\s\S]*\])$/;
 
 // Look like normal Chrome so sign-in pages (incl. Google) accept the browser.
 app.userAgentFallback = app.userAgentFallback
@@ -31,6 +30,7 @@ const state = {
   connected: false,
   loggedIn: false,
   serverSubs: new Set(),
+  invalid: new Set(),   // symbols the server never accepted
   quotes: {},          // symbol -> latest quote
   lastTick: 0,
   ticks: 0,
@@ -79,34 +79,23 @@ setInterval(() => {
   send('quotes', list);
 }, 100);
 
-function onFrame(payload) {
-  if (typeof payload !== 'string') return;
-  const m = FRAME_RE.exec(payload);
-  if (!m) return;
-  let arr;
-  try { arr = JSON.parse(m[1]); } catch (_) { return; }
-  const [event, data] = arr;
-  if (event === 'symbol:subscriptionUpdate') {
-    state.serverSubs = new Set((data && data.symbols) || []);
-    log.debug('feed', 'subscriptionUpdate', [...state.serverSubs]);
-  } else if (event === 'symbol:error') {
-    log.error('feed', 'symbol:error', data);
-  } else if (event === 'symbol:data' && data) {
-    let list = [];
-    if (data.quoteList && data.quoteList.quotes) list = data.quoteList.quotes;
-    else if (data.quote) list = [data.quote];
-    for (const raw of list) {
-      const q = parseQuote(raw);
-      if (!settings.symbols.includes(q.symbol)) continue;
-      state.quotes[q.symbol] = q;
-      state.lastTick = Date.now(); state.ticks++;
-      const dl = Date.now() - Date.parse(q.time); if (isFinite(dl)) { netState.delays.push(dl); if (netState.delays.length > 40) netState.delays.shift(); }
-      pendingQuotes[q.symbol] = q;
-      api.broadcast('quote', q);
-      writeCsv(q);
-      if (q.symbol === settings.traySymbol) updateTray();
-    }
+// Quotes arrive from a small listener injected into the WebTrader page (FEED_JS), already batched.
+function onQuotes(rawList) {
+  for (const raw of rawList) {
+    const q = parseQuote(raw);
+    if (!settings.symbols.includes(q.symbol)) continue;
+    state.quotes[q.symbol] = q;
+    state.lastTick = Date.now(); state.ticks++;
+    const dl = Date.now() - Date.parse(q.time); if (isFinite(dl)) { netState.delays.push(dl); if (netState.delays.length > 40) netState.delays.shift(); }
+    pendingQuotes[q.symbol] = q;
+    api.broadcast('quote', q);
+    writeCsv(q);
+    if (q.symbol === settings.traySymbol) updateTray();
   }
+}
+function onSubs(list) {
+  state.serverSubs = new Set(list || []);
+  for (const s of state.serverSubs) { subTries.delete(s); state.invalid.delete(s); }
 }
 
 // ---------------- CSV ----------------
@@ -127,7 +116,7 @@ function send(ch, data) {
 }
 function statusObj() {
   return { connected: state.connected, loggedIn: state.loggedIn, csv: settings.csv, symbols: settings.symbols,
-    traySymbol: settings.traySymbol, lastTick: state.lastTick, ticks: state.ticks, api: settings.api };
+    traySymbol: settings.traySymbol, lastTick: state.lastTick, ticks: state.ticks, api: settings.api, invalid: [...state.invalid] };
 }
 function sendStatus() { send('status', statusObj()); }
 function updateTray() {
@@ -192,16 +181,6 @@ function createTrader() {
     if (/useWebSocket|Socket\.IO|PERMISSION_DENIED|auth:error/.test(m)) log.write(e.level === 'error' ? 'error' : e.level === 'warning' ? 'warn' : 'debug', 'webtrader', m.slice(0, 500));
   });
 
-  const dbg = traderWin.webContents.debugger;
-  try { dbg.attach('1.3'); } catch (e) { log.error('feed', 'debugger attach failed: ' + e.message); }
-  const wsIds = new Set();
-  dbg.on('message', (_e, method, params) => {
-    if (method === 'Network.webSocketFrameReceived') { if (wsIds.has(params.requestId)) onFrame(params.response.payloadData); }
-    else if (method === 'Network.webSocketCreated') { if (params.url.includes(WS_HOST)) { wsIds.add(params.requestId); log.info('feed', 'เปิด WebSocket ' + params.url); } }
-    else if (method === 'Network.webSocketClosed') { if (wsIds.delete(params.requestId)) log.warn('feed', 'WebSocket ปิด'); }
-  });
-  dbg.sendCommand('Network.enable', { maxTotalBufferSize: 1e6, maxResourceBufferSize: 1e5 }).catch(() => {});
-
   traderWin.loadURL(WEBTRADER_URL);
 }
 
@@ -213,6 +192,31 @@ const SUB_JS = (symbols) => `(() => {
 })()`;
 const CONNECTED_JS = `(() => { const m = globalThis._wsSharedManager;
   return !!(m && m.socket('/symbol').connected); })()`;
+
+// Price feed: listen on the page's own /symbol socket and post quotes in batches.
+// Flushing is driven by incoming data (not timers), so it keeps up even in a hidden, throttled window.
+const FEED_JS = `(() => {
+  if (window.__vcgFeed) return 'exists';
+  const shared = globalThis._wsSharedManager; if (!shared) return 'none';
+  const s = shared.socket('/symbol');
+  let buf = {}, n = 0, last = 0, timer = null;
+  const post = (type, d) => window.postMessage({ __vcg: type, d }, '*');
+  const flush = () => { timer = null; if (!n) return; post('quotes', Object.values(buf)); buf = {}; n = 0; last = Date.now(); };
+  s.onAny((ev, d) => {
+    if (ev === 'symbol:data' && d) {
+      const list = (d.quoteList && d.quoteList.quotes) || (d.quote ? [d.quote] : []);
+      for (const q of list) { if (!buf[q.symbol]) n++; buf[q.symbol] = q; }
+      if (Date.now() - last >= 100) flush(); else if (!timer) timer = setTimeout(flush, 100);
+    } else if (ev === 'symbol:subscriptionUpdate') post('subs', (d && d.symbols) || []);
+    else if (ev === 'symbol:error') post('feedError', d);
+  });
+  window.__vcgFeed = true;
+  return 'ok';
+})()`;
+async function ensureFeed() {
+  try { const r = await traderWin.webContents.executeJavaScript(FEED_JS, true); if (r === 'ok') log.info('feed', 'ติดตั้งตัวรับราคาในหน้า WebTrader แล้ว'); }
+  catch (e) { log.error('feed', 'ensureFeed: ' + e.message); }
+}
 
 // Chart history: a second Socket.IO connection (namespace /chart-history), created inside the
 // WebTrader page with the same auth the app uses, like the page's own chart does.
@@ -278,6 +282,7 @@ async function sendChartReq(o) {
     `window.__vcgChart && window.__vcgChart.req(${JSON.stringify(o)})`, true); } catch (e) { log.error('chart', e.message); }
 }
 
+const subTries = new Map();
 let notConnectedSince = Date.now();
 let shownForLogin = false;
 let staleWarned = false;
@@ -299,10 +304,16 @@ async function tick() {
   if (connected) {
     notConnectedSince = Date.now();
     if (shownForLogin) { shownForLogin = false; traderWin.hide(); showMain(); log.info('auth', 'login สำเร็จ ซ่อนหน้าต่าง WebTrader'); }
+    await ensureFeed();
     await ensureChart();
-    const want = settings.symbols;
-    if (!want.every((s) => state.serverSubs.has(s))) {
-      const merged = [...new Set([...state.serverSubs, ...want])];
+    const want = settings.symbols.filter((s) => !state.invalid.has(s));
+    const missing = want.filter((s) => !state.serverSubs.has(s));
+    if (missing.length) {
+      for (const s of missing) {
+        const t = (subTries.get(s) || 0) + 1; subTries.set(s, t);
+        if (t > 3) { state.invalid.add(s); log.warn('feed', `ไม่พบ ${s} ใน VCG (server ไม่รับ subscribe) — หยุดขอแล้ว ตรวจชื่อ symbol อีกครั้ง`); }
+      }
+      const merged = [...new Set([...state.serverSubs, ...want.filter((s) => !state.invalid.has(s))])];
       try { await traderWin.webContents.executeJavaScript(SUB_JS(merged), true); log.debug('feed', 'subscribe', merged); } catch (_) {}
     }
     // no ticks for 2 minutes while "connected" → warn once (market may be closed)
@@ -321,6 +332,7 @@ async function tick() {
 // ---------------- symbols ----------------
 function addSymbol(s) {
   s = String(s || '').trim().toUpperCase();
+  state.invalid.delete(s); subTries.delete(s);
   if (s && !settings.symbols.includes(s)) { settings.symbols.push(s); saveSettings(); refreshTrayMenu(); tick(); log.info('watchlist', 'เพิ่ม ' + s); }
   sendStatus();
 }
@@ -352,6 +364,9 @@ ipcMain.on('open-csv', () => { fs.mkdirSync(csvDir(), { recursive: true }); shel
 ipcMain.on('show-trader', showTrader);
 ipcMain.on('reload-trader', () => { log.info('feed', 'ผู้ใช้สั่งเชื่อมต่อใหม่'); traderWin && traderWin.webContents.reload(); });
 ipcMain.on('chart-msg', (_e, m) => {
+  if (m.type === 'quotes') return onQuotes(m.data || []);
+  if (m.type === 'subs') return onSubs(m.data);
+  if (m.type === 'feedError') { log.error('feed', 'symbol:error', m.data); return; }
   if (m.type === 'chartError') log.error('chart', 'chart:error', m.data);
   else if (m.type === 'chartAuthRenew') log.warn('chart', 'token หมดอายุ (PERMISSION_DENIED) — กำลังขอ token ใหม่และโหลดซ้ำ');
   else if (m.type === 'chartLog') log.info('chart', String(m.data));
@@ -419,7 +434,14 @@ function evalNet() {
     netState.level = level;
   }
   netState.detail = detail;
-  const st = { level, detail, rtt: netState.rtt, feedDelay: delay, lastTickAgo: since, reconnects: netState.reconnects, connected: state.connected };
+  let cpu = null;
+  try {
+    const ms = app.getAppMetrics(), pid = (w) => (w && !w.isDestroyed() ? w.webContents.getOSProcessId() : -1);
+    const by = (p) => { const m = ms.find((x) => x.pid === p); return m ? Math.round(m.cpu.percentCPUUsage) : null; };
+    const browser = ms.find((x) => x.type === 'Browser'), gpu = ms.find((x) => x.type === 'GPU');
+    cpu = { app: browser ? Math.round(browser.cpu.percentCPUUsage) : null, ui: by(pid(mainWin)), webtrader: by(pid(traderWin)), gpu: gpu ? Math.round(gpu.cpu.percentCPUUsage) : null };
+  } catch (_) {}
+  const st = { cpu, level, detail, rtt: netState.rtt, feedDelay: delay, lastTickAgo: since, reconnects: netState.reconnects, connected: state.connected };
   send('net', st); api.broadcast('network', st);
 }
 setInterval(probe, 10000);

@@ -20,7 +20,8 @@ vcg.onNet((n) => {
   const el = $('net');
   el.className = n.level;
   $('net-text').textContent = n.rtt != null ? `${n.rtt} ms` : NET_TH[n.level];
-  el.title = `สถานะ: ${NET_TH[n.level]}\nPing: ${n.rtt ?? '—'} ms\nราคาหน่วง (median): ${n.feedDelay ?? '—'} ms\nราคาล่าสุด: ${n.lastTickAgo != null ? Math.round(n.lastTickAgo) + ' วินาทีที่แล้ว' : '—'}\nหลุดไปแล้ว: ${n.reconnects} ครั้ง`;
+  const c = n.cpu || {};
+  el.title = `CPU: หน้าจอ ${c.ui ?? '—'}% · WebTrader ${c.webtrader ?? '—'}% · ตัวแอป ${c.app ?? '—'}% · GPU ${c.gpu ?? '—'}%\nสถานะ: ${NET_TH[n.level]}\nPing: ${n.rtt ?? '—'} ms\nราคาหน่วง (median): ${n.feedDelay ?? '—'} ms\nราคาล่าสุด: ${n.lastTickAgo != null ? Math.round(n.lastTickAgo) + ' วินาทีที่แล้ว' : '—'}\nหลุดไปแล้ว: ${n.reconnects} ครั้ง`;
   const b = $('netbanner');
   if (n.level === 'ok') b.classList.add('hidden');
   else { b.className = n.level; b.textContent = '⚠️ ' + (n.detail || NET_TH[n.level]); }
@@ -35,7 +36,8 @@ function renderNetNow() {
   const n = lastNet; if (!n) return;
   $('st-net-now').innerHTML = `สถานะ: <b>${NET_TH[n.level]}</b>${n.detail ? ' — ' + esc(n.detail) : ''}<br>
     Ping ไป VCG: <b>${n.rtt ?? '—'} ms</b> · ราคาหน่วง (median): <b>${n.feedDelay ?? '—'} ms</b><br>
-    ราคาล่าสุดเมื่อ: <b>${n.lastTickAgo != null ? Math.round(n.lastTickAgo) + ' วินาทีที่แล้ว' : '—'}</b> · หลุดไปแล้ว <b>${n.reconnects}</b> ครั้ง`;
+    ราคาล่าสุดเมื่อ: <b>${n.lastTickAgo != null ? Math.round(n.lastTickAgo) + ' วินาทีที่แล้ว' : '—'}</b> · หลุดไปแล้ว <b>${n.reconnects}</b> ครั้ง<br>
+    CPU: หน้าจอ <b>${n.cpu?.ui ?? '—'}%</b> · WebTrader (ซ่อน) <b>${n.cpu?.webtrader ?? '—'}%</b> · ตัวแอป <b>${n.cpu?.app ?? '—'}%</b> · GPU <b>${n.cpu?.gpu ?? '—'}%</b>`;
 }
 
 // ---------------------------------------------------------------- settings window

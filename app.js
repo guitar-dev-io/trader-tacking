@@ -622,9 +622,8 @@ function updateRow(q, prev) {
   b.textContent = fmt(q.bid, q.digits); a.textContent = fmt(q.ask, q.digits);
   p.textContent = q.changePct == null ? '—' : (q.changePct >= 0 ? '+' : '') + q.changePct.toFixed(2);
   p.className = 'p ' + (q.changePct >= 0 ? 'up' : 'down');
-  if (prev && prev.bid !== q.bid) {
-    b.classList.remove('flash-up', 'flash-down'); void b.offsetWidth;
-    b.classList.add(q.bid > prev.bid ? 'flash-up' : 'flash-down');
+  if (prev && prev.bid !== q.bid && b.animate) {   // Web Animations: no forced re-layout per tick
+    b.animate([{ backgroundColor: q.bid > prev.bid ? 'rgba(38,166,154,.45)' : 'rgba(239,83,80,.45)' }, { backgroundColor: 'transparent' }], { duration: 600 });
   }
 }
 document.querySelector('#wl tbody').addEventListener('click', (e) => {
@@ -654,6 +653,12 @@ vcg.onStatus((st) => {
   const symChanged = JSON.stringify(st.symbols) !== JSON.stringify(S.symbols) || st.traySymbol !== S.traySymbol;
   S.symbols = st.symbols; S.traySymbol = st.traySymbol;
   if (symChanged) renderWatchlist();
+  const inv = (st.invalid || []).join(',');
+  if (inv !== S.invalidKey) {
+    S.invalidKey = inv;
+    document.querySelectorAll('#wl tr').forEach((tr) => { const bad = (st.invalid || []).includes(tr.dataset.s); tr.classList.toggle('invalid', bad); tr.title = bad ? 'ไม่พบ symbol นี้ใน VCG — ลองชื่ออื่น เช่น BTCUSD.x / BTCUSDT' : ''; });
+    if (inv) toast(`ไม่พบใน VCG: ${inv} — ตรวจชื่อ symbol`, 'warn', 8000);
+  }
   $('csv').checked = st.csv;
   $('conn').classList.toggle('ok', st.connected);
   $('conn-text').textContent = st.connected ? 'เชื่อมต่อแล้ว' : st.loggedIn ? 'กำลังเชื่อมต่อ…' : 'ยังไม่ได้ login — กด "เปิด WebTrader / Login"';
@@ -857,18 +862,18 @@ document.querySelectorAll('#tabs button').forEach((b) => (b.onclick = () => {
 }));
 $('lessons').innerHTML = LESSONS.map((l, i) => `<details ${i === 0 ? 'open' : ''}><summary>${l.t}</summary>${l.b}</details>`).join('');
 
-const logs = []; let errCount = 0;
+const logs = []; let errCount = 0, logRenderTimer = null;
 vcg.onLogs((list) => {
   logs.push(...list); if (logs.length > 3000) logs.splice(0, logs.length - 3000);
   const logTabOpen = !$('tab-log').classList.contains('hidden');
   if (!logTabOpen) { errCount += list.filter((e) => e.level === 'error').length; $('log-badge').textContent = errCount || ''; }
-  else renderLogs();
+  else if (!logRenderTimer) logRenderTimer = setTimeout(() => { logRenderTimer = null; renderLogs(); }, 1000);
 });
 const LV = { debug: 0, info: 1, warn: 2, error: 3 };
 function renderLogs() {
   const lv = $('log-level').value, q = $('log-search').value.toLowerCase();
   const min = lv === 'error' ? 3 : lv === 'warn' ? 2 : lv === 'info' ? 1 : 0;
-  const rows = logs.filter((e) => LV[e.level] >= min && (!q || (e.msg + ' ' + (e.data || '') + ' ' + e.source).toLowerCase().includes(q))).slice(-400).reverse();
+  const rows = logs.filter((e) => LV[e.level] >= min && (!q || (e.msg + ' ' + (e.data || '') + ' ' + e.source).toLowerCase().includes(q))).slice(-250).reverse();
   $('log-list').innerHTML = rows.map((e) => `<div class="le ${e.level}"><span class="t">${new Date(e.t).toLocaleTimeString()}</span> <span class="s">${esc(e.source)}</span> ${esc(e.msg)}${e.data ? ' <span class="t">' + esc(e.data) + '</span>' : ''}</div>`).join('') || '<p class="muted" style="padding:8px">ไม่มี log</p>';
 }
 $('log-level').onchange = renderLogs; $('log-search').oninput = renderLogs;
