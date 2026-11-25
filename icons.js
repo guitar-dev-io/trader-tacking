@@ -1,0 +1,45 @@
+// Line icons (24×24, stroke = currentColor) for the drawing toolbar and buttons.
+(function () {
+  const P = {
+    cursor: '<path d="M6 3.5l12.5 7.2-5.4 1.6-2.6 5.2z"/><path d="M13.1 12.3l4.4 5.2"/>',
+    hline: '<path d="M2.5 12h19"/><circle cx="8" cy="12" r="2" fill="var(--icon-bg)"/><circle cx="16" cy="12" r="2" fill="var(--icon-bg)"/>',
+    trend: '<path d="M5.5 18.5l13-13"/><circle cx="5" cy="19" r="2" fill="var(--icon-bg)"/><circle cx="19" cy="5" r="2" fill="var(--icon-bg)"/>',
+    ray: '<path d="M6 18l15-12"/><circle cx="5.5" cy="18.5" r="2" fill="var(--icon-bg)"/><circle cx="12" cy="13.2" r="2" fill="var(--icon-bg)"/>',
+    fib: '<path d="M3 5h18M3 9.5h18M3 14h18M3 19h18"/><path d="M5 19L19 5" stroke-dasharray="2 2.5" opacity=".7"/>',
+    rect: '<rect x="4" y="6.5" width="16" height="11" rx="1"/><circle cx="4" cy="6.5" r="1.8" fill="var(--icon-bg)"/><circle cx="20" cy="17.5" r="1.8" fill="var(--icon-bg)"/>',
+    measure: '<path d="M4 20V4M4 20h16"/><path d="M8 16l4-5 3 2.5L20 7"/><path d="M16.5 7H20v3.5"/>',
+    alert: '<path d="M6 16.5V11a6 6 0 0112 0v5.5l1.5 1.5h-15z"/><path d="M10 20.5a2 2 0 004 0"/>',
+    undo: '<path d="M9 14L4.5 9.5 9 5"/><path d="M4.5 9.5H14a5.5 5.5 0 010 11h-3"/>',
+    trash: '<path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13"/><path d="M10.5 11v5.5M13.5 11v5.5"/>',
+    camera: '<path d="M3.5 8.5h3.5l1.8-2.5h6.4l1.8 2.5h3.5v10.5h-17z"/><circle cx="12" cy="13.5" r="3.5"/>',
+    fx: '<path d="M8.5 20c2 0 2.5-2 3-5l1.5-8c.5-2.5 1.5-3.5 3.5-3.5"/><path d="M8 10h8"/><path d="M14.5 13l5 6M19.5 13l-5 6"/>',
+    brain: '<path d="M9.5 4.5a3 3 0 00-3 3 3 3 0 00-2 5.3 3 3 0 002 4.7 3 3 0 006 .5V6a2 2 0 00-3-1.5z"/><path d="M14.5 4.5a3 3 0 013 3 3 3 0 012 5.3 3 3 0 01-2 4.7 3 3 0 01-6 .5"/><path d="M12.5 10.5h2M9.5 13.5h3"/>',
+    gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
+    vline: '<path d="M12 2.5v19"/><circle cx="12" cy="8" r="2" fill="var(--icon-bg)"/><circle cx="12" cy="16" r="2" fill="var(--icon-bg)"/>',
+    channel: '<path d="M3.5 15.5l13-10M7.5 19.5l13-10"/><circle cx="3.5" cy="15.5" r="1.8" fill="var(--icon-bg)"/><circle cx="16.5" cy="5.5" r="1.8" fill="var(--icon-bg)"/><circle cx="20.5" cy="9.5" r="1.8" fill="var(--icon-bg)"/>',
+    brush: '<path d="M19.5 4.5l-8 8"/><path d="M11.5 12.5c-2-1.5-5-.5-5.5 2.5-.3 2-1.5 3-3 3.5 3.5 1.5 8 .5 9.5-2 .8-1.4.6-2.8-1-4z"/>',
+    long: '<rect x="4" y="4" width="16" height="9" rx="1" fill="#26a69a33" stroke="#26a69a"/><rect x="4" y="13" width="16" height="7" rx="1" fill="#ef535033" stroke="#ef5350"/><path d="M4 13h16"/>',
+    short: '<rect x="4" y="4" width="16" height="7" rx="1" fill="#ef535033" stroke="#ef5350"/><rect x="4" y="11" width="16" height="9" rx="1" fill="#26a69a33" stroke="#26a69a"/><path d="M4 11h16"/>',
+    text: '<path d="M5 6V4.5h14V6M12 4.5v15M9 19.5h6"/>',
+    arrowUp: '<path d="M12 20V5M6 11l6-6 6 6"/>',
+    arrowDown: '<path d="M12 4v15M6 13l6 6 6-6"/>',
+    magnet: '<path d="M6 4v8a6 6 0 0012 0V4"/><path d="M6 8h4M14 8h4M10 4v8a2 2 0 004 0V4"/>',
+    lock: '<rect x="5" y="11" width="14" height="9.5" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/><circle cx="12" cy="15.5" r="1.2"/>',
+    unlock: '<rect x="5" y="11" width="14" height="9.5" rx="2"/><path d="M8 11V8a4 4 0 017.7-1.5"/><circle cx="12" cy="15.5" r="1.2"/>',
+    eye: '<path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>',
+    eyeOff: '<path d="M2.5 12s3.5-6.5 9.5-6.5c2 0 3.7.7 5.1 1.6M21.5 12s-3.5 6.5-9.5 6.5c-2 0-3.7-.7-5.1-1.6"/><path d="M4 20L20 4"/>',
+    layers: '<path d="M12 3.5l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/><path d="M3 17l9 5 9-5" opacity=".5"/>',
+    redo: '<path d="M15 14l4.5-4.5L15 5"/><path d="M19.5 9.5H10a5.5 5.5 0 000 11h3"/>',
+    full: '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>',
+    zoomIn: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5l5 5M8 10.5h5M10.5 8v5"/>',
+    minus: '<path d="M5 12h14"/>', plus: '<path d="M5 12h14M12 5v14"/>',
+    left: '<path d="M15 5l-7 7 7 7"/>', right: '<path d="M9 5l7 7-7 7"/>',
+    reset: '<path d="M4.5 12a7.5 7.5 0 102.2-5.3L4.5 9"/><path d="M4.5 4.5V9H9"/>',
+    calc: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h1M11.5 11h1M15 11h1M8 14.5h1M11.5 14.5h1M15 14.5h1M8 18h1M11.5 18h1M15 18h1"/>',
+    candles: '<path d="M7 3v3M7 15v6M17 3v5M17 17v4"/><rect x="5" y="6" width="4" height="9" rx=".5"/><rect x="15" y="8" width="4" height="9" rx=".5"/>',
+  };
+  function svg(name, size = 20) {
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${P[name] || ''}</svg>`;
+  }
+  window.ICON = { svg };
+})();
