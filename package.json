@@ -1,7 +1,7 @@
 {
   "name": "price-tracker",
   "productName": "Price Tracker",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Live prices, charts and price-action analysis for VCG Markets",
   "main": "main.js",
   "scripts": {

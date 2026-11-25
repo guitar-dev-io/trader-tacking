@@ -29,15 +29,23 @@ let UP = '#26a69a', DOWN = '#ef5350';
 
 
 
-const AN_DEFAULT = { swing: true, legs: true, structure: true, zones: true, patterns: true, signals: true, history: true, td: false, learnOnly: false, notify: true, swingLen: 5 };
+// Clean chart by default: analysis overlays are opt-in from the 🧠 menu.
+const AN_DEFAULT = { swing: false, legs: false, structure: false, zones: false, patterns: false, signals: false, history: false, td: false, learnOnly: false, notify: false, swingLen: 5 };
+const AN_VIEW_KEYS = ['swing', 'legs', 'structure', 'zones', 'patterns', 'signals', 'history', 'td'];
+// one-time migration (v2.0.3): switch existing installs to the clean default
+if (store.get('defaultsV', 1) < 2) {
+  const an = store.get('an', null);
+  if (an) { AN_VIEW_KEYS.forEach((k) => { an[k] = false; }); an.notify = false; store.set('an', an); }
+  const inds = store.get('inds', null);
+  if (inds && JSON.stringify(inds.map((i) => [i.type, i.params])) === JSON.stringify([['ema', { period: 50 }], ['sma', { period: 200 }]])) store.set('inds', []);
+  store.set('sessions', true);
+  store.set('defaultsV', 2);
+}
 const S = {
   symbol: store.get('symbol', 'XAUUSD'),
   tf: store.get('tf', 3),
   ctype: store.get('ctype', 'candles'),
-  inds: store.get('inds', [
-    { id: 1, type: 'ema', params: { period: 50 }, color: '#2962ff' },
-    { id: 2, type: 'sma', params: { period: 200 }, color: '#f5a623' },
-  ]),
+  inds: store.get('inds', []),
   scripts: store.get('scripts', []),
   alerts: store.get('alerts', []),
   an: { ...AN_DEFAULT, ...store.get('an', {}) },
@@ -349,11 +357,14 @@ function openAnalysisMenu() {
   const menu = $('an-menu');
   if (!menu.classList.contains('hidden')) return closeMenus();
   closeMenus();
-  menu.innerHTML = '<div class="group">แสดงบนกราฟ</div>' +
+  menu.innerHTML = '<div class="item" style="gap:6px;justify-content:flex-start"><button id="an-all">แสดงทั้งหมด</button><button id="an-none">ซ่อนทั้งหมด</button></div><div class="group">แสดงบนกราฟ</div>' +
     AN_ITEMS.map(([k, t]) => `<label class="item"><input type="checkbox" data-k="${k}" ${S.an[k] ? 'checked' : ''}> ${t}</label>`).join('') +
     `<div class="item"><span>Swing length (แท่ง)</span><input type="number" id="an-len" min="2" max="30" value="${S.an.swingLen}"></div>`;
   menu.classList.remove('hidden');
   menu.querySelectorAll('input[data-k]').forEach((i) => (i.onchange = () => { S.an[i.dataset.k] = i.checked; store.set('an', S.an); runAnalysis(); }));
+  const setAll = (v) => { AN_VIEW_KEYS.forEach((k) => { S.an[k] = v && k !== 'td'; }); store.set('an', S.an); runAnalysis(); closeMenus(); openAnalysisMenu(); };
+  $('an-all').onclick = (e) => { e.stopPropagation(); setAll(true); };
+  $('an-none').onclick = (e) => { e.stopPropagation(); setAll(false); };
   $('an-len').onchange = () => { S.an.swingLen = Math.max(2, Math.min(30, +$('an-len').value || 5)); store.set('an', S.an); runAnalysis(); };
 }
 $('an-btn').onclick = (e) => { e.stopPropagation(); openAnalysisMenu(); };
