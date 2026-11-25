@@ -25,7 +25,7 @@ const REPLAY = (() => {
     chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, idx - 120), to: idx + 25 });
     bar.classList.remove('hidden'); document.body.classList.add('replaying');
     if (typeof MTF !== 'undefined') MTF.replaySync();
-    update(); vcg.log('info', `เริ่ม Replay ${S.symbol} ${tf().label} ที่แท่ง ${idx}`, null, 'learn');
+    update(); SIM.render(); QUIZ.render(); vcg.log('info', `เริ่ม Replay ${S.symbol} ${tf().label} ที่แท่ง ${idx}`, null, 'learn');
   }
   function step(n = 1) {
     const R = S.replay; if (!R) return;
@@ -52,14 +52,14 @@ const REPLAY = (() => {
     stopPlay(); QUIZ.abort();
     S.candles = S.replay.full; S.replay = null;
     bar.classList.add('hidden'); document.body.classList.remove('replaying');
-    setAllData(); loadChart();
+    setAllData(); loadChart(); SIM.render(); QUIZ.render();
     vcg.log('info', 'ออกจาก Replay', null, 'learn');
   }
   function update() {
     const R = S.replay; if (!R) return;
     const b = R.full[R.idx], d = new Date(b.time * 1000), p = (x) => String(x).padStart(2, '0');
     info.textContent = `${p(d.getUTCDate())}/${p(d.getUTCMonth() + 1)}/${d.getUTCFullYear()} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())} · ซ่อนอยู่ ${R.full.length - 1 - R.idx} แท่ง`;
-    SIM.render();
+    SIM.tickUpdate();
   }
   bar.addEventListener('click', (e) => {
     const r = e.target.dataset.r; if (!r) return;
@@ -142,7 +142,7 @@ const SIM = (() => {
     for (const o of [...a.orders]) {
       if (o.symbol !== q.symbol) continue;
       const hit = o.side === 1 ? (o.type === 'limit' ? q.ask <= o.price : q.ask >= o.price) : (o.type === 'limit' ? q.bid >= o.price : q.bid <= o.price);
-      if (hit) { a.orders = a.orders.filter((x) => x !== o); a.positions.push({ ...o, entry: o.side === 1 ? q.ask : q.bid, openTime: t }); toast(`คำสั่งรอทำงาน: ${o.side === 1 ? 'BUY' : 'SELL'} ${o.symbol} @ ${fmt(o.price)}`, 'ok'); saveAcc(); }
+      if (hit) { a.orders = a.orders.filter((x) => x !== o); a.positions.push({ ...o, entry: o.side === 1 ? q.ask : q.bid, openTime: t }); toast(`คำสั่งรอทำงาน: ${o.side === 1 ? 'BUY' : 'SELL'} ${o.symbol} @ ${fmt(o.price)}`, 'ok'); saveAcc(); render(); }
     }
     for (const p of [...a.positions]) {
       if (p.symbol !== q.symbol) continue;
@@ -157,14 +157,14 @@ const SIM = (() => {
     for (const o of [...a.orders]) {
       if (o.symbol !== sym) continue;
       const hit = o.side === 1 ? (o.type === 'limit' ? b.low <= o.price : b.high >= o.price) : (o.type === 'limit' ? b.high >= o.price : b.low <= o.price);
-      if (hit) { a.orders = a.orders.filter((x) => x !== o); a.positions.push({ ...o, entry: o.price, openTime: t, fillBar: true }); saveAcc(); }
+      if (hit) { a.orders = a.orders.filter((x) => x !== o); a.positions.push({ ...o, entry: o.price, openTime: t, fillBar: true }); saveAcc(); render(); }
     }
     for (const p of [...a.positions]) {
       if (p.symbol !== sym || p.fillBar) { delete p.fillBar; continue; }
       const slHit = p.sl && (p.side === 1 ? b.low <= p.sl : b.high >= p.sl), tpHit = p.tp && (p.side === 1 ? b.high >= p.tp : b.low <= p.tp);
       if (slHit) close(p, p.sl, 'SL', t); else if (tpHit) close(p, p.tp, 'TP', t);
     }
-    render();
+    tickUpdate();
   }
   function stats(list) {
     const n = list.length, wins = list.filter((h) => h.pnl > 0), losses = list.filter((h) => h.pnl <= 0);
@@ -181,7 +181,7 @@ const SIM = (() => {
     const byTag = Object.keys(TAGS).map((k) => [k, stats(a.history.filter((h) => h.tag === k))]).filter(([, s]) => s.n);
     box.innerHTML = `
       <div class="panel-h">บัญชีจำลอง · ${m === 'replay' ? 'Replay' : 'ราคาสด'}</div>
-      <div class="sum"><span>เงินทุน</span><b>${money(a.balance)}</b><span>กำไร/ขาดทุนที่เปิดอยู่</span><b class="${open >= 0 ? 'up' : 'down'}">${money(open)}</b><span>Equity</span><b>${money(a.balance + open)}</b></div>
+      <div class="sum"><span>เงินทุน</span><b>${money(a.balance)}</b><span>กำไร/ขาดทุนที่เปิดอยู่</span><b id="sim-open" class="${open >= 0 ? 'up' : 'down'}">${money(open)}</b><span>Equity</span><b id="sim-eq">${money(a.balance + open)}</b></div>
       <h4>ส่งคำสั่ง (จำลอง)</h4>
       <div class="seg"><button data-t="side" data-v="1" class="${ticket.side === 1 ? 'on buy' : ''}">▲ Buy</button><button data-t="side" data-v="-1" class="${ticket.side === -1 ? 'on sell' : ''}">▼ Sell</button></div>
       <div class="grid" style="margin-top:6px">
@@ -195,7 +195,7 @@ const SIM = (() => {
       <label class="note">บันทึก (ทำไมถึงเข้า)<input data-k="note" value="${esc(ticket.note)}" placeholder="เช่น ย่อมาแตะ HL + BE ที่โซน H1"></label>
       <div class="btns"><button id="sim-plan">ใช้ค่าจากเครื่องคำนวณ</button><button id="sim-lot">lot ตามความเสี่ยง</button><button id="sim-place" class="primary">ส่งคำสั่ง</button></div>
       ${a.positions.length ? `<h4>สถานะที่เปิด</h4><table class="stat"><tbody>${a.positions.map((p) => { const P = px(p.symbol); const pl = P ? pnlOf(p, p.side === 1 ? P.bid : P.ask) : null;
-        return `<tr><td class="${p.side === 1 ? 'up' : 'down'}">${p.side === 1 ? 'BUY' : 'SELL'} ${p.lot}</td><td>${p.symbol} @ ${fmt(p.entry)}</td><td class="${pl >= 0 ? 'up' : 'down'}">${money(pl)}</td><td><button data-close="${p.id}">ปิด</button></td></tr>`; }).join('')}</tbody></table>` : ''}
+        return `<tr><td class="${p.side === 1 ? 'up' : 'down'}">${p.side === 1 ? 'BUY' : 'SELL'} ${p.lot}</td><td>${p.symbol} @ ${fmt(p.entry)}</td><td data-pl="${p.id}" class="${pl >= 0 ? 'up' : 'down'}">${money(pl)}</td><td><button data-close="${p.id}">ปิด</button></td></tr>`; }).join('')}</tbody></table>` : ''}
       ${a.orders.length ? `<h4>คำสั่งรอ</h4><table class="stat"><tbody>${a.orders.map((o) => `<tr><td>${o.type} ${o.side === 1 ? 'BUY' : 'SELL'} ${o.lot}</td><td>${o.symbol} @ ${fmt(o.price)}</td><td><button data-cancel="${o.id}">ยกเลิก</button></td></tr>`).join('')}</tbody></table>` : ''}
       <h4>สถิติการฝึก (${st.n} ไม้)</h4>
       <div class="sum"><span>ชนะ</span><b>${pct(st.win)}</b><span>R เฉลี่ย</span><b>${st.avgR == null ? '—' : st.avgR.toFixed(2) + 'R'}</b><span>Profit factor</span><b>${st.pf == null ? '—' : st.pf === Infinity ? '∞' : st.pf.toFixed(2)}</b><span>กำไรรวม</span><b class="${st.total >= 0 ? 'up' : 'down'}">${money(st.total)}</b><span>Drawdown สูงสุด</span><b>${money(-st.dd)}</b></div>
@@ -207,7 +207,11 @@ const SIM = (() => {
     box.querySelectorAll('[data-t=side]').forEach((b) => (b.onclick = () => { ticket.side = +b.dataset.v; store.set('sim.ticket', ticket); render(); }));
     box.querySelectorAll('[data-close]').forEach((b) => (b.onclick = () => { const p = a.positions.find((x) => x.id === +b.dataset.close); const P = p && px(p.symbol); if (P) close(p, p.side === 1 ? P.bid : P.ask, 'manual', P.t); }));
     box.querySelectorAll('[data-cancel]').forEach((b) => (b.onclick = () => { a.orders = a.orders.filter((x) => x.id !== +b.dataset.cancel); saveAcc(); render(); dirty = true; }));
-    $('sim-place').onclick = place;
+    $('sim-place').onclick = (e) => {
+      const b = e.currentTarget; if (b.disabled) return;
+      b.disabled = true; setTimeout(() => { b.disabled = false; }, 800);   // one order per click
+      place();
+    };
     $('sim-plan').onclick = () => { const p = S.plan; ticket.side = p.side === 'buy' ? 1 : -1; ticket.sl = p.sl; ticket.tp = p.tp2 || p.tp1; if (p.entry) ticket.price = p.entry; store.set('sim.ticket', ticket); render(); };
     $('sim-lot').onclick = () => {
       const sym = S.replay ? S.replay.symbol : S.symbol, P = px(sym), sl = parseFloat(ticket.sl);
@@ -225,6 +229,21 @@ const SIM = (() => {
       downloadText(`practice-journal-${new Date().toISOString().slice(0, 10)}.csv`, rows.map((r) => r.join(',')).join('\n'));
     };
   }
+  // per-tick: only update the P/L numbers in place
+  let lastTU = 0;
+  function tickUpdate() {
+    if ($('tab-practice').classList.contains('hidden') || !$('sim-open')) return;
+    const now = Date.now(); if (now - lastTU < 400) return; lastTU = now;
+    const a = A(); let open = 0;
+    for (const p of a.positions) {
+      const P = px(p.symbol); if (!P) continue;
+      const pl = pnlOf(p, p.side === 1 ? P.bid : P.ask); open += pl;
+      const td = document.querySelector(`#sim [data-pl="${p.id}"]`);
+      if (td) { td.textContent = money(pl); td.className = pl >= 0 ? 'up' : 'down'; }
+    }
+    $('sim-open').textContent = money(open); $('sim-open').className = open >= 0 ? 'up' : 'down';
+    $('sim-eq').textContent = money(a.balance + open);
+  }
   // open positions & pending orders on the chart
   function draw(W) {
     const a = A(), sym = S.replay ? S.replay.symbol : S.symbol;
@@ -241,12 +260,12 @@ const SIM = (() => {
       label(W - 6, y + 4, `${o.type.toUpperCase()} ${o.side === 1 ? 'BUY' : 'SELL'} ${o.lot}`, '#ff9800', '#000', 'end');
     }
   }
-  return { place, onQuote, onBar, render, draw, stats, acc: () => acc, positionsOpen: () => A().positions.length + A().orders.length };
+  return { place, onQuote, onBar, render, tickUpdate, draw, stats, acc: () => acc, positionsOpen: () => A().positions.length + A().orders.length };
 })();
 
 // hook live quotes into the simulator
 const _onQuotesMsg = onQuotesMsg;
-onQuotesMsg = function (list) { _onQuotesMsg(list); if (!S.replay) { for (const q of list) SIM.onQuote(q); SIM.render(); } };
+onQuotesMsg = function (list) { _onQuotesMsg(list); if (!S.replay) { for (const q of list) SIM.onQuote(q); SIM.tickUpdate(); } };
 
 // ================================================================ Practice exercises (random replay quiz)
 const QUIZ = (() => {

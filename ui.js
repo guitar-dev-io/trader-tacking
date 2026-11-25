@@ -45,6 +45,19 @@
   // opening a side tab on mobile shows the panel
   document.querySelectorAll('#tabs button[data-tab]').forEach((b) => b.addEventListener('click', () => { if (!S.ui.side) window.setUI('side', true); }));
 
+  // dropdown menus are positioned against their button (fixed), so the toolbar itself can scroll horizontally
+  ['ind-menu', 'an-menu', 'cs-menu'].forEach((id) => {
+    const m = $(id); if (!m) return;
+    new MutationObserver(() => {
+      if (m.classList.contains('hidden') || mobile) return;
+      const btn = m.closest('.dropdown').querySelector('button'), r = btn.getBoundingClientRect();
+      m.style.position = 'fixed'; m.style.top = (r.bottom + 4) + 'px';
+      const w = m.offsetWidth || 280;
+      m.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, id === 'cs-menu' ? r.right - w : r.left)) + 'px';
+      m.style.right = 'auto';
+    }).observe(m, { attributes: true, attributeFilter: ['class'], childList: true });
+  });
+
   // ✕ close buttons on popovers
   const addClose = (id) => {
     const p = $(id); if (!p) return;

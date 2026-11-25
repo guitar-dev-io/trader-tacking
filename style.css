@@ -340,3 +340,9 @@ body.mobile #side { position: fixed; top: 44px; bottom: 58px; left: 0; right: 0;
 body.mobile #side-btn { display: none; }
 body.mobile #titlebar #conn-text { display: inline; font-size: 11px; max-width: 34vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 body.mobile #toasts { bottom: 70px; }
+
+/* toolbar scrolls instead of overflowing into the right panel (menus are fixed-positioned) */
+#toolbar { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+#toolbar::-webkit-scrollbar { display: none; }
+#center { min-width: 0; overflow: hidden; }
+.menu { max-height: calc(100vh - 120px); overflow-y: auto; z-index: 60; }
