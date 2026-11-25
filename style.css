@@ -229,3 +229,63 @@ button.danger { color: #ff8a80; }
 .sess-tbl select { width: 150px; } .sess-tbl .pv { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sess-tbl button { background: none; border: none; color: var(--muted); }
 .sess-tbl input.hm { width: 62px; text-align: center; font-variant-numeric: tabular-nums; }
+/* ---- v3: closable panels, replay, practice, mobile ---- */
+body.hide-side #side, body.hide-tools #tools, body.hide-toolbar #toolbar, body.hide-bottom #bottombar,
+body.hide-zoom #zoombar, body.hide-legend #legend, body.hide-netbanner #netbanner { display: none !important; }
+#side-btn.on { color: #fff; }
+.pop-x { position: absolute; top: 4px; right: 4px; background: none !important; border: none !important; color: var(--muted); padding: 2px 6px; z-index: 2; }
+.menu { position: absolute; } .menu > .group:first-of-type, .menu > .item:first-of-type { padding-right: 28px; }
+#replaybar { position: absolute; left: 10px; bottom: 12px; z-index: 8; display: flex; align-items: center; gap: 6px; background: #151821f2; border: 1px solid #2962ff88; border-radius: 8px; padding: 5px 8px; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
+#replaybar .rp-title { color: #82aaff; font-weight: 600; }
+#replaybar button { padding: 3px 8px; } #replaybar .rp-info { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 11px; }
+#replaybar .rp-exit { color: #ff8a80; }
+body.replaying #zoombar { left: auto; right: 80px; transform: none; }
+body.picking #chart { cursor: col-resize; }
+#tab-practice .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; }
+#tab-practice label { display: flex; flex-direction: column; gap: 3px; color: var(--muted); font-size: 11px; }
+#tab-practice label.note { margin-top: 6px; }
+#tab-practice .seg { display: flex; } #tab-practice .seg button { flex: 1; border-radius: 0; }
+#tab-practice .seg button:first-child { border-radius: 6px 0 0 6px; } #tab-practice .seg button:last-child { border-radius: 0 6px 6px 0; }
+#tab-practice .seg button.on.buy { background: #26a69a; color: #fff; } #tab-practice .seg button.on.sell { background: #ef5350; color: #fff; }
+#tab-practice h4 { margin: 12px 0 6px; font-size: 12px; }
+#tab-practice .sum { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-variant-numeric: tabular-nums; }
+#tab-practice .sum b { text-align: right; }
+#tab-practice .btns { flex-direction: row; flex-wrap: wrap; }
+#tab-practice table.stat button { padding: 1px 6px; font-size: 11px; }
+.journal .jr { padding: 5px 0; border-top: 1px solid #1b1f2a; line-height: 1.5; font-size: 11px; }
+.ui-toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; }
+
+/* ---- mobile / narrow screens ---- */
+body.mobile #titlebar { padding-left: 10px; gap: 8px; height: 44px; }
+body.mobile #titlebar #conn-text { display: none; }
+body.mobile #app { flex-direction: column; height: calc(100% - 44px); }
+body.mobile #center { order: 1; flex: 1 1 auto; min-height: 0; }
+body.mobile #tools { order: 2; width: 100%; height: 44px; flex-direction: row; overflow-x: auto; overflow-y: visible; border-right: none; border-top: 1px solid var(--line); padding: 0 4px; }
+body.mobile #tools .sep { width: 1px; height: 24px; margin: 0 4px; }
+body.mobile #tools .fly { left: 0; top: auto; bottom: 40px; position: fixed; }
+body.mobile #side { order: 3; width: 100%; height: 46vh; border-left: none; border-top: 1px solid var(--line); }
+body.mobile #toolbar { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+body.mobile #toolbar::-webkit-scrollbar { display: none; }
+body.mobile #hint, body.mobile #toolbar .chk { display: none; }
+body.mobile .menu { position: fixed; left: 8px !important; right: 8px; top: 90px; max-height: 70vh; overflow-y: auto; min-width: 0; }
+body.mobile #bottombar { overflow-x: auto; }
+body.mobile #bottombar #clock, body.mobile #tz-sel { display: none; }
+body.mobile #legend { font-size: 10.5px; }
+body.mobile #toasts { right: 8px; left: 8px; bottom: 50vh; align-items: stretch; }
+body.mobile .modal-box, body.mobile .modal-box.wide { width: 96vw; max-height: 92vh; padding: 10px; }
+body.mobile .st-wrap { flex-direction: column; }
+body.mobile .st-nav { flex-direction: row; width: auto; overflow-x: auto; }
+body.mobile .st-nav button { white-space: nowrap; }
+body.mobile .ui-toggles { grid-template-columns: 1fr; }
+body.mobile #zoombar { opacity: 1; bottom: 8px; }
+body.mobile #replaybar { left: 6px; right: 6px; bottom: 46px; flex-wrap: wrap; }
+body.mobile.hide-side #side { display: none !important; }
+body.mobile button, body.mobile select, body.mobile input { min-height: 32px; }
+#tab-practice label input, #tab-practice label select { width: 100%; min-width: 0; box-sizing: border-box; } #tab-practice .grid > label { min-width: 0; }
+body.mobile #bottombar, body.mobile #ranges { flex-wrap: nowrap; white-space: nowrap; }
+body.mobile #bottombar { height: 34px; flex-shrink: 0; scrollbar-width: none; }
+body.mobile #ranges { display: flex; }
+body.mobile #tools, body.mobile #bottombar { scrollbar-width: none; }
+body.mobile #tools::-webkit-scrollbar, body.mobile #bottombar::-webkit-scrollbar { display: none; }
+body.mobile #tools .tg > button { width: 40px; height: 40px; }
+body.mobile #sess-status small { display: none; }

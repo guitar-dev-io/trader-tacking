@@ -89,6 +89,7 @@ function setTool(t) {
   buildToolbar();
   const drawing = t !== 'cursor';
   $('chart').classList.toggle('crosshair-tool', drawing);
+  $('chart-wrap').style.touchAction = drawing ? 'none' : '';
   chart.applyOptions({ handleScroll: !drawing, handleScale: !drawing });
   const hints = { hline: 'คลิกที่ราคาเพื่อวางเส้นแนวนอน', vline: 'คลิกเพื่อวางเส้นแนวตั้ง', trend: 'คลิก 2 จุดเพื่อวาดเส้นเทรนด์', ray: 'คลิก 2 จุด เส้นจะยืดไปทางขวา',
     channel: 'คลิก 2 จุดเป็นเส้นหลัก แล้วคลิกจุดที่ 3 เพื่อกำหนดความกว้างช่อง', fib: 'คลิกจุดเริ่ม (100%) แล้วจุดจบ (0%)', rect: 'คลิก 2 มุมเพื่อวาดกรอบโซน',
@@ -219,6 +220,7 @@ function redraw() {
   svg.textContent = '';
   if (!S.candles.length) return;
   if (S.showSessions) drawSessions(W, H);
+  if (typeof NEWS !== 'undefined') NEWS.draw(W, H);
   drawAnalysis(W, H);
   if (!S.hidden) drawings.forEach((d, i) => renderDrawing(d, S.selected === i, W, H));
   if (S.tool !== 'cursor' && S.pts.length && S.mouse) {
@@ -228,6 +230,7 @@ function redraw() {
   }
   if (S.tool === 'brush' && S.brush) renderDrawing(S.brush, false, W, H);
   if (S.measure) measureShape(S.measure.a, S.measure.b);
+  if (typeof SIM !== 'undefined') SIM.draw(W);
   if (typeof drawPlanner === 'function') drawPlanner(W, H);
 }
 (function loop() { redraw(); requestAnimationFrame(loop); })();
@@ -267,11 +270,12 @@ function hitTest(x, y) {
 
 // ---------------------------------------------------------------- mouse: select / drag / create
 let drag = null;
-$('chart-wrap').addEventListener('mousedown', (ev) => {
+$('chart-wrap').addEventListener('pointerdown', (ev) => {
   if (ev.button !== 0 || ev.target.closest('#legend, #zoombar, #layers-pop, .txt-input')) return;
   const { x, y } = mousePos(ev);
   if (S.tool === 'brush') {
     const p = pointAt(x, y, false); if (!p) return;
+    chart.applyOptions({ handleScroll: false, handleScale: false });
     S.brush = { type: 'brush', pts: [{ time: p.time, price: p.price }], color: DEFAULT_COLOR.brush, lastX: x, lastY: y };
     ev.stopPropagation(); ev.preventDefault(); return;
   }
@@ -281,12 +285,13 @@ $('chart-wrap').addEventListener('mousedown', (ev) => {
   S.selected = hit; dirty = true; renderLayers();
   if (S.locked) return;
   ev.stopPropagation(); ev.preventDefault();   // stop the chart from panning
+  chart.applyOptions({ handleScroll: false, handleScale: false });   // (touch: the chart listens to touch events, so also switch panning off)
   const d = drawings[hit];
   const h = handles(d).find((q) => Math.hypot(q.x - x, q.y - y) < 8);
   const p = pointAt(x, y, false);
   drag = { i: hit, k: h ? h.k : null, l0: chart.timeScale().coordinateToLogical(x), p0: p ? p.price : 0, orig: JSON.parse(JSON.stringify(d.pts)), rr0: d.rr, moved: false };
 }, true);
-window.addEventListener('mousemove', (ev) => {
+window.addEventListener('pointermove', (ev) => {
   const { x, y } = mousePos(ev);
   if (S.brush) {
     if (Math.hypot(x - S.brush.lastX, y - S.brush.lastY) > 3) { const p = pointAt(x, y, false); if (p) { S.brush.pts.push({ time: logicalToTime(chart.timeScale().coordinateToLogical(x)), price: p.price }); S.brush.lastX = x; S.brush.lastY = y; dirty = true; } }
@@ -311,7 +316,8 @@ window.addEventListener('mousemove', (ev) => {
   }
   if (S.tool !== 'cursor' && $('chart').contains(ev.target)) { S.mouse = pointAt(x, y, true); if (S.pts.length) dirty = true; }
 });
-window.addEventListener('mouseup', () => {
+window.addEventListener('pointerup', () => {
+  if (drag || S.brush) chart.applyOptions({ handleScroll: S.tool === 'cursor', handleScale: S.tool === 'cursor' });
   if (S.brush) { if (S.brush.pts.length > 1) { pushHistory(); const { lastX, lastY, ...b } = S.brush; drawings.push({ ...b, id: uid() }); saveDrawings(); renderLayers(); } S.brush = null; dirty = true; return; }
   if (drag) { if (drag.moved) saveDrawings(); drag = null; }
 });
@@ -409,7 +415,7 @@ $('shot').onclick = async () => {
 };
 
 // chart settings
-S.chartCfg = { up: '#26a69a', down: '#ef5350', grid: true, ...store.get('chartCfg', {}) };
+S.chartCfg = { up: '#26a69a', down: '#ef5350', grid: true, news: false, ...store.get('chartCfg', {}) };
 S.showSessions = store.get('sessions', true);
 function applyChartCfg() {
   UP = S.chartCfg.up; DOWN = S.chartCfg.down;
@@ -423,13 +429,15 @@ $('cs-btn').onclick = (e) => {
     <div class="item"><span>สีแท่งลง</span><input type="color" id="cs-down" value="${S.chartCfg.down}"></div>
     <div class="item"><span>สีแบบ VCG (น้ำเงิน/แดง)</span><button id="cs-vcg">ใช้</button></div>
     <label class="item"><input type="checkbox" id="cs-grid" ${S.chartCfg.grid ? 'checked' : ''}> เส้นตาราง</label>
-    <label class="item"><input type="checkbox" id="cs-sess" ${S.showSessions ? 'checked' : ''}> แสดงช่วงเวลาตลาด (Sessions)</label>`;
+    <label class="item"><input type="checkbox" id="cs-sess" ${S.showSessions ? 'checked' : ''}> แสดงช่วงเวลาตลาด (Sessions)</label>
+    <label class="item"><input type="checkbox" id="cs-news" ${S.chartCfg.news ? 'checked' : ''}> แสดงเวลาข่าวสำคัญบนกราฟ</label>`;
   m.classList.remove('hidden');
   const save = () => { store.set('chartCfg', S.chartCfg); applyChartCfg(); buildMain(); buildIndicators(); dirty = true; };
   $('cs-up').oninput = () => { S.chartCfg.up = $('cs-up').value; save(); };
   $('cs-down').oninput = () => { S.chartCfg.down = $('cs-down').value; save(); };
   $('cs-vcg').onclick = () => { S.chartCfg.up = '#3b5bdb'; S.chartCfg.down = '#e03131'; $('cs-up').value = S.chartCfg.up; $('cs-down').value = S.chartCfg.down; save(); };
   $('cs-grid').onchange = () => { S.chartCfg.grid = $('cs-grid').checked; save(); };
+  $('cs-news').onchange = () => { S.chartCfg.news = $('cs-news').checked; store.set('chartCfg', S.chartCfg); dirty = true; };
   $('cs-sess').onchange = () => { S.showSessions = $('cs-sess').checked; store.set('sessions', S.showSessions); dirty = true; };
 };
 document.addEventListener('click', (e) => { if (!e.target.closest('#cs-menu') && !e.target.closest('#cs-btn')) $('cs-menu').classList.add('hidden'); });

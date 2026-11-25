@@ -1,6 +1,6 @@
 # trader-tacking — Price Tracker
 
-แอป macOS (Electron) สำหรับดูราคาสด กราฟ และวิเคราะห์ Price Action จาก **VCG Markets WebTrader**
+แอป **macOS (Electron)** และ **Android (Capacitor)** สำหรับดูราคาสด กราฟ ฝึกเทรด และวิเคราะห์ Price Action จาก **VCG Markets WebTrader** — วาดโซนได้ไม่จำกัด เหมาะสำหรับฝึกอ่านโครงสร้างตลาด
 
 > ⚠️ เครื่องมือเพื่อการเรียนรู้ ไม่ใช่คำแนะนำการลงทุน · ไม่ได้มีส่วนเกี่ยวข้องกับ VCG Markets · ตรวจสอบข้อตกลงการใช้งานของโบรกเกอร์ก่อนใช้
 
@@ -18,6 +18,11 @@
 - **Local API** (REST + Server-Sent Events) + หน้า dashboard ที่ `http://127.0.0.1:8787`
 - **Log viewer** ในแอป + ไฟล์ log, สำรอง/กู้คืน/รีเซ็ตข้อมูล
 - บทเรียนภาษาไทยพร้อมตัวอย่างคำนวณ
+- **ฝึกเทรด**: Bar Replay (เล่นทีละแท่งโดยไม่เห็นอนาคต), บัญชีจำลอง (Market/Limit/Stop + SL/TP), สุ่มโจทย์ฝึกพร้อมให้คะแนน, บันทึกการเทรด + สถิติตามแท็ก, ส่งออก CSV
+- **แพ็กบทเรียน**: ส่งออก/นำเข้ารูปวาด + โน้ต + จุดเริ่ม Replay เพื่อแชร์ให้ผู้เรียน
+- **ข้อมูล Demo (Binance)** สำหรับฝึกโดยไม่ต้องมีบัญชี VCG (XAUUSD ใช้ PAXG แทน)
+- ปฏิทินข่าวเศรษฐกิจ (Forex Factory) + เตือนก่อนข่าวแรง 15 นาที, แคชแท่งเทียนในเครื่อง, ตรวจเวอร์ชันใหม่จาก GitHub Releases
+- ซ่อน/แสดงทุกแผงได้, หน้าจอมือถือ + ระบบสัมผัส
 
 ## วิธีทำงาน
 
@@ -39,6 +44,23 @@ VCG WebTrader สตรีมราคาผ่าน Socket.IO (`wss://prod-ws-
 | `settings.js` | หน้าต่างตั้งค่า, สถานะเครือข่าย, toast, backup/restore |
 | `lessons.js` | บทเรียน |
 | `tools/vcg_price_feed.py` | ตัวดึงราคาแบบ Python + Playwright (เวอร์ชันแรก) |
+
+## Android
+
+`android/` เป็นโปรเจกต์ Capacitor: UI เดียวกับ desktop (`www/` สร้างด้วย `npm run build:www`) + plugin native `VcgWebPlugin` ที่เปิด VCG WebTrader ใน WebView ที่ซ่อนไว้ (login ครั้งแรกในแอป) แล้วรับราคาผ่าน `bridge.js`
+
+```bash
+npm run android:sync          # build www + cap sync
+cd android && ./gradlew assembleRelease
+```
+
+## CI / Releases
+
+`.github/workflows/build.yml` build ทั้ง Mac (arm64/x64, ad-hoc signed) และ Android APK
+- push branch `feat/**` หรือกดรันเอง → pre-release `build-<n>`
+- push tag `v*` → Release จริง (แอปใช้ตรวจเวอร์ชันใหม่)
+
+**กุญแจเซ็น Android (แนะนำ):** ตั้ง GitHub Secrets `ANDROID_KEYSTORE_B64` (keystore แบบ base64, alias `pricetracker`) และ `ANDROID_KEYSTORE_PASSWORD` — ถ้าไม่ตั้ง CI จะใช้ debug key ที่แคชไว้
 
 ## รัน / Build
 

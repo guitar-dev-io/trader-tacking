@@ -1,6 +1,9 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('vcg', {
+  platform: 'desktop',
+  capabilities: { vcg: true, api: true, csv: true, files: true },
+  fetchJSON: (url) => ipcRenderer.invoke('fetch-json', url),
   onQuotes: (cb) => ipcRenderer.on('quotes', (_e, list) => cb(list)),
   onStatus: (cb) => ipcRenderer.on('status', (_e, s) => cb(s)),
   onChart: (cb) => ipcRenderer.on('chart', (_e, m) => cb(m)),

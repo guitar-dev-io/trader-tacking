@@ -10,8 +10,7 @@ const log = require('./logger');
 const api = require('./api');
 const notify = require('./notify');
 
-const WEBTRADER_URL = 'https://vcgmarkets.com/webtrader';
-const WS_HOST = 'prod-ws-server.anttix.app';
+const { WEBTRADER_URL, WS_HOST, SUB_JS, CONNECTED_JS, FEED_JS, CHART_JS, CHART_REQ_JS, parseQuote } = require('./vcg-inject');
 
 // Look like normal Chrome so sign-in pages (incl. Google) accept the browser.
 app.userAgentFallback = app.userAgentFallback
@@ -56,19 +55,6 @@ function loadSettings() {
 }
 function saveSettings() {
   try { fs.writeFileSync(settingsFile(), JSON.stringify(settings, null, 2)); } catch (e) { log.error('settings', e.message); }
-}
-
-// ---------------- parsing ----------------
-const dec = (v) => (v && typeof v === 'object' && 'value' in v ? v.value / 10 ** (v.scale || 0) : null);
-function parseQuote(q) {
-  const bid = dec(q.bid), ask = dec(q.ask), pct = dec(q.priceChangePercent);
-  const digits = (q.bid && q.bid.scale) || 2;
-  return {
-    symbol: q.symbol, time: q.time, bid, ask, digits,
-    spread: bid != null && ask != null ? +(ask - bid).toFixed(digits) : null,
-    change: dec(q.priceChange),
-    changePct: pct != null ? +(pct * 100).toFixed(3) : null,
-  };
 }
 
 // Quotes are batched and sent to the window every 100 ms (prevents UI lag on fast markets).
@@ -154,6 +140,7 @@ function createMain() {
     titleBarStyle: 'hiddenInset',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true },
   });
+  mainWin.webContents.setWindowOpenHandler(({ url }) => { if (/^https:\/\//.test(url)) shell.openExternal(url); return { action: 'deny' }; });
   mainWin.loadFile(path.join(__dirname, 'index.html'));
   mainWin.on('close', (e) => { if (!quitting) { e.preventDefault(); mainWin.hide(); } });
   mainWin.webContents.on('did-finish-load', () => {
@@ -185,34 +172,12 @@ function createTrader() {
 }
 
 // Keep our symbols subscribed and watch login state.
-const SUB_JS = (symbols) => `(() => {
-  const m = globalThis._wsSharedManager; if (!m) return 'none';
-  const s = m.socket('/symbol'); if (!s.connected) return 'down';
-  s.emit('symbol:subscribe', { symbols: ${JSON.stringify(symbols)} }); return 'ok';
-})()`;
-const CONNECTED_JS = `(() => { const m = globalThis._wsSharedManager;
-  return !!(m && m.socket('/symbol').connected); })()`;
+
+
 
 // Price feed: listen on the page's own /symbol socket and post quotes in batches.
 // Flushing is driven by incoming data (not timers), so it keeps up even in a hidden, throttled window.
-const FEED_JS = `(() => {
-  if (window.__vcgFeed) return 'exists';
-  const shared = globalThis._wsSharedManager; if (!shared) return 'none';
-  const s = shared.socket('/symbol');
-  let buf = {}, n = 0, last = 0, timer = null;
-  const post = (type, d) => window.postMessage({ __vcg: type, d }, '*');
-  const flush = () => { timer = null; if (!n) return; post('quotes', Object.values(buf)); buf = {}; n = 0; last = Date.now(); };
-  s.onAny((ev, d) => {
-    if (ev === 'symbol:data' && d) {
-      const list = (d.quoteList && d.quoteList.quotes) || (d.quote ? [d.quote] : []);
-      for (const q of list) { if (!buf[q.symbol]) n++; buf[q.symbol] = q; }
-      if (Date.now() - last >= 100) flush(); else if (!timer) timer = setTimeout(flush, 100);
-    } else if (ev === 'symbol:subscriptionUpdate') post('subs', (d && d.symbols) || []);
-    else if (ev === 'symbol:error') post('feedError', d);
-  });
-  window.__vcgFeed = true;
-  return 'ok';
-})()`;
+
 async function ensureFeed() {
   try { const r = await traderWin.webContents.executeJavaScript(FEED_JS, true); if (r === 'ok') log.info('feed', 'ติดตั้งตัวรับราคาในหน้า WebTrader แล้ว'); }
   catch (e) { log.error('feed', 'ensureFeed: ' + e.message); }
@@ -220,53 +185,7 @@ async function ensureFeed() {
 
 // Chart history: a second Socket.IO connection (namespace /chart-history), created inside the
 // WebTrader page with the same auth the app uses, like the page's own chart does.
-const CHART_JS = `(() => {
-  if (window.__vcgChart) return 'exists';
-  const shared = globalThis._wsSharedManager; if (!shared) return 'none';
-  const post = (type, d) => window.postMessage({ __vcg: type, d }, '*');
-  // Fresh token from the web app's own token getter (it caches and renews ~1 min before expiry).
-  function tokenGetter() {
-    try {
-      if (!window.__vcgReq && window.webpackChunk_N_E) window.webpackChunk_N_E.push([[Symbol('vcg')], {}, (r) => { window.__vcgReq = r; }]);
-      const m = window.__vcgReq && window.__vcgReq(30264);
-      return m && typeof m.hP === 'function' ? m.hP : null;
-    } catch (e) { return null; }
-  }
-  async function freshAuth() {
-    const base = { ...(shared.socket('/symbol').auth || {}) };
-    const fn = tokenGetter();
-    if (fn) {
-      try { const t = await fn(); if (t && t.accessToken) return { token: t.accessToken, account: base.account || '', country: t.country || base.country || 'TH' }; }
-      catch (e) { post('chartLog', 'token getter failed: ' + e.message); }
-    } else post('chartLog', 'token getter not found — using feed token');
-    return base;
-  }
-  // Last resort: make the page renew its own feed token (same path as its PERMISSION_DENIED handler).
-  function nudgePageToken() {
-    try { const s = shared.socket('/symbol'); (s._anyListeners || []).forEach((f) => f('symbol:error', { message: 'PERMISSION_DENIED (renew)' })); } catch (_) {}
-  }
-  const M = shared.constructor;
-  const m = new M('wss://${WS_HOST}:443', { reconnection: false, transports: ['websocket'], autoConnect: false });
-  const s = m.socket('/chart-history');
-  s.auth = (cb) => { freshAuth().then(cb, () => cb({ ...(shared.socket('/symbol').auth || {}) })); };
-  const api = { s, last: null, denied: [], req(o) { this.last = o; if (s.connected) s.emit('chart:subscribe', o); } };
-  s.on('chart:data', (d) => post('chart', d));
-  s.on('chart:error', (d) => {
-    const denied = d && typeof d.message === 'string' && d.message.includes('PERMISSION_DENIED');
-    post(denied ? 'chartAuthRenew' : 'chartError', d);
-    if (denied) {
-      const now = Date.now(); api.denied = api.denied.filter((t) => now - t < 60000); api.denied.push(now);
-      if (api.denied.length >= 3) { post('chartLog', 'token ถูกปฏิเสธซ้ำ — ให้หน้าเว็บต่อ token ใหม่'); nudgePageToken(); }
-      s.disconnect();  // 'disconnect' handler reconnects with freshAuth() and re-sends the last request
-    }
-  });
-  s.on('connect', () => { post('chartConnected'); if (api.last) s.emit('chart:subscribe', api.last); });
-  s.on('disconnect', (r) => { post('chartDisconnected', r); setTimeout(() => s.connect(), r === 'io client disconnect' ? 500 : 2000); });
-  s.on('connect_error', (e) => { post('chartConnectError', e && e.message); setTimeout(() => s.connect(), 5000); });
-  window.__vcgChart = api;
-  s.connect();
-  return 'ok';
-})()`;
+
 let lastChartReq = null;
 async function ensureChart() {
   try {
@@ -278,8 +197,7 @@ async function sendChartReq(o) {
   lastChartReq = o;
   log.info('chart', `ขอแท่งเทียน ${o.symbol} type=${o.candleType} limit=${o.limit}`, { to: o.to });
   if (!state.connected) return;
-  try { await traderWin.webContents.executeJavaScript(
-    `window.__vcgChart && window.__vcgChart.req(${JSON.stringify(o)})`, true); } catch (e) { log.error('chart', e.message); }
+  try { await traderWin.webContents.executeJavaScript(CHART_REQ_JS(o), true); } catch (e) { log.error('chart', e.message); }
 }
 
 const subTries = new Map();
@@ -395,6 +313,15 @@ ipcMain.handle('set-settings', (_e, s) => {
   if (apiChanged) restartApi();
   sendStatus();
   return true;
+});
+// small allowlisted JSON fetcher for the window (economic calendar, update check, demo data) — no CORS issues here
+const FETCH_HOSTS = ['nfs.faireconomy.media', 'api.github.com', 'api.binance.com', 'data-api.binance.vision'];
+ipcMain.handle('fetch-json', async (_e, url) => {
+  const u = new URL(url);
+  if (u.protocol !== 'https:' || !FETCH_HOSTS.includes(u.hostname)) throw new Error('host not allowed: ' + u.hostname);
+  const r = await enet.fetch(url, { headers: { 'User-Agent': 'PriceTracker', Accept: 'application/json' } });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
 });
 ipcMain.handle('sign-out', async () => {
   log.warn('auth', 'ผู้ใช้สั่งออกจากระบบ — ล้าง session ของ WebTrader');

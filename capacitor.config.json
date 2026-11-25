@@ -1,0 +1,9 @@
+{
+  "appId": "io.guitardev.pricetracker",
+  "appName": "Price Tracker",
+  "webDir": "www",
+  "android": { "allowMixedContent": false },
+  "plugins": {
+    "CapacitorHttp": { "enabled": true }
+  }
+}

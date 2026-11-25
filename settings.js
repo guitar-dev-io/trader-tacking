@@ -48,6 +48,7 @@ async function openSettings(section) {
   mainCfg = await vcg.getSettings();
   const P = S.prefs;
   $('st-tz').innerHTML = ZONES.map(([z, n]) => `<option value="${z}">${n}</option>`).join(''); $('st-tz').value = store.get('tz', 'local');
+  $('st-autoupd').checked = store.get('autoUpdateCheck', true);
   $('st-bars').value = P.historyBars; $('st-login').checked = !!mainCfg.openAtLogin;
   const n = mainCfg.net;
   $('st-slow').value = n.slowMs; $('st-delay').value = n.delayMs; $('st-stale').value = n.staleSec; $('st-stuck').value = n.stuckSec; $('st-netnotify').checked = n.notify;
@@ -86,7 +87,7 @@ async function saveSettingsUI() {
     minSamples: clampNum(v('st-minsamp'), 1, 100, 5), maxBars: clampNum(v('st-maxbars'), 5, 2000, 100),
   });
   S.an.notify = chk('st-signotify'); S.an.learnOnly = chk('st-learnonly'); S.an.swingLen = clampNum(v('st-swing'), 2, 30, 5);
-  store.set('prefs', P); store.set('an', S.an);
+  store.set('prefs', P); store.set('an', S.an); store.set('autoUpdateCheck', chk('st-autoupd'));
   setSessions(sessDraft.filter((x) => x.name && /^\d{1,2}:\d{2}$/.test(x.open) && /^\d{1,2}:\d{2}$/.test(x.close)).map((x) => ({ ...x })));
   await vcg.setSettings({
     api: { enabled: chk('st-api-on'), port: +v('st-api-port') || 8787, token: v('st-api-token').trim(), lan: chk('st-api-lan') },
@@ -118,6 +119,7 @@ $('st-signout').onclick = async () => {
   if (!signOutArmed) { signOutArmed = true; $('st-signout').textContent = 'กดอีกครั้งเพื่อยืนยันออกจากระบบ'; setTimeout(() => { signOutArmed = false; $('st-signout').textContent = 'ออกจากระบบ VCG'; }, 4000); return; }
   await vcg.signOut(); $('modal-settings').classList.add('hidden'); toast('ออกจากระบบแล้ว — login ใหม่ในหน้าต่าง WebTrader', 'warn');
 };
+$('st-checkupd').onclick = () => UPDATE.check(true);
 $('st-open-csv').onclick = () => vcg.openCsv();
 $('st-open-log').onclick = () => vcg.openLogFolder();
 

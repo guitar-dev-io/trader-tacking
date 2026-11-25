@@ -12,6 +12,7 @@
   <div id="sym-title"><span id="cur-sym">XAUUSD</span> <span id="cur-bid">—</span> <span id="cur-chg"></span> <span id="trend-badge"></span></div>
   <div id="net" title=""><span class="nd"></span><span id="net-text">—</span></div>
   <div id="conn"><span class="dot"></span><span id="conn-text">กำลังเชื่อมต่อ…</span></div>
+  <button id="side-btn" class="ib" title="ซ่อน/แสดงแถบด้านขวา (⌘\\)"></button>
   <button id="settings-btn" class="ib" title="การตั้งค่า (⌘,)"></button>
 </div>
 
@@ -78,6 +79,7 @@
     <div id="tabs">
       <button data-tab="market" class="active">ราคา</button>
       <button data-tab="analysis">วิเคราะห์</button>
+      <button data-tab="practice">ฝึก</button>
       <button data-tab="calc">คำนวณ</button>
       <button data-tab="learn">บทเรียน</button>
       <button data-tab="log">Log <span id="log-badge"></span></button>
@@ -113,6 +115,13 @@
       <div class="panel" id="an-signal"></div>
       <div class="panel" id="an-stats"></div>
       <div class="panel"><p class="disclaimer">⚠️ สัญญาณมาจากกฎทางเทคนิคและสถิติย้อนหลังเพื่อการเรียนรู้ ไม่ใช่คำแนะนำการลงทุน ผลในอดีตไม่รับประกันอนาคต ควรทดลองกับบัญชี Demo ก่อนเสมอ</p></div>
+    </div>
+
+    <div class="tab hidden" id="tab-practice">
+      <div class="panel" id="quiz"></div>
+      <div class="panel" id="sim"></div>
+      <div class="panel" id="lesson-pack"></div>
+      <div class="panel"><p class="disclaimer">บัญชีจำลองใช้เงินสมมติ ไม่ได้ส่งคำสั่งจริงไปที่ VCG · ผลการจำลองไม่รวมสเปรด/slippage จริง</p></div>
     </div>
 
     <div class="tab hidden" id="tab-calc"><div id="planner"></div></div>
@@ -171,8 +180,20 @@
           <h4>กราฟ</h4>
           <div class="row"><label>Timezone</label><select id="st-tz"></select></div>
           <div class="row"><label>โหลดย้อนหลัง</label><input id="st-bars" type="number" min="200" max="5000" step="100"><span class="muted">แท่ง (มาก = วิเคราะห์แม่นขึ้น แต่โหลดช้าลง)</span></div>
+          <h4>การแสดงผล (ปิดส่วนที่ไม่ใช้ได้)</h4>
+          <div class="ui-toggles">
+            <label class="chk"><input type="checkbox" data-ui="side"> แถบด้านขวา (ราคา/วิเคราะห์/ฝึก…)</label>
+            <label class="chk"><input type="checkbox" data-ui="tools"> แถบเครื่องมือวาด</label>
+            <label class="chk"><input type="checkbox" data-ui="toolbar"> แถบเครื่องมือด้านบนกราฟ</label>
+            <label class="chk"><input type="checkbox" data-ui="bottom"> แถบล่าง (ช่วงเวลา/session/นาฬิกา)</label>
+            <label class="chk"><input type="checkbox" data-ui="zoom"> ปุ่มซูมใต้กราฟ</label>
+            <label class="chk"><input type="checkbox" data-ui="legend"> ข้อความ OHLC และอินดิเคเตอร์มุมซ้ายบน</label>
+            <label class="chk"><input type="checkbox" data-ui="netbanner"> แถบเตือนเน็ตช้าด้านบน</label>
+          </div>
           <h4>โปรแกรม</h4>
           <label class="chk"><input type="checkbox" id="st-login"> เปิด Price Tracker อัตโนมัติเมื่อเปิดเครื่อง</label>
+          <label class="chk"><input type="checkbox" id="st-autoupd"> ตรวจหาเวอร์ชันใหม่อัตโนมัติ</label>
+          <div class="row"><button id="st-checkupd">ตรวจหาเวอร์ชันใหม่ตอนนี้</button></div>
         </section>
         <section data-sec="conn" class="hidden">
           <div id="st-net-now" class="net-now"></div>
@@ -240,6 +261,8 @@
   </div>
 </div>
 
+<script src="vcg-inject.js"></script>
+<script src="bridge.js"></script>
 <script src="lib/lightweight-charts.standalone.production.js"></script>
 <script src="indicators.js"></script>
 <script src="analysis.js"></script>
@@ -250,5 +273,8 @@
 <script src="draw.js"></script>
 <script src="planner.js"></script>
 <script src="settings.js"></script>
+<script src="extras.js"></script>
+<script src="learn.js"></script>
+<script src="ui.js"></script>
 </body>
 </html>
