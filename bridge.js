@@ -115,10 +115,13 @@
 
   // ---------------- network monitor ----------------
   let rtt = null, fails = 0, netLevel = 'ok';
+  const PROBE_URLS = ['https://prod-ws-server.anttix.app/', 'https://vcgmarkets.com/favicon.ico']; let probeIx = 0;
   async function probe() {
     const t0 = Date.now();
-    try { const hit = () => fetch('https://prod-ws-server.anttix.app/?_=' + Date.now(), { method: 'HEAD', cache: 'no-store' });
-      await hit(); const t1 = Date.now(); await hit(); rtt = Date.now() - t1; fails = 0; void t0; } catch (_) { fails++; rtt = null; }
+    const url = PROBE_URLS[probeIx];
+    try { const hit = () => fetch(url + (url.includes('?') ? '&' : '?') + '_=' + Date.now(), { method: 'HEAD', cache: 'no-store' });
+      await hit(); const t1 = Date.now(); await hit(); rtt = Date.now() - t1; fails = 0; void t0; }
+    catch (_) { fails++; rtt = null; if (state.lastTick && Date.now() - state.lastTick < 15000) { probeIx = (probeIx + 1) % PROBE_URLS.length; fails = 0; } }
   }
   function evalNet() {
     if (!native) return;
@@ -127,7 +130,7 @@
     const n = settings.net, med = raw == null || floor == null ? null : Math.max(0, Math.round(raw - floor));
     const since = state.lastTick ? (Date.now() - state.lastTick) / 1000 : null;
     let level = 'ok', detail = '';
-    if (fails >= 2) { level = 'offline'; detail = 'ติดต่อเซิร์ฟเวอร์ VCG ไม่ได้'; }
+    if (fails >= 2 && !(since != null && since < 15)) { level = 'offline'; detail = 'ติดต่อเซิร์ฟเวอร์ VCG ไม่ได้'; }
     else if (state.loggedIn && !state.connected) { level = 'down'; detail = 'การเชื่อมต่อราคาหลุด กำลังต่อใหม่'; }
     else if (state.connected && since != null && since > n.staleSec) { level = 'stale'; detail = `ไม่มีราคาใหม่ ${Math.round(since)} วินาที`; }
     else if ((rtt != null && rtt > n.slowMs) || (med != null && med > n.delayMs)) { level = 'slow'; detail = `เน็ตช้า: ping ${rtt ?? '—'} ms`; }

@@ -369,15 +369,22 @@ ipcMain.handle('notify', async (_e, { event, payload, text }) => {
 // ---------------- network monitor ----------------
 const netState = { rtt: null, fails: 0, delays: [], base: [], reconnects: 0, level: 'ok', detail: '' };
 const median = (a) => { if (!a.length) return null; const b = [...a].sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; };
+const PROBE_URLS = ['https://prod-ws-server.anttix.app/', 'https://vcgmarkets.com/favicon.ico'];
 async function probe() {
   const t0 = Date.now(), ac = new AbortController(), to = setTimeout(() => ac.abort(), 8000);
   try {
     // ping the PRICE server itself (not the website), twice: the 2nd request reuses the open connection,
     // so it measures the real round-trip instead of DNS + TLS handshake (which made "ping" look like 500–3000 ms)
-    const hit = () => enet.fetch('https://prod-ws-server.anttix.app/?_=' + Date.now(), { method: 'HEAD', cache: 'no-store', signal: ac.signal, partition: 'persist:vcg' });
+    // if the price server refuses plain HTTP, fall back to the website so the pill still means something
+    const url = PROBE_URLS[netState.probeIx || 0];
+    const hit = () => enet.fetch(url + (url.includes('?') ? '&' : '?') + '_=' + Date.now(), { method: 'HEAD', cache: 'no-store', signal: ac.signal, partition: 'persist:vcg' });
     await hit(); const t1 = Date.now(); await hit();
     netState.rtt = Date.now() - t1; netState.fails = 0; void t0;
-  } catch (_) { netState.fails++; netState.rtt = null; }
+  } catch (_) {
+    netState.fails++; netState.rtt = null;
+    // prices still arriving → the probe target is the problem, not the network: try the next target
+    if (state.lastTick && Date.now() - state.lastTick < 15000) { netState.probeIx = ((netState.probeIx || 0) + 1) % PROBE_URLS.length; netState.fails = 0; }
+  }
   clearTimeout(to);
 }
 function hasCrypto() { return settings.symbols.some((s) => /^(BTC|ETH|SOL|LTC|XRP|BNB|ADA|DOGE)/.test(s)); }
@@ -392,7 +399,7 @@ function evalNet() {
     const m = mt5.status(), ago = m.lastTick ? (Date.now() - m.lastTick) / 1000 : null;
     if (!m.connected) { level = 'down'; detail = 'ยังไม่ได้เชื่อมต่อกับ EA ใน MT5'; }
     else if (ago != null && ago > n.staleSec && !fxWeekend()) { level = 'stale'; detail = `MT5 ไม่ส่งราคาใหม่ ${Math.round(ago)} วินาที`; }
-  } else if (netState.fails >= 2) { level = 'offline'; detail = 'ติดต่อเซิร์ฟเวอร์ VCG ไม่ได้ (อินเทอร์เน็ตหลุด?)'; }
+  } else if (netState.fails >= 2 && !(since != null && since < 15)) { level = 'offline'; detail = 'ติดต่อเซิร์ฟเวอร์ VCG ไม่ได้ (อินเทอร์เน็ตหลุด?)'; }
   else if (state.loggedIn && !state.connected) { level = 'down'; detail = 'การเชื่อมต่อราคาหลุด กำลังต่อใหม่'; }
   else if (state.connected && since != null && since > n.staleSec && (hasCrypto() || !fxWeekend())) { level = 'stale'; detail = `ไม่มีราคาใหม่ ${Math.round(since)} วินาที`; }
   else if ((netState.rtt != null && netState.rtt > n.slowMs) || (delay != null && delay > n.delayMs)) { level = 'slow'; detail = `เน็ตช้า: ping ${netState.rtt ?? '—'} ms, ราคามาช้ากว่าปกติ ~${delay ?? '—'} ms`; }

@@ -39,20 +39,55 @@
     const shared = globalThis._wsSharedManager; if (!shared) return 'none';
     const post = (type, d, slot) => window.postMessage({ __vcg: type, d, slot: slot || 'main' }, '*');
     // Fresh token from the web app's own token getter (it caches and renews ~1 min before expiry).
+    // The getter lives in a webpack module whose id/name change whenever VCG ships a new build, so:
+    // 1) try the last known location (remembered), 2) the original one (30264.hP), 3) scan loaded modules
+    // for a 0-arg export whose code mentions accessToken, and verify it really returns a token.
+    function wpReq() {
+      try { if (!window.__vcgReq && window.webpackChunk_N_E) window.webpackChunk_N_E.push([[Symbol('vcg')], {}, (r) => { window.__vcgReq = r; }]); } catch (_) {}
+      return window.__vcgReq || null;
+    }
+    const looksJwt = (t) => typeof t === 'string' && t.split('.').length === 3 && t.length > 40;
+    async function tryFn(fn) { try { const t = await Promise.race([fn(), new Promise((_, rj) => setTimeout(() => rj(new Error('timeout')), 4000))]); return t && looksJwt(t.accessToken) ? t : null; } catch (_) { return null; } }
+    let getterInfo = null;
+    try { getterInfo = JSON.parse(localStorage.getItem('__vcgTokenGetter') || 'null'); } catch (_) {}
+    async function findGetter() {
+      const req = wpReq(); if (!req) return null;
+      const at = (id, key) => { try { const m = req(id); return m && typeof m[key] === 'function' ? m[key] : null; } catch (_) { return null; } };
+      const tried = new Set();
+      for (const c of [getterInfo, { id: 30264, key: 'hP' }]) {
+        if (!c) continue; tried.add(c.id + ':' + c.key);
+        const fn = at(c.id, c.key); if (fn && await tryFn(fn)) return { fn, id: c.id, key: c.key };
+      }
+      const cache = req.c || {}; const cands = [];
+      for (const id of Object.keys(cache)) {
+        const ex = cache[id] && cache[id].exports; if (!ex || typeof ex !== 'object') continue;
+        for (const key of Object.keys(ex)) {
+          let f; try { f = ex[key]; } catch (_) { continue; }
+          if (typeof f !== 'function' || f.length !== 0 || tried.has(id + ':' + key)) continue;
+          let src = ''; try { src = Function.prototype.toString.call(f); } catch (_) { continue; }
+          if (src.length < 4000 && /accessToken/.test(src)) cands.push({ id, key, f, score: /refresh|expire|exp/i.test(src) ? 1 : 0 });
+        }
+      }
+      cands.sort((a, b) => b.score - a.score);
+      for (const c of cands.slice(0, 6)) if (await tryFn(c.f)) return { fn: c.f, id: isNaN(+c.id) ? c.id : +c.id, key: c.key };
+      return null;
+    }
+    let getterP = null;
     function tokenGetter() {
-      try {
-        if (!window.__vcgReq && window.webpackChunk_N_E) window.webpackChunk_N_E.push([[Symbol('vcg')], {}, (r) => { window.__vcgReq = r; }]);
-        const m = window.__vcgReq && window.__vcgReq(30264);
-        return m && typeof m.hP === 'function' ? m.hP : null;
-      } catch (e) { return null; }
+      if (!getterP) getterP = findGetter().then((g) => {
+        if (g) { if (!getterInfo || getterInfo.id !== g.id || getterInfo.key !== g.key) { getterInfo = { id: g.id, key: g.key }; try { localStorage.setItem('__vcgTokenGetter', JSON.stringify(getterInfo)); } catch (_) {} post('chartLog', 'พบตัวต่ออายุ token ที่ module ' + g.id + '.' + g.key); } return g.fn; }
+        post('chartLog', '⚠️ หาตัวต่ออายุ token ของหน้าเว็บ VCG ไม่เจอ (เว็บอาจอัปเดต) — ใช้ token ของฟีดราคาแทน ถ้ากราฟหยุดทุก ~15 นาที ให้แจ้งผู้พัฒนา');
+        getterP = null; return null;   // retry the search next time
+      });
+      return getterP;
     }
     async function freshAuth() {
       const base = { ...(shared.socket('/symbol').auth || {}) };
-      const fn = tokenGetter();
+      const fn = await tokenGetter();
       if (fn) {
         try { const t = await fn(); if (t && t.accessToken) return { token: t.accessToken, account: base.account || '', country: t.country || base.country || 'TH' }; }
-        catch (e) { post('chartLog', 'token getter failed: ' + e.message); }
-      } else post('chartLog', 'token getter not found — using feed token');
+        catch (e) { post('chartLog', 'token getter failed: ' + e.message); getterP = null; }
+      }
       return base;
     }
     function nudgePageToken() {
@@ -81,7 +116,7 @@
       s.connect();
       return st;
     }
-    const api = { v: 2, slots: {}, req(o) {
+    const api = { v: 2, slots: {}, auth: freshAuth, req(o) {
       const slot = o.slot || 'main'; const st = this.slots[slot] || (this.slots[slot] = makeSlot(slot));
       const { slot: _x, ...msg } = o; st.last = msg; if (st.s.connected) st.s.emit('chart:subscribe', msg);
     } };
