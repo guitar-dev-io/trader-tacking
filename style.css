@@ -379,3 +379,7 @@ body.mobile #toasts { bottom: 70px; }
 
 .lq td { padding: 3px 4px; } .lq td:last-child { color: #f6c343; text-align: right; letter-spacing: 1px; }
 .lq .lq-now td { text-align: center; color: var(--muted); font-size: 11px; border-top: 1px dashed var(--line); border-bottom: 1px dashed var(--line); }
+
+.bn-seg button.on:not(.buy):not(.sell) { background: #2962ff; color: #fff; border-color: #2962ff; }
+.bn-sum { background: #1c2030; border-radius: 8px; padding: 8px 10px; margin: 6px 0; line-height: 1.6; }
+.bn-sec { font-weight: 700; margin: 10px 0 2px; }

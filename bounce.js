@@ -184,11 +184,11 @@
       if (dA > 3) { const pen = Math.floor(dA / 2) - 1; score -= pen; why.push({ t: 'far', txt: `ยังอยู่ไกลจากราคาปัจจุบัน (เกิน ${(pen + 1) * 2} ATR)`, neg: true }); }
       // stops resting just above the zone → price often dips to grab them, then bounces from the zone
       const above = LQ.lows.find((p) => p.price > g.hi && p.price - g.hi <= 1.5 * a);
-      if (above) { score += 1; why.push({ t: 'liq', txt: `เหนือโซนมี SL เม่ากองอยู่ (${poolName(above, o.sell)} ที่ ${o.F(above.price)}) — ราคามักมากวาดตรงนั้นก่อนแล้วเด้งในโซน` }); }
+      if (above) { score += 1; why.push({ t: 'liq', txt: `${o.sell ? 'ใต้' : 'เหนือ'}โซนมี SL เม่ากองอยู่ (${poolName(above, o.sell)} ที่ ${o.F(above.price)}) — ราคามัก${o.sell ? 'ขึ้น' : 'ลง'}มากวาดตรงนั้นก่อนแล้วเด้งในโซน` }); }
       const entry = g.hi; let sl = g.lo - o.slBuf * a;
       // our SL must not sit on an obvious stop cluster (it would be hunted together with everyone else's)
       const trap = LQ.lows.find((p) => p.price <= g.lo && p.price > sl - 0.4 * a);
-      if (trap) { sl = Math.min(sl, trap.price - 0.3 * a); why.push({ t: 'slhunt', txt: `ขยับ SL ลงไปใต้ ${poolName(trap, o.sell)} (${o.F(trap.price)}) ที่คนวาง SL กันเยอะ — กันโดนกวาด` }); }
+      if (trap) { sl = Math.min(sl, trap.price - 0.3 * a); why.push({ t: 'slhunt', txt: `ขยับ SL ${o.sell ? 'ขึ้นไปเหนือ' : 'ลงไปใต้'} ${poolName(trap, o.sell)} (${o.F(trap.price)}) ที่คนวาง SL กันเยอะ — กันโดนกวาด` }); }
       const risk = Math.max(entry - sl, 0.3 * a);
       // target = the nearest untaken opposite pool ("ที่ที่มีเงิน"), else the nearest swing high
       const pool = LQ.highs.find((p) => p.price > entry + 0.5 * risk && p.price - entry <= 6 * risk);
@@ -202,7 +202,7 @@
       let status = 'wait';
       if (price <= g.hi) status = 'in';
       const sw = LQ.sweeps.find((x) => x.side === 'low' && n - 1 - x.j <= 3 && x.price >= g.lo - 0.5 * a && x.price <= g.hi + 1.5 * a);
-      if (sw) { score += 2; why.push({ t: 'sweep', txt: `เพิ่งกวาด SL เม่าใต้ ${o.F(sw.price)} แล้วปิดกลับ (${n - 1 - sw.j === 0 ? 'แท่งล่าสุด' : n - 1 - sw.j + ' แท่งก่อน'}) — สัญญาณเด้งที่ดี` }); }
+      if (sw) { score += 2; why.push({ t: 'sweep', txt: `เพิ่งกวาด SL เม่า${o.sell ? 'เหนือ' : 'ใต้'} ${o.F(sw.price)} แล้วปิดกลับ (${n - 1 - sw.j === 0 ? 'แท่งล่าสุด' : n - 1 - sw.j + ' แท่งก่อน'}) — สัญญาณเด้งที่ดี` }); }
       const pat = (A.patterns[n - 1] || []).filter((p) => (o.sell ? ['bearEng', 'star', 'evening'] : ['bullEng', 'hammer', 'morning']).includes(p));
       if (b.low <= g.hi && b.close > g.hi - 0.1 * (g.hi - g.lo) && b.close >= b.open && (pat.length || b.close > g.hi)) status = 'confirmed';
       if (sw && sw.j === n - 1 && b.close >= g.lo) status = 'confirmed';

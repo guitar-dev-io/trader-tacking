@@ -30,7 +30,7 @@ let UP = '#26a69a', DOWN = '#ef5350';
 
 
 // Clean chart by default: analysis overlays are opt-in from the 🧠 menu.
-const AN_DEFAULT = { bounce: false, liquidity: false, bounceSide: 'buy', swing: false, legs: false, structure: false, zones: false, patterns: false, signals: false, history: false, td: false, learnOnly: false, notify: false, swingLen: 5 };
+const AN_DEFAULT = { bounce: false, liquidity: false, bounceSide: 'both', swing: false, legs: false, structure: false, zones: false, patterns: false, signals: false, history: false, td: false, learnOnly: false, notify: false, swingLen: 5 };
 const AN_VIEW_KEYS = ['bounce', 'liquidity', 'swing', 'legs', 'structure', 'zones', 'patterns', 'signals', 'history', 'td'];
 // one-time migration (v2.0.3): switch existing installs to the clean default
 if (store.get('defaultsV', 1) < 2) {
@@ -475,21 +475,22 @@ function runBounce() {
   renderBounce(); checkBounce();
 }
 const BSTAT_TH = { wait: ['รอราคา', ''], in: ['ราคาอยู่ในโซน · รอแท่งยืนยัน', 'warn'], confirmed: ['ยืนยันแล้ว · เข้าได้', 'ok'] };
+const bnSides = () => (S.an.bounceSide === 'buy' ? ['buy'] : S.an.bounceSide === 'sell' ? ['sell'] : ['buy', 'sell']);
 function renderBounce() {
   const box = $('an-bounce'); if (!box) return;
-  const B = S.B, sd = S.an.bounceSide === 'sell' ? 'sell' : 'buy', buy = sd === 'buy';
+  const B = S.B, mode = ['buy', 'sell'].includes(S.an.bounceSide) ? S.an.bounceSide : 'both', sides = bnSides(), both = mode === 'both';
   const head = `<div class="panel-h bn-h"><span>🎯 หาจุดเด้ง · ${S.symbol} ${tf().label}</span>
     <label class="chk" title="แสดงโซนบนกราฟ"><input type="checkbox" id="bn-show" ${S.an.bounce ? 'checked' : ''}> บนกราฟ</label></div>
-    <div class="seg bn-seg"><button data-bs="buy" class="${buy ? 'on buy' : ''}">▲ จุดเข้าซื้อ (Buy)</button><button data-bs="sell" class="${!buy ? 'on sell' : ''}">▼ จุดเข้าขาย (Sell)</button></div>`;
+    <div class="seg bn-seg"><button data-bs="both" class="${both ? 'on' : ''}">▲▼ ทั้งสองฝั่ง</button><button data-bs="buy" class="${mode === 'buy' ? 'on buy' : ''}">▲ Buy</button><button data-bs="sell" class="${mode === 'sell' ? 'on sell' : ''}">▼ Sell</button></div>`;
   if (!B) { const h = head + '<p class="muted">ต้องมีข้อมูลกราฟอย่างน้อย 60 แท่ง</p>'; if (h !== box._html) { box._html = h; box.innerHTML = h; bindBounce(box); } return; }
-  const zs = B[sd], a = B.atr;
   const stars = (k) => '★'.repeat(k) + '<span class="muted">' + '★'.repeat(5 - k) + '</span>';
-  const card = (z, k) => {
+  const card = (sd) => (z, k) => {
+    const buy = sd === 'buy';
     const [stTxt, stCls] = BSTAT_TH[z.status];
     const st = z.stat ? `แตะโซนแบบนี้ (${BOUNCE.TYPE[z.main].short}) ย้อนหลังในกราฟนี้ ${z.stat.n} ครั้ง → เด้งถึง 1R <b>${pct(z.stat.wr1)}</b> · ถึง 2R <b>${pct(z.stat.wr2)}</b>` : 'ยังไม่มีสถิติย้อนหลังของโซนแบบนี้ในข้อมูลที่โหลด';
-    return `<div class="bn-card ${buy ? 'buy' : 'sell'} ${k === 0 ? 'top' : ''}" data-z="${k}">
-      <div class="bn-top"><span class="bn-stars">${stars(z.stars)}</span><b>${fmt(Math.min(z.lo, z.hi))} – ${fmt(Math.max(z.lo, z.hi))}</b>
-        <span class="muted" data-bd="${k}"></span></div>
+    return `<div class="bn-card ${sd} ${k === 0 ? 'top' : ''}">
+      <div class="bn-top"><span class="${buy ? 'up' : 'down'}"><b>${buy ? '▲ BUY' : '▼ SELL'}</b></span><span class="bn-stars">${stars(z.stars)}</span><b>${fmt(Math.min(z.lo, z.hi))} – ${fmt(Math.max(z.lo, z.hi))}</b>
+        <span class="muted" data-bd="${sd}${k}"></span></div>
       <div class="bn-status ${stCls}">${z.status === 'wait' ? (buy ? '⏳ รอราคาย่อลงมาที่โซน' : '⏳ รอราคาเด้งขึ้นมาที่โซน') : (z.status === 'in' ? '👀 ' : '✅ ') + stTxt}${z.pattern && z.status !== 'wait' ? ` · ${AN.PAT[z.pattern].name}` : ''}</div>
       <div class="lv">
         <span>Entry</span><b>${fmt(z.entry)}</b><span>${buy ? 'Buy' : 'Sell'} Limit ขอบโซน</span>
@@ -499,13 +500,26 @@ function renderBounce() {
       </div>
       <ul class="bn-why">${z.why.map((w) => `<li class="${w.neg ? 'neg' : ''}">${esc(w.txt)}</li>`).join('')}</ul>
       <div class="muted bn-stat">${st}</div>
-      <div class="btns"><button data-bz="calc" data-k="${k}">คำนวณ lot</button><button data-bz="sim" data-k="${k}">ตั้งคำสั่งฝึก</button></div>
+      <div class="btns"><button data-bz="calc" data-sd="${sd}" data-k="${k}">คำนวณ lot</button><button data-bz="sim" data-sd="${sd}" data-k="${k}">ตั้งคำสั่งฝึก</button></div>
     </div>`;
   };
-  const html = head + (zs.length ? zs.map(card).join('') : `<p class="muted">ยังไม่พบโซน${buy ? 'รับ' : 'ต้าน'}ที่ยังใช้ได้ในระยะ 10 ATR ลองเปลี่ยน timeframe หรือโหลดข้อมูลเพิ่ม</p>`) +
-    liqHtml() + `<p class="muted bn-note">วิธีใช้: ตั้ง ${buy ? 'Buy' : 'Sell'} Limit ที่ Entry หรือรอให้สถานะเป็น ✅ (แท่งเทียนกลับตัวในโซน) แล้วค่อยเข้า · ★ มาก = เหตุผลซ้อนกันมาก + ตามเทรนด์ · ไม่ใช่คำแนะนำการลงทุน</p>`;
+  let summary = '';
+  if (both) {
+    const bb = B.buy[0], ss = B.sell[0], tr = S.A.lastTrend;
+    const bs = bb ? bb.stars : 0, sss = ss ? ss.stars : 0;
+    const bias = bs > sss ? '<b class="up">ฝั่ง Buy น่าสนใจกว่า</b>' : sss > bs ? '<b class="down">ฝั่ง Sell น่าสนใจกว่า</b>' : 'สองฝั่งคะแนนพอๆ กัน — รอดูว่าราคาไปแตะฝั่งไหนก่อนแล้วรอยืนยัน';
+    summary = `<div class="bn-sum">เทรนด์ ${tr === 1 ? '<b class="up">ขาขึ้น</b>' : tr === -1 ? '<b class="down">ขาลง</b>' : '<b>ไซด์เวย์</b>'} · Buy ดีสุด ${bb ? '★' + bs + ' ที่ ' + fmt(bb.entry) : '—'} · Sell ดีสุด ${ss ? '★' + sss + ' ที่ ' + fmt(ss.entry) : '—'}<br>→ ${bias}</div>`;
+  }
+  const section = (sd) => {
+    const zs = both ? B[sd].slice(0, 2) : B[sd];
+    return (both ? `<div class="bn-sec ${sd === 'buy' ? 'up' : 'down'}">${sd === 'buy' ? '▲ จุดเข้าซื้อ (ใต้ราคา)' : '▼ จุดเข้าขาย (เหนือราคา)'}</div>` : '') +
+      (zs.length ? zs.map(card(sd)).join('') : `<p class="muted">ยังไม่พบโซน${sd === 'buy' ? 'รับ' : 'ต้าน'}ที่ยังใช้ได้ในระยะ 10 ATR</p>`);
+  };
+  const order = both ? ['sell', 'buy'] : sides;   // both: sell zones (above price) on top, buy zones below — same as on the chart
+  const html = head + summary + order.map(section).join('') +
+    liqHtml() + `<p class="muted bn-note">วิธีใช้: ตั้ง Limit ที่ Entry หรือรอให้สถานะเป็น ✅ (แท่งเทียนกลับตัวในโซน) แล้วค่อยเข้า · ★ มาก = เหตุผลซ้อนกันมาก + ตามเทรนด์ · ไม่ใช่คำแนะนำการลงทุน</p>`;
   if (html !== box._html) { box._html = html; box.innerHTML = html; bindBounce(box); } // unchanged → keep DOM (buttons/clicks stay stable)
-  zs.forEach((z, k) => { const d = box.querySelector(`[data-bd="${k}"]`); if (d) d.textContent = z.status === 'wait' ? `ห่าง ${fmt(Math.abs(z.dist))} (${Math.abs(z.distAtr).toFixed(1)} ATR)` : ''; });
+  for (const sd of ['buy', 'sell']) B[sd].forEach((z, k) => { const d = box.querySelector(`[data-bd="${sd}${k}"]`); if (d) d.textContent = z.status === 'wait' ? `ห่าง ${fmt(Math.abs(z.dist))} (${Math.abs(z.distAtr).toFixed(1)} ATR)` : ''; });
 }
 function liqHtml() {
   const L = S.B && S.B.liq; if (!L) return '';
@@ -523,7 +537,7 @@ function bindBounce(box) {
   const lq = $('lq-show'); if (lq) lq.onchange = () => { S.an.liquidity = lq.checked; store.set('an', S.an); dirty = true; };
   box.querySelectorAll('[data-bs]').forEach((b) => (b.onclick = () => { S.an.bounceSide = b.dataset.bs; store.set('an', S.an); renderBounce(); dirty = true; }));
   box.querySelectorAll('[data-bz]').forEach((b) => (b.onclick = () => {
-    const sd = S.an.bounceSide === 'sell' ? 'sell' : 'buy', z = S.B && S.B[sd][+b.dataset.k]; if (!z) return;
+    const sd = b.dataset.sd, z = S.B && S.B[sd] && S.B[sd][+b.dataset.k]; if (!z) return;
     if (b.dataset.bz === 'calc') {
       Object.assign(S.plan, { side: sd, entry: fmt(z.entry), sl: fmt(z.sl), tp1: fmt(z.tp1), tp2: fmt(z.tp2) });
       savePlan(); renderPlanner(); dirty = true; document.querySelector('#tabs [data-tab="calc"]').click();
@@ -531,18 +545,21 @@ function bindBounce(box) {
   }));
 }
 function drawBounce(W) {
-  const sd = S.an.bounceSide === 'sell' ? 'sell' : 'buy', zs = S.B[sd]; const col = sd === 'buy' ? UP : DOWN;
-  zs.forEach((z, k) => {
-    const yt = yOf(Math.max(z.lo, z.hi)), yb = yOf(Math.min(z.lo, z.hi)); if (yt == null || yb == null) return;
-    const x0 = Math.max(0, xIdx(z.born) ?? 0);
-    el('rect', { x: x0, y: yt, width: Math.max(0, W - x0), height: Math.max(3, yb - yt), fill: col + (k === 0 ? '30' : '1c'), stroke: col + (k === 0 ? 'cc' : '66'), 'stroke-width': k === 0 ? 1.5 : 1 });
-    txt(W - 8, (sd === 'buy' ? yb + 12 : yt - 4), `${sd === 'buy' ? 'จุดเด้ง Buy' : 'จุดเด้ง Sell'} ${'★'.repeat(z.stars)} ${z.types.map((t) => BOUNCE.TYPE[t].short).join('+')}`, col, 'end', 10, k === 0 ? 700 : 400);
-    if (k === 0) {
-      const ys = yOf(z.sl), ytp = yOf(z.tp1);
-      if (ys != null) { el('line', { x1: x0, y1: ys, x2: W, y2: ys, stroke: DOWN, 'stroke-dasharray': '4 3' }); txt(x0 + 4, ys + (sd === 'buy' ? 12 : -4), `SL ${fmt(z.sl)}`, DOWN, 'start', 10); }
-      if (ytp != null) { el('line', { x1: x0, y1: ytp, x2: W, y2: ytp, stroke: UP, 'stroke-dasharray': '4 3' }); txt(x0 + 4, ytp - 4, `TP ${fmt(z.tp1)} (${z.rr1.toFixed(1)}R)`, UP, 'start', 10); }
-    }
-  });
+  const both = bnSides().length === 2;
+  for (const sd of bnSides()) {
+    const zs = both ? S.B[sd].slice(0, 2) : S.B[sd], col = sd === 'buy' ? UP : DOWN;
+    zs.forEach((z, k) => {
+      const yt = yOf(Math.max(z.lo, z.hi)), yb = yOf(Math.min(z.lo, z.hi)); if (yt == null || yb == null) return;
+      const x0 = Math.max(0, xIdx(z.born) ?? 0);
+      el('rect', { x: x0, y: yt, width: Math.max(0, W - x0), height: Math.max(3, yb - yt), fill: col + (k === 0 ? '30' : '1c'), stroke: col + (k === 0 ? 'cc' : '66'), 'stroke-width': k === 0 ? 1.5 : 1 });
+      txt(W - 8, (sd === 'buy' ? yb + 12 : yt - 4), `${sd === 'buy' ? 'จุดเด้ง Buy' : 'จุดเด้ง Sell'} ${'★'.repeat(z.stars)} ${z.types.map((t) => BOUNCE.TYPE[t].short).join('+')}`, col, 'end', 10, k === 0 ? 700 : 400);
+      if (k === 0) {
+        const ys = yOf(z.sl), ytp = yOf(z.tp1), lx = x0 + 4;
+        if (ys != null) { el('line', { x1: x0, y1: ys, x2: W, y2: ys, stroke: col, 'stroke-dasharray': '2 3', opacity: 0.8 }); txt(lx, ys + (sd === 'buy' ? 12 : -4), `SL ${sd === 'buy' ? 'Buy' : 'Sell'} ${fmt(z.sl)}`, col, 'start', 10); }
+        if (ytp != null && !both) { el('line', { x1: x0, y1: ytp, x2: W, y2: ytp, stroke: col, 'stroke-dasharray': '6 3' }); txt(lx, ytp + (sd === 'buy' ? -4 : 12), `TP ${fmt(z.tp1)} (${z.rr1.toFixed(1)}R)`, col, 'start', 10); }
+      }
+    });
+  }
 }
 function drawLiquidity(W) {
   const L = S.B.liq, AMB = '#f6c343';
