@@ -346,3 +346,4 @@ body.mobile #toasts { bottom: 70px; }
 #toolbar::-webkit-scrollbar { display: none; }
 #center { min-width: 0; overflow: hidden; }
 .menu { max-height: calc(100vh - 120px); overflow-y: auto; z-index: 60; }
+#tab-practice .bulk button { font-size: 11px; padding: 4px 8px; } #tab-practice .upb { color: var(--up); } #tab-practice .downb { color: var(--down); } #tab-practice h4 .mini { font-size: 10.5px; padding: 1px 6px; margin-left: 6px; font-weight: 400; }

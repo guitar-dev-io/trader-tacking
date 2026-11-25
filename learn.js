@@ -124,14 +124,14 @@ const SIM = (() => {
     vcg.log('info', `จำลอง: ${ticket.type} ${side === 1 ? 'BUY' : 'SELL'} ${lot} ${sym}`, null, 'sim');
     saveAcc(); render(); dirty = true; QUIZ.onTrade();
   }
-  function close(p, exit, reason, t) {
+  function close(p, exit, reason, t, quiet) {
     const a = acc[p.mode] || A();
     a.positions = a.positions.filter((x) => x.id !== p.id);
     const pnl = pnlOf(p, exit), r = rOf(p, exit);
     a.balance += pnl;
     const h = { ...p, exit, reason, closeTime: t, pnl, r };
     a.history.push(h); if (a.history.length > 2000) a.history.shift();
-    saveAcc(); render(); dirty = true;
+    saveAcc(); if (quiet) { QUIZ.onClose(h); return; } render(); dirty = true;
     const msg = `${reason === 'TP' ? '🎯 TP' : reason === 'SL' ? '🛑 SL' : 'ปิด'} ${p.side === 1 ? 'BUY' : 'SELL'} ${p.symbol} ${money(pnl)}${r != null ? ` (${r >= 0 ? '+' : ''}${r.toFixed(2)}R)` : ''}`;
     toast(msg, pnl >= 0 ? 'ok' : 'warn');
     QUIZ.onClose(h);
@@ -194,9 +194,11 @@ const SIM = (() => {
       </div>
       <label class="note">บันทึก (ทำไมถึงเข้า)<input data-k="note" value="${esc(ticket.note)}" placeholder="เช่น ย่อมาแตะ HL + BE ที่โซน H1"></label>
       <div class="btns"><button id="sim-plan">ใช้ค่าจากเครื่องคำนวณ</button><button id="sim-lot">lot ตามความเสี่ยง</button><button id="sim-place" class="primary">ส่งคำสั่ง</button></div>
-      ${a.positions.length ? `<h4>สถานะที่เปิด</h4><table class="stat"><tbody>${a.positions.map((p) => { const P = px(p.symbol); const pl = P ? pnlOf(p, p.side === 1 ? P.bid : P.ask) : null;
+      ${a.positions.length ? `<h4>สถานะที่เปิด (${a.positions.length})</h4>
+      <div class="btns bulk"><button data-bulk="all">ปิดทั้งหมด</button><button data-bulk="win" class="upb">ปิดไม้กำไร</button><button data-bulk="loss" class="downb">ปิดไม้ขาดทุน</button><button data-bulk="be" title="เลื่อน SL มาที่ราคาเข้า เฉพาะไม้ที่กำไรอยู่">กันทุน (BE)</button></div>
+      <table class="stat"><tbody>${a.positions.map((p) => { const P = px(p.symbol); const pl = P ? pnlOf(p, p.side === 1 ? P.bid : P.ask) : null;
         return `<tr><td class="${p.side === 1 ? 'up' : 'down'}">${p.side === 1 ? 'BUY' : 'SELL'} ${p.lot}</td><td>${p.symbol} @ ${fmt(p.entry)}</td><td data-pl="${p.id}" class="${pl >= 0 ? 'up' : 'down'}">${money(pl)}</td><td><button data-close="${p.id}">ปิด</button></td></tr>`; }).join('')}</tbody></table>` : ''}
-      ${a.orders.length ? `<h4>คำสั่งรอ</h4><table class="stat"><tbody>${a.orders.map((o) => `<tr><td>${o.type} ${o.side === 1 ? 'BUY' : 'SELL'} ${o.lot}</td><td>${o.symbol} @ ${fmt(o.price)}</td><td><button data-cancel="${o.id}">ยกเลิก</button></td></tr>`).join('')}</tbody></table>` : ''}
+      ${a.orders.length ? `<h4>คำสั่งรอ (${a.orders.length}) <button data-bulk="cancel" class="mini">ยกเลิกทั้งหมด</button></h4><table class="stat"><tbody>${a.orders.map((o) => `<tr><td>${o.type} ${o.side === 1 ? 'BUY' : 'SELL'} ${o.lot}</td><td>${o.symbol} @ ${fmt(o.price)}</td><td><button data-cancel="${o.id}">ยกเลิก</button></td></tr>`).join('')}</tbody></table>` : ''}
       <h4>สถิติการฝึก (${st.n} ไม้)</h4>
       <div class="sum"><span>ชนะ</span><b>${pct(st.win)}</b><span>R เฉลี่ย</span><b>${st.avgR == null ? '—' : st.avgR.toFixed(2) + 'R'}</b><span>Profit factor</span><b>${st.pf == null ? '—' : st.pf === Infinity ? '∞' : st.pf.toFixed(2)}</b><span>กำไรรวม</span><b class="${st.total >= 0 ? 'up' : 'down'}">${money(st.total)}</b><span>Drawdown สูงสุด</span><b>${money(-st.dd)}</b></div>
       ${byTag.length ? `<table class="stat"><thead><tr><th>แท็ก</th><th>ไม้</th><th>ชนะ</th><th>R เฉลี่ย</th></tr></thead><tbody>${byTag.map(([k, s]) => `<tr><td>${TAGS[k]}</td><td>${s.n}</td><td>${pct(s.win)}</td><td>${s.avgR == null ? '—' : s.avgR.toFixed(2)}</td></tr>`).join('')}</tbody></table>` : ''}
@@ -206,6 +208,7 @@ const SIM = (() => {
     box.querySelectorAll('[data-k]').forEach((i) => (i.onchange = () => { ticket[i.dataset.k] = i.value; store.set('sim.ticket', ticket); if (i.dataset.k === 'type') render(); }));
     box.querySelectorAll('[data-t=side]').forEach((b) => (b.onclick = () => { ticket.side = +b.dataset.v; store.set('sim.ticket', ticket); render(); }));
     box.querySelectorAll('[data-close]').forEach((b) => (b.onclick = () => { const p = a.positions.find((x) => x.id === +b.dataset.close); const P = p && px(p.symbol); if (P) close(p, p.side === 1 ? P.bid : P.ask, 'manual', P.t); }));
+    box.querySelectorAll('[data-bulk]').forEach((b) => (b.onclick = () => bulk(b.dataset.bulk)));
     box.querySelectorAll('[data-cancel]').forEach((b) => (b.onclick = () => { a.orders = a.orders.filter((x) => x.id !== +b.dataset.cancel); saveAcc(); render(); dirty = true; }));
     $('sim-place').onclick = (e) => {
       const b = e.currentTarget; if (b.disabled) return;
@@ -228,6 +231,21 @@ const SIM = (() => {
         .concat(['live', 'replay'].flatMap((k) => acc[k].history.map((h) => [k, h.symbol, h.side === 1 ? 'BUY' : 'SELL', h.lot, h.entry, h.exit, h.sl, h.tp, h.reason, h.pnl.toFixed(2), h.r == null ? '' : h.r.toFixed(2), h.tag, (h.note || '').replace(/[",\n]/g, ' '), new Date(h.openTime * 1000).toISOString(), new Date(h.closeTime * 1000).toISOString(), h.quiz ? 1 : 0])));
       downloadText(`practice-journal-${new Date().toISOString().slice(0, 10)}.csv`, rows.map((r) => r.join(',')).join('\n'));
     };
+  }
+  // bulk actions: close all / winners / losers, move SL to entry on winners, cancel pending orders
+  function bulk(kind) {
+    const a = A();
+    if (kind === 'cancel') { const n = a.orders.length; a.orders = []; saveAcc(); render(); dirty = true; return toast(`ยกเลิกคำสั่งรอ ${n} รายการ`, 'ok'); }
+    let n = 0, total = 0;
+    for (const p of [...a.positions]) {
+      const P = px(p.symbol); if (!P) continue;
+      const exit = p.side === 1 ? P.bid : P.ask, pl = pnlOf(p, exit);
+      if (kind === 'be') { if (pl > 0 && (!p.sl || (p.sl - p.entry) * p.side < 0)) { p.sl = p.entry; n++; } continue; }
+      if (kind === 'all' || (kind === 'win' && pl > 0) || (kind === 'loss' && pl < 0)) { close(p, exit, 'manual', P.t, true); n++; total += pl; }
+    }
+    saveAcc(); render(); dirty = true;
+    const label = { all: 'ปิดทั้งหมด', win: 'ปิดไม้กำไร', loss: 'ปิดไม้ขาดทุน', be: 'กันทุน' }[kind];
+    toast(n ? (kind === 'be' ? `${label}: เลื่อน SL มาที่ทุน ${n} ไม้` : `${label} ${n} ไม้ รวม ${money(total)}`) : `${label}: ไม่มีไม้ที่ตรงเงื่อนไข`, n ? 'ok' : 'info');
   }
   // per-tick: only update the P/L numbers in place
   let lastTU = 0;
