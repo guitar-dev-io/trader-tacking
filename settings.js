@@ -51,6 +51,7 @@ async function openSettings(section) {
   $('st-autoupd').checked = store.get('autoUpdateCheck', true);
   $('st-bars').value = P.historyBars; $('st-login').checked = !!mainCfg.openAtLogin;
   const n = mainCfg.net;
+  if ($('st-mt5-port')) { $('st-mt5-port').value = (mainCfg.mt5 && mainCfg.mt5.port) || 7788; $('st-save-ea').disabled = !vcg.saveEA; renderMt5Info(); }
   $('st-slow').value = n.slowMs; $('st-delay').value = n.delayMs; $('st-stale').value = n.staleSec; $('st-stuck').value = n.stuckSec; $('st-netnotify').checked = n.notify;
   $('st-sound').checked = P.sound; $('st-desktop').checked = P.desktop; $('st-toast').checked = P.toast;
   $('st-signotify').checked = S.an.notify; $('st-learnonly').checked = S.an.learnOnly;
@@ -96,6 +97,7 @@ async function saveSettingsUI() {
     net: { slowMs: clampNum(v('st-slow'), 100, 10000, 800), delayMs: clampNum(v('st-delay'), 500, 60000, 3000), staleSec: clampNum(v('st-stale'), 10, 3600, 45),
       stuckSec: clampNum(v('st-stuck'), 20, 3600, 60), notify: chk('st-netnotify') },
     openAtLogin: chk('st-login'),
+    mt5: { port: clampNum(v('st-mt5-port'), 1024, 65535, 7788) },
   });
   if (chk('st-csv') !== $('csv').checked) vcg.toggleCsv();
   const tz = v('st-tz');
@@ -122,6 +124,19 @@ $('st-signout').onclick = async () => {
 $('st-checkupd').onclick = () => UPDATE.check(true);
 $('st-open-csv').onclick = () => vcg.openCsv();
 $('st-open-log').onclick = () => vcg.openLogFolder();
+
+// ---------------------------------------------------------------- MT5 status
+let lastStatus = null;
+vcg.onStatus((st) => { lastStatus = st; if (!$('modal-settings').classList.contains('hidden')) renderMt5Info(); });
+function renderMt5Info() {
+  const box = $('st-mt5-info'); if (!box) return;
+  if (!vcg.capabilities?.mt5) { box.textContent = 'ใช้ได้เฉพาะแอปบนคอม (Mac)'; return; }
+  const m = (lastStatus && lastStatus.mt5) || {}, src = lastStatus && lastStatus.source;
+  box.innerHTML = src !== 'mt5' ? 'ยังไม่ได้เลือก MT5 เป็นแหล่งข้อมูล (เลือกได้ที่แท็บราคา → แหล่งข้อมูล)'
+    : m.connected ? `✅ EA เชื่อมต่อแล้ว: <b>${esc(m.broker || '')}</b> (${esc(m.server || '')}) · ${(m.symbols || []).length} symbol ใน Market Watch${(m.unknown || []).length ? `<br>⚠️ ไม่พบใน MT5: ${esc(m.unknown.join(', '))}` : ''}`
+    : `⏳ รอ EA เชื่อมต่อที่ 127.0.0.1:${m.port || 7788}`;
+}
+if ($('st-save-ea')) $('st-save-ea').onclick = async () => { const f = vcg.saveEA && (await vcg.saveEA()); if (f) toast('บันทึก EA แล้ว: ' + f, 'ok'); };
 
 // ---------------------------------------------------------------- sessions editor
 const SESS_ZONES = [['Australia/Sydney', 'Sydney'], ['Asia/Tokyo', 'Tokyo'], ['Asia/Hong_Kong', 'Hong Kong'], ['Asia/Singapore', 'Singapore'], ['Asia/Bangkok', 'Bangkok (เวลาไทยตายตัว)'],

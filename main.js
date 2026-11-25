@@ -9,6 +9,7 @@ const fs = require('fs');
 const log = require('./logger');
 const api = require('./api');
 const notify = require('./notify');
+const mt5 = require('./mt5');
 
 const { WEBTRADER_URL, WS_HOST, SUB_JS, CONNECTED_JS, FEED_JS, CHART_JS, CHART_REQ_JS, parseQuote } = require('./vcg-inject');
 
@@ -46,11 +47,13 @@ let settings = {
   telegram: { botToken: '', chatId: '', onSignal: true, onAlert: true },
   net: { slowMs: 800, delayMs: 3000, staleSec: 45, stuckSec: 60, notify: true },
   openAtLogin: false,
+  source: 'vcg',            // 'vcg' | 'mt5' (Demo is handled in the window)
+  mt5: { port: 7788 },
 };
 function loadSettings() {
   try {
     const s = JSON.parse(fs.readFileSync(settingsFile(), 'utf8'));
-    settings = { ...settings, ...s, api: { ...settings.api, ...s.api }, webhook: { ...settings.webhook, ...s.webhook }, telegram: { ...settings.telegram, ...s.telegram }, net: { ...settings.net, ...s.net } };
+    settings = { ...settings, ...s, api: { ...settings.api, ...s.api }, webhook: { ...settings.webhook, ...s.webhook }, telegram: { ...settings.telegram, ...s.telegram }, net: { ...settings.net, ...s.net }, mt5: { ...settings.mt5, ...s.mt5 } };
   } catch (_) {}
 }
 function saveSettings() {
@@ -67,9 +70,12 @@ setInterval(() => {
 
 // Quotes arrive from a small listener injected into the WebTrader page (FEED_JS), already batched.
 function onQuotes(rawList) {
-  for (const raw of rawList) {
-    const q = parseQuote(raw);
-    if (!settings.symbols.includes(q.symbol)) continue;
+  if (settings.source === 'mt5') return;
+  for (const raw of rawList) acceptQuote(parseQuote(raw));
+}
+function acceptQuote(q) {
+  {
+    if (!settings.symbols.includes(q.symbol)) return;
     state.quotes[q.symbol] = q;
     state.lastTick = Date.now(); state.ticks++;
     const dl = Date.now() - Date.parse(q.time); if (isFinite(dl)) { netState.delays.push(dl); if (netState.delays.length > 40) netState.delays.shift(); }
@@ -102,7 +108,7 @@ function send(ch, data) {
 }
 function statusObj() {
   return { connected: state.connected, loggedIn: state.loggedIn, csv: settings.csv, symbols: settings.symbols,
-    traySymbol: settings.traySymbol, lastTick: state.lastTick, ticks: state.ticks, api: settings.api, invalid: [...state.invalid] };
+    traySymbol: settings.traySymbol, lastTick: state.lastTick, ticks: state.ticks, api: settings.api, invalid: [...state.invalid], source: settings.source, mt5: mt5.status() };
 }
 function sendStatus() { send('status', statusObj()); }
 function updateTray() {
@@ -251,7 +257,7 @@ async function tick() {
 function addSymbol(s) {
   s = String(s || '').trim().toUpperCase();
   state.invalid.delete(s); subTries.delete(s);
-  if (s && !settings.symbols.includes(s)) { settings.symbols.push(s); saveSettings(); refreshTrayMenu(); tick(); log.info('watchlist', 'เพิ่ม ' + s); }
+  if (s && !settings.symbols.includes(s)) { settings.symbols.push(s); saveSettings(); refreshTrayMenu(); tick(); log.info('watchlist', 'เพิ่ม ' + s); if (settings.source === 'mt5') mt5.watch(settings.symbols); }
   sendStatus();
 }
 function removeSymbol(s) {
@@ -260,6 +266,7 @@ function removeSymbol(s) {
   delete state.quotes[s];
   if (settings.traySymbol === s) settings.traySymbol = settings.symbols[0] || '';
   saveSettings(); refreshTrayMenu(); updateTray(); sendStatus(); log.info('watchlist', 'ลบ ' + s);
+  if (settings.source === 'mt5') mt5.watch(settings.symbols);
 }
 
 // ---------------- API ----------------
@@ -285,6 +292,7 @@ ipcMain.on('chart-msg', (_e, m) => {
   if (m.type === 'quotes') return onQuotes(m.data || []);
   if (m.type === 'subs') return onSubs(m.data);
   if (m.type === 'feedError') { log.error('feed', 'symbol:error', m.data); return; }
+  if (settings.source === 'mt5') return;   // VCG charts are not used while MT5 is the source
   if (m.type === 'chartError') log.error('chart', 'chart:error', m.data);
   else if (m.type === 'chartAuthRenew') log.warn('chart', 'token หมดอายุ (PERMISSION_DENIED) — กำลังขอ token ใหม่และโหลดซ้ำ');
   else if (m.type === 'chartLog') log.info('chart', String(m.data));
@@ -292,19 +300,43 @@ ipcMain.on('chart-msg', (_e, m) => {
   else if (m.type === 'chartDisconnected' || m.type === 'chartConnectError') log.warn('chart', m.type, m.data);
   send('chart', m);
 });
-ipcMain.on('chart-request', (_e, o) => sendChartReq(o));
+ipcMain.on('chart-request', (_e, o) => (settings.source === 'mt5' ? mt5.request(o) : sendChartReq(o)));
+ipcMain.on('set-source', (_e, src) => {
+  if (!['vcg', 'mt5'].includes(src) || src === settings.source) return;
+  settings.source = src; saveSettings(); state.quotes = {};
+  log.info('source', 'แหล่งข้อมูล: ' + (src === 'mt5' ? 'MT5 (EA)' : 'VCG'));
+  if (src === 'mt5') startMt5(); else mt5.stop();
+  sendStatus();
+});
+ipcMain.handle('save-ea', async () => {
+  const { dialog } = require('electron');
+  const r = await dialog.showSaveDialog(mainWin, { title: 'บันทึก EA สำหรับ MT5', defaultPath: path.join(app.getPath('downloads'), 'PriceTrackerBridge.mq5') });
+  if (r.canceled || !r.filePath) return null;
+  fs.copyFileSync(path.join(__dirname, 'mt5', 'PriceTrackerBridge.mq5'), r.filePath);
+  shell.showItemInFolder(r.filePath);
+  return r.filePath;
+});
+function startMt5() {
+  mt5.start(settings.mt5.port, {
+    symbols: () => settings.symbols,
+    quote: (q) => { if (settings.source === 'mt5') acceptQuote(q); },
+    chart: (m) => { if (settings.source === 'mt5') send('chart', m); },
+    status: () => sendStatus(),
+  });
+}
 ipcMain.on('chart-data', (_e, d) => { state.chart = d; });
 ipcMain.on('analysis', (_e, a) => { state.analysis = a; });
 ipcMain.on('log', (_e, e) => log.write(e.level || 'info', e.source || 'ui', e.msg, e.data));
 ipcMain.on('open-log-file', () => shell.openPath(log.file()));
 ipcMain.on('open-log-folder', () => shell.showItemInFolder(log.file()));
-ipcMain.handle('get-settings', () => ({ api: settings.api, webhook: settings.webhook, telegram: settings.telegram, net: settings.net, openAtLogin: settings.openAtLogin, version: app.getVersion(), logFile: log.file(), userData: app.getPath('userData') }));
+ipcMain.handle('get-settings', () => ({ mt5: settings.mt5, source: settings.source, api: settings.api, webhook: settings.webhook, telegram: settings.telegram, net: settings.net, openAtLogin: settings.openAtLogin, version: app.getVersion(), logFile: log.file(), userData: app.getPath('userData') }));
 ipcMain.handle('set-settings', (_e, s) => {
   const apiChanged = JSON.stringify(s.api) !== JSON.stringify(settings.api);
   settings.api = { ...settings.api, ...s.api, port: Math.max(1024, Math.min(65535, parseInt(s.api.port, 10) || 8787)) };
   settings.webhook = { ...settings.webhook, ...s.webhook };
   settings.telegram = { ...settings.telegram, ...s.telegram };
   if (s.net) settings.net = { ...settings.net, ...s.net };
+  if (s.mt5 && +s.mt5.port && +s.mt5.port !== settings.mt5.port) { settings.mt5.port = Math.max(1024, Math.min(65535, +s.mt5.port)); if (settings.source === 'mt5') startMt5(); }
   if (typeof s.openAtLogin === 'boolean' && s.openAtLogin !== settings.openAtLogin) {
     settings.openAtLogin = s.openAtLogin;
     try { app.setLoginItemSettings({ openAtLogin: s.openAtLogin }); } catch (e) { log.warn('settings', 'ตั้งเปิดพร้อมเครื่องไม่สำเร็จ: ' + e.message); }
@@ -350,7 +382,11 @@ function fxWeekend() { const d = new Date(), wd = d.getUTCDay(), h = d.getUTCHou
 function evalNet() {
   const n = settings.net, delay = median(netState.delays), since = state.lastTick ? (Date.now() - state.lastTick) / 1000 : null;
   let level = 'ok', detail = '';
-  if (netState.fails >= 2) { level = 'offline'; detail = 'ติดต่อเซิร์ฟเวอร์ VCG ไม่ได้ (อินเทอร์เน็ตหลุด?)'; }
+  if (settings.source === 'mt5') {
+    const m = mt5.status(), ago = m.lastTick ? (Date.now() - m.lastTick) / 1000 : null;
+    if (!m.connected) { level = 'down'; detail = 'ยังไม่ได้เชื่อมต่อกับ EA ใน MT5'; }
+    else if (ago != null && ago > n.staleSec && !fxWeekend()) { level = 'stale'; detail = `MT5 ไม่ส่งราคาใหม่ ${Math.round(ago)} วินาที`; }
+  } else if (netState.fails >= 2) { level = 'offline'; detail = 'ติดต่อเซิร์ฟเวอร์ VCG ไม่ได้ (อินเทอร์เน็ตหลุด?)'; }
   else if (state.loggedIn && !state.connected) { level = 'down'; detail = 'การเชื่อมต่อราคาหลุด กำลังต่อใหม่'; }
   else if (state.connected && since != null && since > n.staleSec && (hasCrypto() || !fxWeekend())) { level = 'stale'; detail = `ไม่มีราคาใหม่ ${Math.round(since)} วินาที`; }
   else if ((netState.rtt != null && netState.rtt > n.slowMs) || (delay != null && delay > n.delayMs)) { level = 'slow'; detail = `เน็ตช้า: ping ${netState.rtt ?? '—'} ms, ราคาหน่วง ~${delay ?? '—'} ms`; }
@@ -391,11 +427,12 @@ app.whenReady().then(() => {
   createMain();
   createTrader();
   restartApi();
+  if (settings.source === 'mt5') startMt5();
   probe();
   setInterval(tick, 3000);
 });
 process.on('uncaughtException', (e) => log.error('app', 'uncaughtException: ' + e.stack));
 process.on('unhandledRejection', (e) => log.error('app', 'unhandledRejection: ' + (e && e.stack || e)));
 app.on('activate', showMain);
-app.on('before-quit', () => { quitting = true; api.stop(); log.info('app', 'ปิดโปรแกรม'); });
+app.on('before-quit', () => { quitting = true; api.stop(); mt5.stop(); log.info('app', 'ปิดโปรแกรม'); });
 app.on('window-all-closed', () => {});

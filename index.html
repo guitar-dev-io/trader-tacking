@@ -203,6 +203,16 @@
           <div class="row"><label>ไม่มีราคาเกิน</label><input id="st-stale" type="number" min="10" step="5"><span class="muted">วินาที → เตือน "ราคาค้าง"</span></div>
           <div class="row"><label>หลุดนานเกิน</label><input id="st-stuck" type="number" min="20" step="10"><span class="muted">วินาที → โหลด WebTrader ใหม่อัตโนมัติ</span></div>
           <label class="chk"><input type="checkbox" id="st-netnotify"> แจ้งเตือนบน macOS เมื่อการเชื่อมต่อแย่ลง</label>
+          <h4>MT5 (โบรกเกอร์ที่ใช้ MetaTrader 5 เช่น Brex Capital)</h4>
+          <div id="st-mt5-info" class="net-now"></div>
+          <div class="row"><label>พอร์ต MT5</label><input id="st-mt5-port" type="number" min="1024" max="65535"><button id="st-save-ea">⬇ บันทึกไฟล์ EA</button></div>
+          <ol class="mt5-steps">
+            <li>กด "บันทึกไฟล์ EA" แล้วใน MT5 เปิด <b>File › Open Data Folder › MQL5 › Experts</b> วางไฟล์ <code>PriceTrackerBridge.mq5</code></li>
+            <li>ใน MT5: <b>Tools › Options › Expert Advisors</b> ติ๊ก <i>Allow WebRequest for listed URL</i> แล้วเพิ่ม <code>127.0.0.1</code></li>
+            <li>เปิด Navigator (Ctrl+N) › Expert Advisors › คลิกขวา Refresh › ลาก <b>PriceTrackerBridge</b> ลงกราฟใดก็ได้ (พอร์ตต้องตรงกับช่องด้านบน)</li>
+            <li>ใน Price Tracker เลือกแหล่งข้อมูล <b>MT5</b> · ชื่อ symbol ต้องตรงกับใน MT5 (บางโบรกมีคำต่อท้าย เช่น XAUUSD.m)</li>
+          </ol>
+          <p class="muted">EA นี้อ่านราคาอย่างเดียว ไม่ส่งคำสั่งซื้อขาย · ใช้ได้กับ MT5 บนคอม (Mac/Windows) — MT5 บนมือถือรัน EA ไม่ได้</p>
           <div class="row end"><button id="st-reconnect">เชื่อมต่อใหม่</button><button id="st-trader">เปิด WebTrader</button><button id="st-signout" class="danger">ออกจากระบบ VCG</button></div>
         </section>
         <section data-sec="notif" class="hidden">

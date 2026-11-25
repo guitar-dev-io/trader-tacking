@@ -69,6 +69,8 @@ const DEMO = (() => {
 function setSource(src) {
   if (src === S.source) return;
   S.source = src; store.set('source', src); S.quotes = {};
+  if (src !== 'demo' && vcg.setSource) vcg.setSource(src);
+  if (src === 'mt5') toast('ใช้ราคาจาก MT5 — ต้องเปิด MT5 และลาก EA PriceTrackerBridge ลงกราฟ (ดูวิธีที่ ⚙ การตั้งค่า → การเชื่อมต่อ)', 'info', 10000);
   if (src === 'demo') { DEMO.connect(); toast('ใช้ข้อมูล Demo จาก Binance สำหรับฝึก — XAUUSD ใช้ PAXG แทนทองคำ ราคาใกล้เคียงแต่ไม่เท่ากับโบรกเกอร์', 'info', 9000); }
   else DEMO.stop();
   renderWatchlist(); renderSourceSel(); loadChart();
@@ -76,13 +78,19 @@ function setSource(src) {
 function renderSourceSel() {
   if (!$('src-sel')) {
     $('add-form').insertAdjacentHTML('afterend', `<div class="row" style="display:flex;gap:6px;align-items:center;margin-top:8px"><span class="muted">แหล่งข้อมูล</span>
-      <select id="src-sel" style="flex:1"><option value="vcg">VCG (ราคาจริง)</option><option value="demo">Demo — Binance (ฝึก)</option></select></div>`);
+      <select id="src-sel" style="flex:1"><option value="vcg">VCG (ราคาจริง)</option><option value="mt5">MT5 — โบรกเกอร์ใดก็ได้ (EA)</option><option value="demo">Demo — Binance (ฝึก)</option></select></div>`);
     $('src-sel').onchange = () => setSource($('src-sel').value);
   }
   $('src-sel').value = S.source;
   $('src-sel').querySelector('[value=vcg]').disabled = !vcg.capabilities?.vcg;
+  const o5 = $('src-sel').querySelector('[value=mt5]'); o5.disabled = !vcg.capabilities?.mt5; o5.hidden = !vcg.capabilities?.mt5;
 }
 renderSourceSel();
+if (S.source === 'mt5' && !vcg.capabilities?.mt5) { S.source = vcg.capabilities?.vcg ? 'vcg' : 'demo'; store.set('source', S.source); }
+// desktop: the main process remembers vcg/mt5 — adopt it on start (Demo is a window-only choice)
+if (vcg.capabilities?.mt5 && S.source !== 'demo') vcg.getSettings().then((c) => {
+  if (c.source && c.source !== S.source) { S.source = c.source; store.set('source', c.source); renderSourceSel(); loadChart(); }
+});
 if (S.source === 'demo') setTimeout(() => DEMO.connect(), 500);
 vcg.onStatus(() => { if (S.source === 'demo') DEMO.connect(); });
 

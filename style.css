@@ -304,3 +304,4 @@ body.mobile #sess-status small { display: none; }
 #mtf-badge.up { background: #26a69a22; color: var(--up); } #mtf-badge.down { background: #ef535022; color: var(--down); } #mtf-badge.flat { background: #787b8622; color: var(--muted); }
 body.mobile #chart-row { flex-direction: column; }
 body.mobile #mtf-pane { flex: 0 0 42%; border-left: none; border-top: 1px solid var(--line); }
+.mt5-steps { margin: 8px 0; padding-left: 18px; line-height: 1.7; color: #b9bfcc; } .mt5-steps code { background: #1c2030; padding: 1px 4px; border-radius: 3px; }

@@ -681,8 +681,21 @@ vcg.onStatus((st) => {
     if (inv) toast(`ไม่พบใน VCG: ${inv} — ตรวจชื่อ symbol`, 'warn', 8000);
   }
   $('csv').checked = st.csv;
-  if (S.source !== 'demo') $('conn').classList.toggle('ok', st.connected);
-  if (S.source !== 'demo') $('conn-text').textContent = st.connected ? 'เชื่อมต่อแล้ว' : st.loggedIn ? 'กำลังเชื่อมต่อ…' : 'ยังไม่ได้ login — กด "เปิด WebTrader / Login"';
+  if (S.source === 'mt5') {
+    const m = st.mt5 || {};
+    $('conn').classList.toggle('ok', !!m.connected);
+    $('conn-text').textContent = m.connected ? `MT5: ${m.broker || 'เชื่อมต่อแล้ว'}` : `MT5: รอ EA (พอร์ต ${m.port || 7788})`;
+    if (m.connected && S.mt5WasDown && S.pendingHistory) loadChart();
+    // brokers often add a suffix (XAUUSD.m, XAUUSDm…) — switch to the name this MT5 actually has
+    if (m.connected && (m.symbols || []).length && !m.symbols.includes(S.symbol)) {
+      const base = S.symbol.replace(/[^A-Z]/g, '').slice(0, 6);
+      const alt = m.symbols.find((x) => x.toUpperCase().replace(/[^A-Z]/g, '').startsWith(base));
+      if (alt && alt !== S.symbol) { toast(`MT5 ใช้ชื่อ ${alt} แทน ${S.symbol}`, 'info', 8000); vcg.addSymbol(alt); switchSymbol(alt); }
+    }
+    S.mt5WasDown = !m.connected;
+  }
+  if (S.source === 'vcg') $('conn').classList.toggle('ok', st.connected);
+  if (S.source === 'vcg') $('conn-text').textContent = st.connected ? 'เชื่อมต่อแล้ว' : st.loggedIn ? 'กำลังเชื่อมต่อ…' : 'ยังไม่ได้ login — กด "เปิด WebTrader / Login"';
   $('api-info').innerHTML = st.api && st.api.enabled ? `API: <b>http://127.0.0.1:${st.api.port}</b>${st.api.lan ? ' (เปิดให้วง LAN)' : ''}` : 'API: ปิดอยู่';
   if (st.connected && lastConnected === false && S.pendingHistory) loadChart();
   lastConnected = st.connected;
