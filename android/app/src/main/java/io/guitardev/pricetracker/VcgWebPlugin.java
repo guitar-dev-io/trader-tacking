@@ -158,7 +158,7 @@ public class VcgWebPlugin extends Plugin {
     }
 
     @PluginMethod
-    public void load(PluginCall call) {
+    public void navigate(PluginCall call) {
         String url = call.getString("url");
         getActivity().runOnUiThread(() -> { create(); web.loadUrl(url); call.resolve(); });
     }

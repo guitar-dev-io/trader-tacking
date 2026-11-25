@@ -68,7 +68,7 @@
   }
 
   // ---------------- Android: hidden VCG WebView ----------------
-  let V = null, lastChartReq = {}, shownForLogin = false, notConnectedSince = Date.now(), reconnects = 0;
+  let hiddenAt = 0, V = null, lastChartReq = {}, shownForLogin = false, notConnectedSince = Date.now(), reconnects = 0;
   const subTries = new Map();
   const jsEval = async (js) => { const r = await V.eval({ js }); try { return JSON.parse(r.value); } catch (_) { return r.value; } };
   async function sendChartReq(o) {
@@ -95,6 +95,7 @@
     if (connected) {
       notConnectedSince = Date.now();
       if (shownForLogin) { shownForLogin = false; V.hide(); log('info', 'auth', 'login สำเร็จ ซ่อนหน้าต่าง WebTrader'); }
+      ls.set('bridge.everConnected', true);
       try { if ((await jsEval(VCGI.FEED_JS)) === 'ok') log('info', 'feed', 'ติดตั้งตัวรับราคาในหน้า WebTrader แล้ว'); } catch (_) {}
       try { if ((await jsEval(VCGI.CHART_JS)) === 'ok') Object.values(lastChartReq).forEach(sendChartReq); } catch (_) {}
       const want = settings.symbols.filter((s) => !state.invalid.has(s));
@@ -104,7 +105,7 @@
         const merged = [...new Set([...state.serverSubs, ...want.filter((s) => !state.invalid.has(s))])];
         try { await jsEval(VCGI.SUB_JS(merged)); } catch (_) {}
       }
-    } else if (!onTrader && url && !shownForLogin) {
+    } else if (!onTrader && url && !shownForLogin && Date.now() - hiddenAt > 60000) {   // user closed it → don't pop up again for a minute
       shownForLogin = true; V.show(); log('info', 'auth', 'ต้อง login — เปิดหน้า WebTrader');
     } else if (onTrader && Date.now() - notConnectedSince > settings.net.stuckSec * 1000) {
       notConnectedSince = Date.now(); log('warn', 'feed', 'เชื่อมต่อไม่ได้นาน — โหลด WebTrader ใหม่'); V.reload();
@@ -159,12 +160,16 @@
       if (s.net) settings.net = { ...settings.net, ...s.net };
       save(); log('info', 'settings', 'บันทึกการตั้งค่า'); return true;
     },
-    signOut: async () => { if (V) { await V.clearData(); state.connected = false; V.load({ url: VCGI.WEBTRADER_URL }); log('warn', 'auth', 'ออกจากระบบแล้ว'); } return true; },
+    signOut: async () => { if (V) { await V.clearData(); state.connected = false; V.navigate({ url: VCGI.WEBTRADER_URL }); log('warn', 'auth', 'ออกจากระบบแล้ว'); } return true; },
     openLogFile: () => {}, openLogFolder: () => {}, openCsv: () => {}, toggleCsv: () => log('info', 'csv', 'การบันทึก CSV ใช้ได้เฉพาะแอป Mac'),
     addSymbol: (s) => { s = String(s || '').trim().toUpperCase(); state.invalid.delete(s); subTries.delete(s); if (s && !settings.symbols.includes(s)) { settings.symbols.push(s); save(); tick(); } sendStatus(); },
     removeSymbol: (s) => { settings.symbols = settings.symbols.filter((x) => x !== s); delete state.quotes[s]; if (settings.traySymbol === s) settings.traySymbol = settings.symbols[0] || ''; save(); sendStatus(); },
     setTray: (s) => { settings.traySymbol = s; save(); sendStatus(); },
-    showTrader: () => V && V.show(),
+    showTrader: () => {
+      if (V) { V.show(); return; }
+      log('error', 'app', 'เปิดหน้า VCG ไม่ได้: ส่วนเชื่อมต่อ Android ไม่ทำงาน (platform=' + (native ? 'android' : 'web') + ')');
+      if (typeof toast === 'function') toast(/Android/.test(navigator.userAgent) ? 'ส่วนเชื่อมต่อ Android ไม่ทำงาน — ส่งภาพแท็บ Log ให้ผู้พัฒนา' : 'โหมดเว็บต่อ VCG ไม่ได้ — ใช้ข้อมูล Demo', 'error', 10000);
+    },
     onBack: (cb) => on('back', cb),
     minimize: () => V && V.minimize(),
     reloadTrader: () => { if (V) { log('info', 'feed', 'ผู้ใช้สั่งเชื่อมต่อใหม่'); V.reload(); } },
@@ -175,13 +180,17 @@
     V.addListener('message', (e) => { try { handlePageMsg(JSON.parse(e.data)); } catch (_) {} });
     V.addListener('page', (e) => log('info', 'webtrader', 'เปิดหน้า ' + e.url));
     V.addListener('pageError', (e) => log('error', 'webtrader', `โหลดหน้าไม่สำเร็จ ${e.code} ${e.description}`));
-    V.addListener('hidden', () => { shownForLogin = false; });
+    V.addListener('hidden', () => { shownForLogin = false; hiddenAt = Date.now(); });
     V.addListener('back', () => emit('back'));
-    V.start({ url: VCGI.WEBTRADER_URL });
-    log('info', 'app', 'เริ่มโปรแกรม (Android)');
+    V.start({ url: VCGI.WEBTRADER_URL }).then(() => {
+      // first run (never connected yet): show the VCG login page straight away instead of waiting for the checks
+      if (!ls.get('bridge.everConnected', false)) { shownForLogin = true; V.show(); }
+    }, (e) => log('error', 'app', 'เริ่มหน้า VCG ไม่ได้: ' + (e && e.message)));
+    log('info', 'app', `เริ่มโปรแกรม (Android) · Capacitor ${C.getPlatform ? C.getPlatform() : ''} · plugins: ${Object.keys(C.Plugins || {}).join(', ')}`);
     setInterval(tick, 3000); setInterval(probe, 10000); setInterval(evalNet, 2000); probe();
   } else {
-    log('info', 'app', 'เปิดแบบเว็บ — ไม่มีการเชื่อมต่อ VCG ใช้ข้อมูล Demo ได้');
+    log(/Android/.test(navigator.userAgent) && /wv\)/.test(navigator.userAgent) ? 'error' : 'info', 'app',
+      `เปิดแบบเว็บ (Capacitor=${!!C}, native=${native}) — ไม่มีการเชื่อมต่อ VCG ใช้ข้อมูล Demo ได้`);
   }
   setTimeout(sendStatus, 100);
 })();
