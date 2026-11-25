@@ -39,12 +39,24 @@ jobs:
       - name: Signing key (optional, from secrets)
         env:
           KS_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KS_PW: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
-          if [ -n "$KS_B64" ]; then echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.jks"; echo "KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> $GITHUB_ENV; echo "Using release key"; else echo "No ANDROID_KEYSTORE_B64 secret — using the cached debug key"; fi
+          if [ -z "$KS_B64" ]; then echo "No ANDROID_KEYSTORE_B64 secret — using the cached debug key"; exit 0; fi
+          echo "$KS_B64" | tr -d ' \r\n' | base64 -d > "$RUNNER_TEMP/release.jks"
+          PW=$(printf '%s' "$KS_PW" | tr -d '\r\n')
+          echo "::add-mask::$PW"
+          if keytool -list -keystore "$RUNNER_TEMP/release.jks" -storepass "$PW" > "$RUNNER_TEMP/ks.txt" 2>&1; then
+            ALIAS=$(grep -m1 -oE '^[^,]+, ' "$RUNNER_TEMP/ks.txt" | sed 's/, $//' || true)
+            echo "KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> $GITHUB_ENV
+            echo "KEYSTORE_PASSWORD=$PW" >> $GITHUB_ENV
+            echo "KEY_ALIAS=${ALIAS:-pricetracker}" >> $GITHUB_ENV
+            echo "Using release key (alias: ${ALIAS:-pricetracker})"
+          else
+            echo "::warning title=Android signing::Cannot open the keystore with ANDROID_KEYSTORE_PASSWORD ($(head -1 $RUNNER_TEMP/ks.txt)). Building with the debug key instead — fix the secret to sign with your key."
+          fi
       - name: Gradle assembleRelease
         working-directory: android
         env:
-          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           VERSION_CODE: ${{ github.run_number }}
         run: |
           export VERSION_NAME=$(node -p "require('../package.json').version")
