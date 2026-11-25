@@ -44,13 +44,13 @@
 
   let pendingQuotes = {};
   setInterval(() => { const l = Object.values(pendingQuotes); if (l.length) { pendingQuotes = {}; emit('quotes', l); } }, 100);
-  const delays = [];
+  const delays = [], base = [];
   function onQuotes(rawList) {
     for (const raw of rawList || []) {
       const q = VCGI.parseQuote(raw);
       if (!settings.symbols.includes(q.symbol)) continue;
       state.quotes[q.symbol] = q; state.lastTick = Date.now(); state.ticks++;
-      const dl = Date.now() - Date.parse(q.time); if (isFinite(dl)) { delays.push(dl); if (delays.length > 40) delays.shift(); }
+      const dl = Date.now() - Date.parse(q.time); if (isFinite(dl)) { delays.push(dl); if (delays.length > 40) delays.shift(); base.push(dl); if (base.length > 600) base.shift(); }
       pendingQuotes[q.symbol] = q;
     }
   }
@@ -117,11 +117,14 @@
   let rtt = null, fails = 0, netLevel = 'ok';
   async function probe() {
     const t0 = Date.now();
-    try { await fetch('https://vcgmarkets.com/favicon.ico?_=' + t0, { method: 'HEAD', cache: 'no-store' }); rtt = Date.now() - t0; fails = 0; } catch (_) { fails++; rtt = null; }
+    try { const hit = () => fetch('https://prod-ws-server.anttix.app/?_=' + Date.now(), { method: 'HEAD', cache: 'no-store' });
+      await hit(); const t1 = Date.now(); await hit(); rtt = Date.now() - t1; fails = 0; void t0; } catch (_) { fails++; rtt = null; }
   }
   function evalNet() {
     if (!native) return;
-    const n = settings.net, med = delays.length ? [...delays].sort((a, b) => a - b)[Math.floor(delays.length / 2)] : null;
+    const bs = [...base].sort((a, b) => a - b), floor = bs.length >= 20 ? bs[Math.floor(bs.length * 0.1)] : null;
+    const raw = delays.length ? [...delays].sort((a, b) => a - b)[Math.floor(delays.length / 2)] : null;
+    const n = settings.net, med = raw == null || floor == null ? null : Math.max(0, Math.round(raw - floor));
     const since = state.lastTick ? (Date.now() - state.lastTick) / 1000 : null;
     let level = 'ok', detail = '';
     if (fails >= 2) { level = 'offline'; detail = 'ติดต่อเซิร์ฟเวอร์ VCG ไม่ได้'; }

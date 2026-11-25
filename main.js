@@ -78,7 +78,7 @@ function acceptQuote(q) {
     if (!settings.symbols.includes(q.symbol)) return;
     state.quotes[q.symbol] = q;
     state.lastTick = Date.now(); state.ticks++;
-    const dl = Date.now() - Date.parse(q.time); if (isFinite(dl)) { netState.delays.push(dl); if (netState.delays.length > 40) netState.delays.shift(); }
+    const dl = Date.now() - Date.parse(q.time); if (isFinite(dl)) { netState.delays.push(dl); if (netState.delays.length > 40) netState.delays.shift(); netState.base.push(dl); if (netState.base.length > 600) netState.base.shift(); }
     pendingQuotes[q.symbol] = q;
     api.broadcast('quote', q);
     writeCsv(q);
@@ -367,20 +367,26 @@ ipcMain.handle('notify', async (_e, { event, payload, text }) => {
 });
 
 // ---------------- network monitor ----------------
-const netState = { rtt: null, fails: 0, delays: [], reconnects: 0, level: 'ok', detail: '' };
+const netState = { rtt: null, fails: 0, delays: [], base: [], reconnects: 0, level: 'ok', detail: '' };
 const median = (a) => { if (!a.length) return null; const b = [...a].sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; };
 async function probe() {
   const t0 = Date.now(), ac = new AbortController(), to = setTimeout(() => ac.abort(), 8000);
   try {
-    await enet.fetch('https://vcgmarkets.com/favicon.ico?_=' + t0, { method: 'HEAD', cache: 'no-store', signal: ac.signal, partition: 'persist:vcg' });
-    netState.rtt = Date.now() - t0; netState.fails = 0;
+    // ping the PRICE server itself (not the website), twice: the 2nd request reuses the open connection,
+    // so it measures the real round-trip instead of DNS + TLS handshake (which made "ping" look like 500–3000 ms)
+    const hit = () => enet.fetch('https://prod-ws-server.anttix.app/?_=' + Date.now(), { method: 'HEAD', cache: 'no-store', signal: ac.signal, partition: 'persist:vcg' });
+    await hit(); const t1 = Date.now(); await hit();
+    netState.rtt = Date.now() - t1; netState.fails = 0; void t0;
   } catch (_) { netState.fails++; netState.rtt = null; }
   clearTimeout(to);
 }
 function hasCrypto() { return settings.symbols.some((s) => /^(BTC|ETH|SOL|LTC|XRP|BNB|ADA|DOGE)/.test(s)); }
 function fxWeekend() { const d = new Date(), wd = d.getUTCDay(), h = d.getUTCHours(); return wd === 6 || (wd === 0 && h < 21) || (wd === 5 && h >= 22); }
 function evalNet() {
-  const n = settings.net, delay = median(netState.delays), since = state.lastTick ? (Date.now() - state.lastTick) / 1000 : null;
+  // "delay" = how much later than usual prices arrive now. Raw (now − quote time) also contains the clock
+  // difference between this computer and the broker server, so subtract the best (10th percentile) recent value.
+  const b = [...netState.base].sort((x, y) => x - y), floor = b.length >= 20 ? b[Math.floor(b.length * 0.1)] : null, med = median(netState.delays);
+  const n = settings.net, delay = med == null ? null : floor == null ? null : Math.max(0, Math.round(med - floor)), since = state.lastTick ? (Date.now() - state.lastTick) / 1000 : null;
   let level = 'ok', detail = '';
   if (settings.source === 'mt5') {
     const m = mt5.status(), ago = m.lastTick ? (Date.now() - m.lastTick) / 1000 : null;
@@ -389,7 +395,7 @@ function evalNet() {
   } else if (netState.fails >= 2) { level = 'offline'; detail = 'ติดต่อเซิร์ฟเวอร์ VCG ไม่ได้ (อินเทอร์เน็ตหลุด?)'; }
   else if (state.loggedIn && !state.connected) { level = 'down'; detail = 'การเชื่อมต่อราคาหลุด กำลังต่อใหม่'; }
   else if (state.connected && since != null && since > n.staleSec && (hasCrypto() || !fxWeekend())) { level = 'stale'; detail = `ไม่มีราคาใหม่ ${Math.round(since)} วินาที`; }
-  else if ((netState.rtt != null && netState.rtt > n.slowMs) || (delay != null && delay > n.delayMs)) { level = 'slow'; detail = `เน็ตช้า: ping ${netState.rtt ?? '—'} ms, ราคาหน่วง ~${delay ?? '—'} ms`; }
+  else if ((netState.rtt != null && netState.rtt > n.slowMs) || (delay != null && delay > n.delayMs)) { level = 'slow'; detail = `เน็ตช้า: ping ${netState.rtt ?? '—'} ms, ราคามาช้ากว่าปกติ ~${delay ?? '—'} ms`; }
   if (level !== netState.level) {
     const worse = ['ok', 'slow', 'stale', 'down', 'offline'].indexOf(level) > ['ok', 'slow', 'stale', 'down', 'offline'].indexOf(netState.level);
     log[level === 'ok' ? 'info' : 'warn']('network', level === 'ok' ? 'การเชื่อมต่อกลับมาปกติ' : detail);

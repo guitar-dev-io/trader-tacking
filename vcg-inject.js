@@ -16,14 +16,17 @@
     if (window.__vcgFeed) return 'exists';
     const shared = globalThis._wsSharedManager; if (!shared) return 'none';
     const s = shared.socket('/symbol');
-    let buf = {}, n = 0, last = 0, timer = null;
+    // NOTE: no setTimeout here — the WebTrader page is hidden and Chromium throttles timers in hidden pages
+    // (>=1 s, and only once per minute after 5 min), which delayed prices by 1–3 s. A MessageChannel task is not throttled.
+    let buf = {}, n = 0, queued = false;
     const post = (type, d) => window.postMessage({ __vcg: type, d }, '*');
-    const flush = () => { timer = null; if (!n) return; post('quotes', Object.values(buf)); buf = {}; n = 0; last = Date.now(); };
+    const flush = () => { queued = false; if (!n) return; post('quotes', Object.values(buf)); buf = {}; n = 0; };
+    const mc = new MessageChannel(); mc.port1.onmessage = flush;
     s.onAny((ev, d) => {
       if (ev === 'symbol:data' && d) {
         const list = (d.quoteList && d.quoteList.quotes) || (d.quote ? [d.quote] : []);
         for (const q of list) { if (!buf[q.symbol]) n++; buf[q.symbol] = q; }
-        if (Date.now() - last >= 100) flush(); else if (!timer) timer = setTimeout(flush, 100);
+        if (!queued) { queued = true; mc.port2.postMessage(0); }   // coalesce one socket burst, deliver right after it
       } else if (ev === 'symbol:subscriptionUpdate') post('subs', (d && d.symbols) || []);
       else if (ev === 'symbol:error') post('feedError', d);
     });
