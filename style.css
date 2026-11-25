@@ -387,3 +387,5 @@ body.mobile #toasts { bottom: 70px; }
 #planner .btns.pts { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 6px; } #planner .btns.pts button { padding: 3px 8px; }
 #planner .btns.pts .muted { font-size: 11px; margin-left: 4px; }
 #planner { overflow-x: hidden; } #planner table { display: block; overflow-x: auto; max-width: 100%; white-space: nowrap; }
+
+.bn-st td, .bn-st th { padding: 3px 4px; font-size: 11.5px; } .bn-st td:nth-child(n+3), .bn-st th:nth-child(n+3) { text-align: right; }

@@ -232,7 +232,7 @@ function redraw() {
   if (!dirty) return; dirty = false;
   const W = chartW(), H = paneH();
   svg.setAttribute('width', Math.max(0, W)); svg.setAttribute('height', Math.max(0, H));
-  svg.textContent = '';
+  svg.textContent = ''; resetLabels();
   if (!S.candles.length) return;
   if (S.showSessions) drawSessions(W, H);
   if (typeof NEWS !== 'undefined') NEWS.draw(W, H);

@@ -9,6 +9,7 @@
     sr: { name: 'แนวรับ (Swing Low ซ้ำ)', sname: 'แนวต้าน (Swing High ซ้ำ)', short: 'S/R', w: 2 },
     swing: { name: 'Swing Low เดิม', sname: 'Swing High เดิม', short: 'SW', w: 1 },
     fib: { name: 'Fibo 61.8–78.6% (Golden pocket)', sname: 'Fibo 61.8–78.6% (Golden pocket)', short: 'FIB', w: 2 },
+    sweep: { name: 'กวาด SL ใต้ Swing Low แล้วปิดกลับ', sname: 'กวาด SL เหนือ Swing High แล้วปิดกลับ', short: 'SWEEP', w: 0 },
   };
   const PRIO = ['ob', 'fvg', 'sr', 'fib', 'swing'];
 
@@ -78,10 +79,49 @@
   }
 
   // walk-forward bounce statistic per type: limit at zone top on first touch, SL under the zone, did it reach 1R / 2R?
+  // historical candidates for the zone types that rawZones() only builds for "now":
+  // every confirmed swing low (as a support zone) and the golden pocket of every big up-leg
+  function histZones(c, atr, piv, n) {
+    const out = [], P = piv.filter((p) => p.conf < n);
+    for (const p of P) if (p.type === 'L') { const a = atr[p.conf] || atr[p.i]; if (a) out.push({ type: 'swing', lo: p.price - 0.1 * a, hi: p.price + 0.1 * a, born: p.conf, at: p.i }); }
+    for (let k = 1; k < P.length; k++) {
+      const L = P[k - 1], H = P[k]; if (L.type !== 'L' || H.type !== 'H') continue;
+      const a = atr[H.conf] || atr[H.i], rng = H.price - L.price; if (!a || rng < 3 * a) continue;
+      out.push({ type: 'fib', lo: H.price - 0.786 * rng, hi: H.price - 0.618 * rng, born: H.conf, at: L.i });
+    }
+    return out;
+  }
+  // stop-hunt trades: a bar wicks under an untaken swing low and closes back above → enter at its close,
+  // SL under the wick; did it reach 1R / 2R?
+  function sweepStats(c, atr, piv, n, slBuf, maxBars, trendAt) {
+    const s = { n: 0, w1: 0, w2: 0 }, sT = { n: 0, w1: 0, w2: 0 };
+    for (const p of piv) {
+      if (p.type !== 'L' || p.conf >= n) continue;
+      for (let j = p.conf; j < n; j++) {
+        if (c[j].low >= p.price) continue;
+        if (c[j].close > p.price) {
+          const a = atr[j] || 1, entry = c[j].close, sl = c[j].low - slBuf * a, risk = entry - sl; if (risk <= 0) break;
+          let r1 = null, r2 = null;
+          for (let k = j + 1; k < n && k <= j + maxBars; k++) {
+            if (c[k].low <= sl) { r1 ??= 'loss'; r2 ??= 'loss'; break; }
+            if (r1 == null && c[k].high >= entry + risk) r1 = 'win';
+            if (c[k].high >= entry + 2 * risk) { r2 = 'win'; break; }
+          }
+          if (r2 == null && j + maxBars >= n) break;
+          for (const t of trendAt[j] === 1 ? [s, sT] : [s]) { t.n++; if (r1 === 'win') t.w1++; if (r2 === 'win') t.w2++; }
+        }
+        break;                                                           // only the first break of each low
+      }
+    }
+    const out = {};
+    if (s.n) out.sweep = { ...s, wr1: s.w1 / s.n, wr2: s.w2 / s.n };
+    if (sT.n) out['sweep+'] = { ...sT, wr1: sT.w1 / sT.n, wr2: sT.w2 / sT.n };
+    return out;
+  }
   function history(c, atr, zs, n, slBuf, maxBars) {
     const st = {};
     for (const z of zs) {
-      if (z.type !== 'ob' && z.type !== 'fvg') continue;
+
       const j = firstTouch(c, z.born + 1, z.lo, z.hi, n); if (j == null || j < 0) continue;
       const a = atr[z.born] || atr[j]; const entry = Math.min(c[j].open, z.hi), sl = z.lo - slBuf * a, risk = entry - sl;
       if (risk <= 0) continue;
@@ -146,7 +186,9 @@
   function side(c, A, piv, trendAt, o) {
     const n = c.length, atr = A.atr, a = atr[n - 1] || (c[n - 1].high - c[n - 1].low), price = o.price;
     const all = rawZones(c, atr, piv, n).map((z) => ({ ...z, trend: trendAt[z.at] || 0 }));
-    const stats = history(c, atr, all, n, o.slBuf, o.maxBars);
+    const hz = histZones(c, atr, piv, n).map((z) => ({ ...z, trend: trendAt[z.at] || 0 }));
+    const stats = { ...history(c, atr, [...all.filter((z) => z.type === 'ob' || z.type === 'fvg'), ...hz], n, o.slBuf, o.maxBars), ...sweepStats(c, atr, piv, n, o.slBuf, o.maxBars, trendAt) };
+    if (stats.swing) stats.sr = stats.swing;            // S/R clusters are tested with the same swing-low rule
     let live = all.map((z) => alive(c, z, n)).filter(Boolean).filter((z) => z.lo <= price && price - z.hi <= 10 * a && z.hi - z.lo <= 3 * a);
     // merge overlapping zones into confluence areas
     live.sort((x, y) => y.hi - x.hi);

@@ -36,6 +36,18 @@ const yOf = (p) => (main ? main.priceToCoordinate(p) : null);
 
 function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); (parent || svg).appendChild(e); return e; }
 function txt(x, y, s, color, anchor = 'start', size = 11, weight = 400) { const t = el('text', { x, y, fill: color, 'font-size': size, 'font-weight': weight, 'text-anchor': anchor, 'font-family': '-apple-system, sans-serif' }); t.textContent = s; return t; }
+// layout-aware text for analysis overlays: nudges a label up/down until it no longer overlaps another one
+let _lbls = [];
+function resetLabels() { _lbls = []; }
+function ltxt(x, y, s, color, anchor = 'start', size = 10, weight = 400) {
+  const w = String(s).length * size * 0.6, h = size + 2;
+  const box = (yy) => { const x0 = anchor === 'end' ? x - w : anchor === 'middle' ? x - w / 2 : x; return { x0, x1: x0 + w, y0: yy - size, y1: yy + 2 }; };
+  const hit = (b) => _lbls.some((o) => b.x0 < o.x1 && b.x1 > o.x0 && b.y0 < o.y1 && b.y1 > o.y0);
+  let yy = y;
+  for (let k = 1; k <= 8 && hit(box(yy)); k++) yy = y + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * h;
+  _lbls.push(box(yy));
+  return txt(x, yy, s, color, anchor, size, weight);
+}
 function label(x, y, s, bg, fg = '#fff', anchor = 'middle') {
   const w = s.length * 6.4 + 10, x0 = anchor === 'middle' ? x - w / 2 : anchor === 'end' ? x - w : x;
   el('rect', { x: x0, y: y - 12, width: w, height: 16, rx: 3, fill: bg });
