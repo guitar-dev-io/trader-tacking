@@ -347,3 +347,18 @@ body.mobile #toasts { bottom: 70px; }
 #center { min-width: 0; overflow: hidden; }
 .menu { max-height: calc(100vh - 120px); overflow-y: auto; z-index: 60; }
 #tab-practice .bulk button { font-size: 11px; padding: 4px 8px; } #tab-practice .upb { color: var(--up); } #tab-practice .downb { color: var(--down); } #tab-practice h4 .mini { font-size: 10.5px; padding: 1px 6px; margin-left: 6px; font-weight: 400; }
+
+/* v2.3.6: toolbar = scrollable tools + pinned right group; side panel never painted over */
+#toolbar { overflow: visible !important; }
+#tb-scroll { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 4px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+#tb-scroll::-webkit-scrollbar { display: none; }
+#tb-scroll > * { flex-shrink: 0; }
+#tb-scroll #hint { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-left: auto; }
+#tb-end { flex: 0 0 auto; display: flex; align-items: center; gap: 2px; padding-left: 4px; border-left: 1px solid var(--line); }
+#center { overflow: hidden; }
+#side { z-index: 26; background: var(--bg); flex-shrink: 0; max-width: calc(100vw - 420px); }
+#bottombar { flex-wrap: nowrap; white-space: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; flex-shrink: 0; }
+#bottombar::-webkit-scrollbar { display: none; }
+#bottombar > * { flex-shrink: 0; }
+#planner label.chk { display: flex; flex-direction: row; justify-content: flex-start; align-items: center; font-size: 12px; gap: 6px; margin-top: 8px; color: #d1d4dc; }
+#planner label.chk input { width: auto; flex: 0 0 auto; margin: 0; }

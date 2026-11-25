@@ -28,7 +28,7 @@ vcg.onNet((n) => {
   else if (bannerDismissed !== n.level) { b.className = n.level; $('netbanner-text').textContent = '⚠️ ' + (n.detail || NET_TH[n.level]); b.title = n.detail || ''; }
   if (n.level !== lastNetLevel) {
     if (n.level === 'ok') toast('การเชื่อมต่อกลับมาปกติ', 'ok');
-    else toast(n.detail || NET_TH[n.level], n.level === 'slow' || n.level === 'stale' ? 'warn' : 'error', 8000);
+    else if (n.level === 'down' || n.level === 'offline') toast(n.detail || NET_TH[n.level], 'error', 8000); // slow/stale: the titlebar pill is enough
     lastNetLevel = n.level;
   }
   if (!$('modal-settings').classList.contains('hidden')) renderNetNow();

@@ -25,6 +25,7 @@
   <!-- center: chart -->
   <div id="center">
     <div id="toolbar">
+     <div id="tb-scroll">
       <div id="tfs"></div>
       <div class="sep"></div>
       <select id="ctype" title="Chart type">
@@ -49,14 +50,16 @@
       <div class="sep"></div>
       <button id="undo" class="ib" title="Undo (⌘Z)"></button>
       <button id="redo" class="ib" title="Redo (⇧⌘Z)"></button>
-      <div class="grow"></div>
       <span id="hint"></span>
+     </div>
+     <div id="tb-end">
       <div class="dropdown">
         <button id="cs-btn" class="ib" title="ตั้งค่ากราฟ"></button>
         <div id="cs-menu" class="menu right hidden"></div>
       </div>
       <button id="full" class="ib" title="เต็มจอ"></button>
       <button id="shot" class="ib" title="บันทึกภาพกราฟ"></button>
+     </div>
     </div>
     <div id="chart-wrap">
       <div id="chart"></div>
