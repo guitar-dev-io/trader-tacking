@@ -14,7 +14,8 @@ window.addEventListener('online', () => toast('อินเทอร์เน็
 
 // ---------------------------------------------------------------- network status
 const NET_TH = { ok: 'ปกติ', slow: 'เน็ตช้า', stale: 'ราคาค้าง', down: 'หลุด', offline: 'ออฟไลน์' };
-let lastNet = null, lastNetLevel = 'ok';
+let lastNet = null, lastNetLevel = 'ok', bannerDismissed = null;
+$('netbanner-x').onclick = () => { bannerDismissed = lastNet && lastNet.level; $('netbanner').classList.add('hidden'); };
 vcg.onNet((n) => {
   lastNet = n;
   const el = $('net');
@@ -23,8 +24,8 @@ vcg.onNet((n) => {
   const c = n.cpu || {};
   el.title = `CPU: หน้าจอ ${c.ui ?? '—'}% · WebTrader ${c.webtrader ?? '—'}% · ตัวแอป ${c.app ?? '—'}% · GPU ${c.gpu ?? '—'}%\nสถานะ: ${NET_TH[n.level]}\nPing: ${n.rtt ?? '—'} ms\nราคาหน่วง (median): ${n.feedDelay ?? '—'} ms\nราคาล่าสุด: ${n.lastTickAgo != null ? Math.round(n.lastTickAgo) + ' วินาทีที่แล้ว' : '—'}\nหลุดไปแล้ว: ${n.reconnects} ครั้ง`;
   const b = $('netbanner');
-  if (n.level === 'ok') b.classList.add('hidden');
-  else { b.className = n.level; b.textContent = '⚠️ ' + (n.detail || NET_TH[n.level]); }
+  if (n.level === 'ok') { b.classList.add('hidden'); bannerDismissed = null; }
+  else if (bannerDismissed !== n.level) { b.className = n.level; $('netbanner-text').textContent = '⚠️ ' + (n.detail || NET_TH[n.level]); b.title = n.detail || ''; }
   if (n.level !== lastNetLevel) {
     if (n.level === 'ok') toast('การเชื่อมต่อกลับมาปกติ', 'ok');
     else toast(n.detail || NET_TH[n.level], n.level === 'slow' || n.level === 'stale' ? 'warn' : 'error', 8000);

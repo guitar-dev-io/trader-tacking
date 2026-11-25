@@ -897,8 +897,8 @@ function drawAnalysis(W, H) {
 }
 
 // ---------------------------------------------------------------- tabs, lessons, logs
-document.querySelectorAll('#tabs button').forEach((b) => (b.onclick = () => {
-  document.querySelectorAll('#tabs button').forEach((x) => x.classList.toggle('active', x === b));
+document.querySelectorAll('#tabs button[data-tab]').forEach((b) => (b.onclick = () => {
+  document.querySelectorAll('#tabs button[data-tab]').forEach((x) => x.classList.toggle('active', x === b));
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('hidden', t.id !== 'tab-' + b.dataset.tab));
   if (b.dataset.tab === 'log') { errCount = 0; $('log-badge').textContent = ''; renderLogs(); }
 }));

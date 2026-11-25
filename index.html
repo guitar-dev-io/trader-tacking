@@ -10,13 +10,13 @@
 <div id="titlebar">
   <div class="drag"></div>
   <div id="sym-title"><span id="cur-sym">XAUUSD</span> <span id="cur-bid">—</span> <span id="cur-chg"></span> <span id="trend-badge"></span></div>
+  <div id="netbanner" class="hidden"><span id="netbanner-text"></span><button id="netbanner-x" title="ซ่อน">✕</button></div>
   <div id="net" title=""><span class="nd"></span><span id="net-text">—</span></div>
   <div id="conn"><span class="dot"></span><span id="conn-text">กำลังเชื่อมต่อ…</span></div>
   <button id="side-btn" class="ib" title="ซ่อน/แสดงแถบด้านขวา (⌘\\)"></button>
   <button id="settings-btn" class="ib" title="การตั้งค่า (⌘,)"></button>
 </div>
 
-<div id="netbanner" class="hidden"></div>
 <div id="toasts"></div>
 <div id="app">
   <!-- left: drawing tools -->
@@ -74,6 +74,7 @@
     </div>
   </div>
 
+  <div id="side-rail"></div>
   <!-- right: tabs -->
   <div id="side">
     <div id="tabs">
@@ -83,7 +84,9 @@
       <button data-tab="calc">คำนวณ</button>
       <button data-tab="learn">บทเรียน</button>
       <button data-tab="log">Log <span id="log-badge"></span></button>
+      <button id="side-collapse" class="ib" title="ย่อแถบด้านขวา (⌘\\)"></button>
     </div>
+    <div id="side-resizer" title="ลากเพื่อปรับความกว้าง"></div>
 
     <div class="tab" id="tab-market">
       <div class="panel">
