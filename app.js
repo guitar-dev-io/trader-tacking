@@ -6,7 +6,31 @@ document.querySelectorAll('#tabs button[data-tab]').forEach((b) => (b.onclick = 
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('hidden', t.id !== 'tab-' + b.dataset.tab));
   if (b.dataset.tab === 'log') { errCount = 0; $('log-badge').textContent = ''; renderLogs(); }
 }));
-$('lessons').innerHTML = LESSONS.map((l, i) => `<details ${i === 0 ? 'open' : ''}><summary>${l.t}</summary>${l.b}</details>`).join('');
+// lesson book: category chips + search over the original lessons (lessons.js) and the guide (lessons-guide.js)
+function renderLessons() {
+  const box = $('lessons'), cats = window.LESSON_CATS || [{ id: 'all', name: 'บทเรียน', icon: '📘' }];
+  const all = [...LESSONS.map((l, i) => ({ ...l, c: (window.LESSON_CAT_OF || {})[i] || cats[0].id })), ...(window.LESSONS_EXTRA || [])];
+  const strip = (h) => h.replace(/<svg[\s\S]*?<\/svg>/g, ' ').replace(/<[^>]+>/g, ' ').toLowerCase();
+  all.forEach((l) => { l._q = (l.t + ' ' + strip(l.b)).toLowerCase(); });
+  let cur = store.get('lessonCat', 'all');
+  box.innerHTML = `<input class="lesson-search" type="search" placeholder="ค้นหาบทเรียน เช่น hammer, demand, fibo, lot…">
+    <div class="lesson-cats"><button data-lc="all">ทั้งหมด <span class="n">${all.length}</span></button>${cats.map((c) => `<button data-lc="${c.id}">${c.icon || ''} ${esc(c.name)} <span class="n">${all.filter((l) => l.c === c.id).length}</span></button>`).join('')}</div>
+    <div class="lesson-list">${cats.map((c) => `<div class="lesson-cat" data-cat="${c.id}"><div class="lesson-cat-h">${c.icon || ''} ${esc(c.name)}</div>${all.map((l, i) => (l.c === c.id ? `<details data-i="${i}"><summary>${l.t}</summary>${l.b}</details>` : '')).join('')}</div>`).join('')}</div>`;
+  const q = box.querySelector('.lesson-search');
+  const apply = () => {
+    const term = q.value.trim().toLowerCase();
+    box.querySelectorAll('.lesson-cats button').forEach((b) => b.classList.toggle('on', b.dataset.lc === cur));
+    box.querySelectorAll('.lesson-cat').forEach((g) => {
+      let any = 0;
+      g.querySelectorAll('details').forEach((d) => { const l = all[+d.dataset.i]; const show = (cur === 'all' || l.c === cur) && (!term || l._q.includes(term)); d.hidden = !show; if (show) any++; if (term && show) d.open = true; });
+      g.hidden = !any;
+    });
+  };
+  box.querySelectorAll('.lesson-cats button').forEach((b) => (b.onclick = () => { cur = b.dataset.lc; store.set('lessonCat', cur); apply(); }));
+  q.oninput = apply;
+  apply();
+}
+renderLessons();
 
 const logs = []; let errCount = 0, logRenderTimer = null;
 vcg.onLogs((list) => {

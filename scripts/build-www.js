@@ -1,7 +1,7 @@
 // Copies the shared UI into www/ for the Android (Capacitor) app and plain-browser use.
 const fs = require('fs'), path = require('path');
 const root = path.join(__dirname, '..'), out = path.join(root, 'www');
-const files = ['index.html', 'style.css', 'vcg-inject.js', 'bridge.js', 'indicators.js', 'analysis.js', 'bounce.js', 'custom.js', 'lessons.js', 'icons.js',
+const files = ['index.html', 'style.css', 'lessons-guide.css', 'vcg-inject.js', 'bridge.js', 'indicators.js', 'analysis.js', 'bounce.js', 'custom.js', 'lessons.js', 'lessons-guide.js', 'icons.js',
   'app-core.js', 'app-chart.js', 'app-analysis.js', 'app-bounce.js', 'app-data.js', 'app-overlay.js', 'app.js', 'draw.js', 'planner.js', 'settings.js', 'extras.js', 'learn.js', 'mtf.js', 'ui.js'];
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(path.join(out, 'lib'), { recursive: true });

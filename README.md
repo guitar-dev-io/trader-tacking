@@ -19,7 +19,7 @@
 - **แจ้งเตือน**: ราคา, สัญญาณใหม่, เน็ตช้า/ราคาค้าง/หลุด → macOS Notification, Telegram, Webhook (Discord/Slack/n8n…)
 - **Local API** (REST + Server-Sent Events) + หน้า dashboard ที่ `http://127.0.0.1:8787`
 - **Log viewer** ในแอป + ไฟล์ log, สำรอง/กู้คืน/รีเซ็ตข้อมูล
-- บทเรียนภาษาไทยพร้อมตัวอย่างคำนวณ
+- **หนังสือบทเรียน** 54 บท แบ่ง 7 หมวด + ค้นหา: พื้นฐานการอ่านกราฟ, แท่งเทียนแต่ละแบบ (มีภาพประกอบ), โครงสร้างราคา, คู่มือ Demand & Supply (RBR/DBR/DBD/RBD, ตีโซน, ให้คะแนนโซน, วิธีเข้า, ตัวอย่างเต็ม XAUUSD), SL เม่า / Fibo, บริหารเงิน, วิธีใช้แอป
 - **ฝึกเทรด**: Bar Replay (เล่นทีละแท่งโดยไม่เห็นอนาคต), บัญชีจำลอง (Market/Limit/Stop + SL/TP), สุ่มโจทย์ฝึกพร้อมให้คะแนน, บันทึกการเทรด + สถิติตามแท็ก, ส่งออก CSV
 - **แพ็กบทเรียน**: ส่งออก/นำเข้ารูปวาด + โน้ต + จุดเริ่ม Replay เพื่อแชร์ให้ผู้เรียน
 - **MT5 (โบรกเกอร์ใดก็ได้ เช่น Brex Capital)**: EA `mt5/PriceTrackerBridge.mq5` ส่งราคา/แท่งเทียนจาก MT5 ที่ login อยู่ในเครื่องเข้าแอปผ่าน TCP 127.0.0.1 (อ่านอย่างเดียว ไม่ส่งคำสั่ง) — Mac/Windows เท่านั้น
@@ -40,13 +40,21 @@ VCG WebTrader สตรีมราคาผ่าน Socket.IO (`wss://prod-ws-
 |---|---|
 | `main.js` | process หลัก: หน้าต่าง, feed ราคา, token, network monitor, IPC |
 | `api.js` / `notify.js` / `logger.js` | Local API + SSE, Webhook/Telegram, log |
-| `app.js` | กราฟ, อินดิเคเตอร์, watchlist, alert, การวิเคราะห์ |
+| `app-core.js` | ค่าคงที่, storage, state กลาง (S), ตัวช่วยจัดรูปแบบ |
+| `app-chart.js` | กราฟหลัก, อินดิเคเตอร์, legend, ตัวแก้ไขสคริปต์ |
+| `app-analysis.js` | เมนู/แผงวิเคราะห์โครงสร้าง, แจ้งเตือนสัญญาณ |
+| `app-bounce.js` | แผงจุดเด้ง, จุด SL เม่า, Fibo อัตโนมัติ (วาดบนกราฟ) |
+| `app-data.js` | โหลดกราฟ, ราคาสด/watchlist, สถานะ, alert ราคา |
+| `app-overlay.js` | ตัวช่วยวาด SVG + แปลงพิกัด, ป้ายไม่ซ้อนกัน |
+| `app.js` | แท็บ, หนังสือบทเรียน, log, เริ่มต้นแอป (โหลดท้ายสุด) |
 | `draw.js` | เครื่องมือวาด, แถบซูม, แถบล่าง (ช่วงเวลา/session/scale), ตั้งค่ากราฟ |
 | `analysis.js` | engine วิเคราะห์ (swing, structure, patterns, signals, backtest) |
+| `bounce.js` | engine จุดเด้ง / liquidity / สถิติ walk-forward |
 | `indicators.js` / `custom.js` | อินดิเคเตอร์ในตัว / runtime สคริปต์ผู้ใช้ |
 | `planner.js` | เครื่องคำนวณ lot และจุดเติม |
 | `settings.js` | หน้าต่างตั้งค่า, สถานะเครือข่าย, toast, backup/restore |
-| `lessons.js` | บทเรียน |
+| `lessons.js`, `lessons-guide.js` | บทเรียน + หนังสือบทเรียน (หมวด, ภาพแท่งเทียน, คู่มือ D&S) |
+| `tests/` | unit (node --test) + UI (Electron) |
 | `tools/vcg_price_feed.py` | ตัวดึงราคาแบบ Python + Playwright (เวอร์ชันแรก) |
 
 ## Android
@@ -57,6 +65,26 @@ VCG WebTrader สตรีมราคาผ่าน Socket.IO (`wss://prod-ws-
 npm run android:sync          # build www + cap sync
 cd android && ./gradlew assembleRelease
 ```
+
+## ติดตั้งบน Mac (ครั้งแรก)
+
+1. ดาวน์โหลด `Price-Tracker-mac-arm64.zip` (Mac ชิป M1/M2/M3/M4) หรือ `-x64.zip` (Mac Intel) แล้วแตกไฟล์ ลาก **Price Tracker.app** ไปไว้ใน Applications
+2. แอปยังไม่ได้เซ็นกับ Apple macOS จะเตือนว่า "เปิดไม่ได้" หรือ "ไฟล์เสียหาย" ให้เปิด Terminal แล้วรัน:
+   ```bash
+   xattr -cr "/Applications/Price Tracker.app"
+   ```
+   แล้วเปิดแอปอีกครั้ง (หรือ คลิกขวาที่แอป → Open → Open)
+3. ถ้ายังเปิดไม่ได้: System Settings → Privacy & Security → เลื่อนลงไปกด **Open Anyway**
+
+ถ้าต้องการให้เปิดได้เลยโดยไม่มีคำเตือน ต้องเซ็นและ notarize ด้วยบัญชี Apple Developer (ปีละ 99 USD) — ใส่ใน CI ได้ภายหลัง
+
+## ทดสอบ
+
+```bash
+npm test                     # unit: วิเคราะห์ (ไม่มี look-ahead), จุดเด้ง/สถิติ, สคริปต์ที่ฉีดเข้า WebTrader, MT5 bridge
+xvfb-run -a npm run test:ui  # UI: เปิดแอปจริงด้วยข้อมูลจำลอง ทดสอบแผงวิเคราะห์/ฝึก/คำนวณ/บทเรียน/MTF/Replay/มือถือ (Mac: npm run test:ui)
+```
+CI รันทั้งสองชุดก่อน build ทุกครั้ง ถ้าไม่ผ่านจะไม่ออก build — ภาพหน้าจอจากการทดสอบอยู่ใน artifact `ui-test-screens`
 
 ## CI / Releases
 

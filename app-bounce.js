@@ -151,7 +151,7 @@ function drawAutoFib(W) {
     el('line', { x1: x0, y1: y, x2: W, y2: y, stroke: c, 'stroke-width': strong ? 1.5 : 1, opacity: strong ? 1 : 0.75, 'stroke-dasharray': strong ? '' : '5 4' });
     ltxt(x0 + 4, y - 3, `${text} ${fmt(price)}`, c, 'start', 10, strong ? 700 : 400); };
   const g1 = yOf(at(0.618)), g2 = yOf(at(0.786));
-  if (g1 != null && g2 != null) el('rect', { x: x0, y: Math.min(g1, g2), width: W - x0, height: Math.abs(g2 - g1), fill: '#08998118' });
+  if (g1 != null && g2 != null) el('rect', { x: x0, y: Math.min(g1, g2), width: Math.max(0, W - x0), height: Math.abs(g2 - g1), fill: '#08998118' });
   for (const k of [0.382, 0.5, 0.618, 0.786]) line(at(k), k, `Fibo ${(k * 100).toFixed(1)}%`, k === 0.618);
   for (const k of [1.272, 1.618, 2.618]) line(ext(k), k, `เป้า ${(k * 100).toFixed(1)}%${k >= 1.618 ? ' 🎯' : ''}`, k === 1.618 || k === 2.618);
 }

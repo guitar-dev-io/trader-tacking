@@ -1,0 +1,153 @@
+// UI regression suite: loads the real app (index.html) in Electron with fake IPC, fake quotes and fake candles,
+// runs scenarios and exits non-zero on any failure or console error.  Run: xvfb-run -a npx electron tests/ui/run.js
+const { app, BrowserWindow, ipcMain } = require('electron');
+const path = require('path'), fs = require('fs'), os = require('os');
+const ROOT = path.join(__dirname, '..', '..'), OUT = path.join(__dirname, 'out');
+fs.mkdirSync(OUT, { recursive: true });
+app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'pt-ui-')));
+app.on('window-all-closed', () => {});   // keep running between scenarios (default would quit)
+
+const results = []; let failed = 0;
+const check = (name, ok, info) => { results.push({ name, ok: !!ok, info }); if (!ok) failed++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${info !== undefined ? '  ' + JSON.stringify(info) : ''}`); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// candles in VCG wire format
+function candles(n, sec, seed, start = 3500) {
+  const now = Math.floor(Date.now() / 1000 / sec) * sec; let p = start, s = seed; const c = [];
+  for (let i = n; i >= 0; i--) {
+    const o = p; s = (s * 16807) % 2147483647; p += Math.sin(i / 60) * 0.9 * Math.sqrt(sec / 3600) + ((s / 2147483647) - 0.5) * 4 * Math.sqrt(sec / 3600);
+    const e = (v) => ({ scale: 2, value: Math.round(v * 100) });
+    c.push({ timeSeconds: String(now - i * sec), open: e(o), high: e(Math.max(o, p) + 0.8), low: e(Math.min(o, p) - 0.8), close: e(p) });
+  }
+  return c;
+}
+
+async function open(file, { width = 1400, height = 900, preload = true } = {}) {
+  const w = new BrowserWindow({ width, height, show: true, webPreferences: preload ? { preload: path.join(ROOT, 'preload.js'), contextIsolation: true } : { partition: 'mobile-' + Date.now() } });   // fresh storage, like a new phone
+  const errs = [];
+  w.webContents.on('console-message', (e) => { if (e.level === 'error') errs.push(e.message); });
+  w.webContents.on('preload-error', (_e, p, err) => errs.push('preload ' + err));
+  await w.loadFile(file);
+  const js = (code) => w.webContents.executeJavaScript(code);
+  const send = (ch, d) => w.webContents.send(ch, d);
+  const shot = async (name) => fs.writeFileSync(path.join(OUT, name + '.png'), (await w.webContents.capturePage()).toPNG());
+  return { w, js, send, shot, errs };
+}
+
+app.whenReady().then(async () => {
+  const reqs = [];
+  ipcMain.handle('get-settings', () => ({ api: {}, webhook: {}, telegram: {}, net: { slowMs: 800, delayMs: 3000, staleSec: 45, stuckSec: 60, notify: false }, version: 'test', source: 'vcg' }));
+  ipcMain.handle('set-settings', () => true); ipcMain.handle('notify', () => 0); ipcMain.handle('sign-out', () => true);
+  ipcMain.handle('fetch-json', () => { throw new Error('offline (test)'); });
+  ipcMain.on('chart-request', (_e, o) => reqs.push(o));
+  ['log', 'chart-data', 'analysis', 'set-source', 'add-symbol', 'remove-symbol', 'set-tray', 'toggle-csv', 'open-csv', 'show-trader', 'reload-trader', 'open-log-file', 'open-log-folder'].forEach((c) => ipcMain.on(c, () => {}));
+
+  try {
+    // ------------------------------------------------------------------ desktop app
+    const A = await open(path.join(ROOT, 'index.html'));
+    const { js, send } = A;
+    send('status', { connected: true, loggedIn: true, symbols: ['XAUUSD'], traySymbol: 'XAUUSD', source: 'vcg' });
+    send('net', { level: 'ok', rtt: 80, feedDelay: 50, lastTickAgo: 1, reconnects: 0, connected: true });
+    await sleep(300);
+    check('boot: chart requested', reqs.length > 0, reqs[0] && reqs[0].symbol);
+    check('boot: clean default (no analysis overlays on)', await js(`Object.entries(S.an).filter(([k, v]) => v === true && AN_VIEW_KEYS.includes(k)).length === 0`));
+
+    send('chart', { type: 'chart', slot: 'main', data: { history: { candles: candles(1500, 3600, 11) } } });
+    await sleep(1200);
+    check('chart: candles loaded', await js(`S.candles.length`) > 1400);
+    check('analysis: computed', await js(`!!S.A && S.A.swings.length > 10`));
+
+    let k = 0; const last = await js(`S.candles.at(-1).close`);
+    const iv = setInterval(() => { k++; send('quotes', [{ symbol: 'XAUUSD', time: new Date().toISOString(), bid: last + Math.sin(k / 5), ask: last + 0.2 + Math.sin(k / 5), digits: 2, change: 0, changePct: 0 }]); }, 80);
+
+    // bounce finder panel: both sides, stable DOM while prices stream
+    await js(`S.an.bounce = true; S.an.liquidity = true; S.an.autofib = true; S.an.bounceSide = 'both'; store.set('an', S.an); document.querySelector('#tabs [data-tab="analysis"]').click(); runBounce(); dirty = true; 'ok'`);
+    await sleep(400);
+    const bn = JSON.parse(await js(`new Promise((res) => { const box = document.getElementById('an-bounce'); const btn = box.querySelector('[data-bz]'); let rebuilds = 0;
+      const mo = new MutationObserver((ms) => { for (const m of ms) if ([...m.removedNodes].some((n) => n.contains && btn && n.contains(btn))) rebuilds++; }); mo.observe(box, { childList: true, subtree: true });
+      setTimeout(() => { mo.disconnect(); res(JSON.stringify({ rebuilds, buy: S.B.buy.length, sell: S.B.sell.length, cards: box.querySelectorAll('.bn-card').length, stats: !!box.querySelector('.bn-st'), liq: !!box.querySelector('.lq') })); }, 3200); })`));
+    check('bounce: zones found on both sides', bn.buy + bn.sell > 0 && bn.cards > 0, bn);
+    check('bounce: panel not rebuilt while prices stream', bn.rebuilds === 0, bn.rebuilds);
+    check('bounce: stats + liquidity sections', bn.stats && bn.liq);
+    const bz = JSON.parse(await js(`(async () => { const W = (ms) => new Promise((r) => setTimeout(r, ms)); const b = document.querySelector('[data-bz=calc]'); const sd = b.dataset.sd, z = S.B[sd][+b.dataset.k]; b.click(); await W(100);
+      const plan = { side: S.plan.side, entry: S.plan.entry, sl: S.plan.sl };
+      document.querySelector('#tabs [data-tab="analysis"]').click(); await W(50); document.querySelector('[data-bz=layer]').click(); await W(100);
+      const rows = computePlan().rows.length; document.querySelector('[data-slpts="1000"]').click(); await W(50);
+      return JSON.stringify({ ok: plan.entry === fmt(z.entry) && plan.side === sd, rows, slDist: Math.round(Math.abs(+S.plan.entry - +S.plan.sl) * 100) }); })()`));
+    check('bounce → calculator prefill', bz.ok, bz);
+    check('calculator: split 3 entries in zone', bz.rows === 3, bz.rows);
+    check('calculator: SL 1000 points = 10.00 on gold', bz.slDist === 1000, bz.slDist);
+    await A.shot('analysis');
+
+    // practice: no rebuild per tick, one order per triple click, bulk actions
+    await js(`localStorage.removeItem('sim.ticket'); SIM.prefill({ type: 'market', price: '', sl: '', tp: '' }); 'ok'`); await sleep(300);
+    const sim = JSON.parse(await js(`new Promise((res) => { const btn = document.getElementById('sim-place'); let rebuilds = 0;
+      const mo = new MutationObserver((ms) => { for (const m of ms) if ([...m.removedNodes].some((n) => n.contains && n.contains(btn))) rebuilds++; }); mo.observe(document.getElementById('sim'), { childList: true, subtree: true });
+      setTimeout(() => { mo.disconnect(); const A0 = SIM.acc().live; A0.positions = []; const b = document.getElementById('sim-place'); b.disabled = false; b.click(); b.click(); b.click();
+        setTimeout(() => res(JSON.stringify({ rebuilds, n: SIM.acc().live.positions.length })), 200); }, 1500); })`));
+    check('practice: panel not rebuilt per tick', sim.rebuilds === 0, sim.rebuilds);
+    check('practice: triple click → one order', sim.n === 1, sim.n);
+    clearInterval(iv);
+    const bulk = JSON.parse(await js(`(() => { const t = (bid) => onQuotesMsg([{ symbol: 'XAUUSD', time: new Date().toISOString(), bid, ask: bid + 0.2, digits: 2, change: 0, changePct: 0 }]);
+      const A0 = SIM.acc().live; A0.positions = []; A0.history = [];
+      for (const px of [3500, 3505, 3515, 3520]) { t(px); const b = document.getElementById('sim-place'); b.disabled = false; b.click(); }
+      t(3510); SIM.render(); const before = A0.positions.length;
+      document.querySelector('[data-bulk=loss]').click(); const afterLoss = SIM.acc().live.positions.length;
+      document.querySelector('[data-bulk=be]').click(); const be = SIM.acc().live.positions.every((p) => p.sl === p.entry);
+      document.querySelector('[data-bulk=all]').click();
+      return JSON.stringify({ before, afterLoss, be, afterAll: SIM.acc().live.positions.length }); })()`));
+    check('practice: bulk close losers / BE / close all', bulk.before === 4 && bulk.afterLoss === 2 && bulk.be && bulk.afterAll === 0, bulk);
+
+    // drawing tools: Fibonacci extension
+    const fib = JSON.parse(await js(`(() => { const c = S.candles, n = c.length, t = (i) => c[i].time; const before = svg.querySelectorAll('text').length;
+      drawings.push({ type: 'fibext', pts: [{ time: t(n - 80), price: c[n - 80].low }, { time: t(n - 40), price: c[n - 40].high }, { time: t(n - 20), price: c[n - 20].low }] });
+      dirty = true; redraw(); const labels = [...svg.querySelectorAll('text')].map((e) => e.textContent).filter((s) => /161\\.8%|261\\.8%/.test(s)).length; drawings.pop(); dirty = true; return JSON.stringify({ labels }); })()`));
+    check('drawing: Fibo extension shows 161.8 / 261.8', fib.labels >= 2, fib);
+
+    // MTF pane + replay must not leak the future
+    await js(`document.getElementById('mtf-btn').click(); 'ok'`); await sleep(300);
+    send('chart', { type: 'chart', slot: 'mtf', data: { history: { candles: candles(500, 14400, 9) } } });
+    await sleep(600);
+    check('mtf: second chart shown', await js(`!document.getElementById('mtf-pane').classList.contains('hidden') && !!MTF.A`));
+    await js(`REPLAY.start(600); 'ok'`); await sleep(400);
+    const rp = JSON.parse(await js(`JSON.stringify({ n: S.candles.length, bounceOk: !S.B || [...S.B.buy, ...S.B.sell].every((z) => z.born < S.candles.length) })`));
+    check('replay: analysis only uses visible bars', rp.bounceOk, rp);
+    await js(`REPLAY.exit(); document.getElementById('mtf-btn').click(); 'ok'`); await sleep(300);
+
+    // lessons tab: categories render
+    const les = JSON.parse(await js(`(() => { document.querySelector('#tabs [data-tab="learn"]').click(); const el = document.getElementById('lessons');
+      return JSON.stringify({ items: el.querySelectorAll('details').length, cats: el.querySelectorAll('.lesson-cats button').length, svgs: el.querySelectorAll('.lg-fig svg').length }); })()`));
+    check('lessons: book with categories and figures', les.items >= 40 && les.cats >= 7 && les.svgs >= 10, les);
+    const srch = JSON.parse(await js(`(() => { const i = document.querySelector('.lesson-search'); i.value = 'hammer'; i.dispatchEvent(new Event('input')); return JSON.stringify({ shown: [...document.querySelectorAll('#lessons details')].filter((d) => d.offsetParent !== null).length }); })()`));
+    check('lessons: search filters', srch.shown >= 1 && srch.shown < les.items, srch);
+    await js(`(() => { document.querySelector('#tabs [data-tab="learn"]').click(); const d = [...document.querySelectorAll('#lessons details')].find((x) => !x.hidden && /Hammer/.test(x.querySelector('summary').textContent)); d.open = true; d.scrollIntoView(); return 1; })()`); await sleep(300);
+    await A.shot('lessons');
+    await js(`(() => { const i = document.querySelector('.lesson-search'); i.value = ''; i.dispatchEvent(new Event('input')); document.querySelector('[data-lc=ds]').click(); const d = document.querySelector('#lessons details:not([hidden])'); d.open = true; return 1; })()`); await sleep(200); await A.shot('lessons-ds');
+
+    // layout: narrow window, wide side panel → toolbar buttons stay inside the chart column
+    A.w.setSize(1100, 760); await sleep(300);
+    await js(`document.documentElement.style.setProperty('--side-w', '530px'); document.querySelector('#tabs [data-tab="calc"]').click(); 'ok'`); await sleep(300);
+    const lay = JSON.parse(await js(`JSON.stringify((() => { const r = (id) => document.getElementById(id).getBoundingClientRect(); return { shot: Math.round(r('shot').right), side: Math.round(r('side').left) }; })())`));
+    check('layout: toolbar does not overlap side panel', lay.shot <= lay.side, lay);
+    await A.shot('layout');
+    check('desktop: no console errors', A.errs.length === 0, A.errs.slice(0, 3));
+    A.w.destroy();
+
+    // ------------------------------------------------------------------ mobile (www build, no Electron preload)
+    const www = path.join(ROOT, 'www', 'index.html');
+    if (fs.existsSync(www)) {
+      const M = await open(www, { width: 390, height: 844, preload: false });
+      await sleep(1500);
+      const mb = JSON.parse(await M.js(`JSON.stringify({ mobile: document.body.classList.contains('mobile'), nav: !!document.querySelector('#tabs.mnav'), platform: vcg.platform })`));
+      check('mobile: boots in mobile layout', mb.mobile && mb.nav, mb);
+      await M.shot('mobile');
+      const real = M.errs.filter((e) => !/net::|Failed to fetch|WebSocket|offline/i.test(e));
+      check('mobile: no console errors', real.length === 0, real.slice(0, 3));
+      M.w.destroy();
+    } else console.log('skip mobile: run `npm run build:www` first');
+  } catch (e) { check('suite crashed', false, String(e && e.stack || e)); }
+
+  fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify(results, null, 2));
+  console.log(`\n${results.length - failed}/${results.length} passed`);
+  app.exit(failed ? 1 : 0);
+});

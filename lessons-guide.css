@@ -1,0 +1,19 @@
+/* Lesson book (lessons-guide.js) */
+.lg-fig { margin: 8px auto; max-width: 260px; text-align: center; }
+.lg-fig svg { width: 100%; height: auto; display: block; background: #0f1115; border: 1px solid #2a2e39; border-radius: 6px; }
+.lg-cap { font-size: 11px; color: #8a90a0; margin-top: 3px; line-height: 1.4; }
+#lessons table.lt .lg-fig { margin: 2px auto; max-width: 150px; }
+.lesson-cats { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.lesson-cats button { background: #151924; color: #d1d4dc; border: 1px solid #2a2e39; border-radius: 14px; padding: 4px 10px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.lesson-cats button:hover { border-color: #2962ff; }
+.lesson-cats button.on { background: #2962ff; border-color: #2962ff; color: #fff; }
+.lesson-cats button .n { opacity: .7; margin-left: 4px; font-size: 11px; }
+.lesson-search { width: 100%; box-sizing: border-box; background: #151924; color: #d1d4dc; border: 1px solid #2a2e39; border-radius: 6px; padding: 6px 9px; font-size: 13px; margin-bottom: 6px; }
+.lesson-search:focus { outline: none; border-color: #2962ff; }
+.lesson-cat-h { font-weight: 700; color: #d1d4dc; margin: 14px 0 2px; padding-bottom: 4px; border-bottom: 1px solid #2a2e39; font-size: 13px; }
+.lg-tip { background: #2962ff14; border-left: 3px solid #2962ff; padding: 6px 9px; border-radius: 4px; color: #c9d3f5 !important; }
+.lg-warn { background: #ef535014; border-left: 3px solid #ef5350; padding: 6px 9px; border-radius: 4px; color: #f2c4c3 !important; }
+.lg-check { list-style: none; padding-left: 2px; margin: 6px 0; }
+.lg-check li { position: relative; padding: 3px 0 3px 24px; line-height: 1.5; color: #b9bfcc; }
+.lg-check li::before { content: '☐'; position: absolute; left: 2px; top: 2px; color: #26a69a; font-size: 14px; }
+#lessons td.up { color: #26a69a; } #lessons td.down { color: #ef5350; }
