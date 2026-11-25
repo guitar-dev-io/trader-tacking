@@ -362,3 +362,17 @@ body.mobile #toasts { bottom: 70px; }
 #bottombar > * { flex-shrink: 0; }
 #planner label.chk { display: flex; flex-direction: row; justify-content: flex-start; align-items: center; font-size: 12px; gap: 6px; margin-top: 8px; color: #d1d4dc; }
 #planner label.chk input { width: auto; flex: 0 0 auto; margin: 0; }
+
+/* v2.4.0 bounce finder */
+.bn-h { display: flex; justify-content: space-between; align-items: center; }
+.bn-h .chk { font-size: 11px; font-weight: 400; }
+.bn-seg { display: flex; margin: 6px 0 4px; } .bn-seg button { flex: 1; }
+.bn-seg button.on.buy { background: #26a69a; color: #fff; border-color: #26a69a; } .bn-seg button.on.sell { background: #ef5350; color: #fff; border-color: #ef5350; }
+.bn-card { border-radius: 8px; padding: 9px 10px; margin-top: 6px; border: 1px solid var(--line); background: #151924; }
+.bn-card.buy.top { border-color: #26a69a99; background: #26a69a12; } .bn-card.sell.top { border-color: #ef535099; background: #ef535012; }
+.bn-top { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; } .bn-top b { font-size: 14px; font-variant-numeric: tabular-nums; }
+.bn-stars { color: #f6c343; letter-spacing: 1px; }
+.bn-status { margin: 4px 0; font-weight: 600; } .bn-status.warn { color: #ffb74d; } .bn-status.ok { color: #4caf50; }
+.bn-why { margin: 6px 0 4px; padding-left: 18px; font-size: 12px; } .bn-why li { margin: 1px 0; } .bn-why li.neg { color: #ffb4b4; }
+.bn-stat { font-size: 11.5px; } .bn-note { font-size: 11px; margin-top: 8px; }
+.bn-card .btns { margin-top: 6px; display: flex; gap: 6px; } .bn-card .btns button { flex: 1; }

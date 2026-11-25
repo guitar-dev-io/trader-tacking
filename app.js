@@ -30,8 +30,8 @@ let UP = '#26a69a', DOWN = '#ef5350';
 
 
 // Clean chart by default: analysis overlays are opt-in from the 🧠 menu.
-const AN_DEFAULT = { swing: false, legs: false, structure: false, zones: false, patterns: false, signals: false, history: false, td: false, learnOnly: false, notify: false, swingLen: 5 };
-const AN_VIEW_KEYS = ['swing', 'legs', 'structure', 'zones', 'patterns', 'signals', 'history', 'td'];
+const AN_DEFAULT = { bounce: false, bounceSide: 'buy', swing: false, legs: false, structure: false, zones: false, patterns: false, signals: false, history: false, td: false, learnOnly: false, notify: false, swingLen: 5 };
+const AN_VIEW_KEYS = ['bounce', 'swing', 'legs', 'structure', 'zones', 'patterns', 'signals', 'history', 'td'];
 // one-time migration (v2.0.3): switch existing installs to the clean default
 if (store.get('defaultsV', 1) < 2) {
   const an = store.get('an', null);
@@ -349,6 +349,7 @@ document.querySelectorAll('[data-close]').forEach((b) => (b.onclick = () => b.cl
 
 // ---------------------------------------------------------------- analysis menu
 const AN_ITEMS = [
+  ['bounce', 'จุดเด้ง / จุดเข้าซื้อ-ขาย (โซนรอเข้า)'],
   ['swing', 'Swing + HH/HL/LH/LL'], ['legs', 'จำนวนแท่งในแต่ละขา'], ['structure', 'โครงสร้าง BOS / CHoCH'],
   ['zones', 'แนวรับ / แนวต้าน (โซน)'], ['patterns', 'แพทเทิร์นแท่งเทียน'], ['td', 'นับแท่ง TD Sequential 1–9'],
   ['signals', 'สัญญาณ Entry / SL / TP'], ['history', 'สัญญาณย้อนหลัง + ผลลัพธ์'],
@@ -379,6 +380,7 @@ const rr = (v) => (v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + 'R')
 function runAnalysis() {
   const closed = S.candles.slice(0, -1); // never analyse the candle that is still forming
   S.A = closed.length >= 50 ? AN.analyze(closed, { swingLen: S.an.swingLen, digits: digits(), rr1: +S.prefs.rr1, rr2: +S.prefs.rr2, slBuf: +S.prefs.slBuf, minSamples: +S.prefs.minSamples, maxBars: +S.prefs.maxBars }) : null;
+  runBounce();
   renderAnalysis();
   pushAnalysis();
   checkNewSignal();
@@ -464,6 +466,91 @@ function sigPayload(s) {
     setup: s.setup, pattern: AN.PAT[s.pattern].name, entry: s.entry, sl: s.sl, tp1: s.tp1, tp2: s.tp2, structureTarget: s.tpS,
     learned: s.learned, priorStats: s.prior, reasons: s.reasons, resultTP1: s.r1.res, resultTP2: s.r2.res };
 }
+// ---------------------------------------------------------------- bounce finder (จุดเด้ง)
+function runBounce() {
+  const closed = S.candles.slice(0, -1);
+  const q = !S.replay && S.quotes[S.symbol], live = S.candles[S.candles.length - 1];
+  S.B = S.A ? BOUNCE.find(closed, S.A, { price: q ? (q.bid + q.ask) / 2 : live ? live.close : undefined, slBuf: +S.prefs.slBuf, rr1: +S.prefs.rr1, rr2: +S.prefs.rr2, maxBars: +S.prefs.maxBars }) : null;
+  renderBounce(); checkBounce();
+}
+const BSTAT_TH = { wait: ['รอราคา', ''], in: ['ราคาอยู่ในโซน · รอแท่งยืนยัน', 'warn'], confirmed: ['ยืนยันแล้ว · เข้าได้', 'ok'] };
+function renderBounce() {
+  const box = $('an-bounce'); if (!box) return;
+  const B = S.B, sd = S.an.bounceSide === 'sell' ? 'sell' : 'buy', buy = sd === 'buy';
+  const head = `<div class="panel-h bn-h"><span>🎯 หาจุดเด้ง · ${S.symbol} ${tf().label}</span>
+    <label class="chk" title="แสดงโซนบนกราฟ"><input type="checkbox" id="bn-show" ${S.an.bounce ? 'checked' : ''}> บนกราฟ</label></div>
+    <div class="seg bn-seg"><button data-bs="buy" class="${buy ? 'on buy' : ''}">▲ จุดเข้าซื้อ (Buy)</button><button data-bs="sell" class="${!buy ? 'on sell' : ''}">▼ จุดเข้าขาย (Sell)</button></div>`;
+  if (!B) { const h = head + '<p class="muted">ต้องมีข้อมูลกราฟอย่างน้อย 60 แท่ง</p>'; if (h !== box._html) { box._html = h; box.innerHTML = h; bindBounce(box); } return; }
+  const zs = B[sd], a = B.atr;
+  const stars = (k) => '★'.repeat(k) + '<span class="muted">' + '★'.repeat(5 - k) + '</span>';
+  const card = (z, k) => {
+    const [stTxt, stCls] = BSTAT_TH[z.status];
+    const st = z.stat ? `แตะโซนแบบนี้ (${BOUNCE.TYPE[z.main].short}) ย้อนหลังในกราฟนี้ ${z.stat.n} ครั้ง → เด้งถึง 1R <b>${pct(z.stat.wr1)}</b> · ถึง 2R <b>${pct(z.stat.wr2)}</b>` : 'ยังไม่มีสถิติย้อนหลังของโซนแบบนี้ในข้อมูลที่โหลด';
+    return `<div class="bn-card ${buy ? 'buy' : 'sell'} ${k === 0 ? 'top' : ''}" data-z="${k}">
+      <div class="bn-top"><span class="bn-stars">${stars(z.stars)}</span><b>${fmt(Math.min(z.lo, z.hi))} – ${fmt(Math.max(z.lo, z.hi))}</b>
+        <span class="muted" data-bd="${k}"></span></div>
+      <div class="bn-status ${stCls}">${z.status === 'wait' ? (buy ? '⏳ รอราคาย่อลงมาที่โซน' : '⏳ รอราคาเด้งขึ้นมาที่โซน') : (z.status === 'in' ? '👀 ' : '✅ ') + stTxt}${z.pattern && z.status !== 'wait' ? ` · ${AN.PAT[z.pattern].name}` : ''}</div>
+      <div class="lv">
+        <span>Entry</span><b>${fmt(z.entry)}</b><span>${buy ? 'Buy' : 'Sell'} Limit ขอบโซน</span>
+        <span class="down">SL</span><b>${fmt(z.sl)}</b><span>${buy ? 'ใต้' : 'เหนือ'}โซน · 1R = ${fmt(Math.abs(z.entry - z.sl))}</span>
+        <span class="up">TP1</span><b>${fmt(z.tp1)}</b><span>${z.rr1.toFixed(1)}R ${z.rr1 < 1 ? '⚠️ ต่ำกว่า 1R' : 'Swing ถัดไป'}</span>
+        ${z.tp2 !== z.tp1 ? `<span class="up">TP2</span><b>${fmt(z.tp2)}</b><span>${z.rr2.toFixed(1)}R</span>` : ''}
+      </div>
+      <ul class="bn-why">${z.why.map((w) => `<li class="${w.neg ? 'neg' : ''}">${esc(w.txt)}</li>`).join('')}</ul>
+      <div class="muted bn-stat">${st}</div>
+      <div class="btns"><button data-bz="calc" data-k="${k}">คำนวณ lot</button><button data-bz="sim" data-k="${k}">ตั้งคำสั่งฝึก</button></div>
+    </div>`;
+  };
+  const html = head + (zs.length ? zs.map(card).join('') : `<p class="muted">ยังไม่พบโซน${buy ? 'รับ' : 'ต้าน'}ที่ยังใช้ได้ในระยะ 10 ATR ลองเปลี่ยน timeframe หรือโหลดข้อมูลเพิ่ม</p>`) +
+    `<p class="muted bn-note">วิธีใช้: ตั้ง ${buy ? 'Buy' : 'Sell'} Limit ที่ Entry หรือรอให้สถานะเป็น ✅ (แท่งเทียนกลับตัวในโซน) แล้วค่อยเข้า · ★ มาก = เหตุผลซ้อนกันมาก + ตามเทรนด์ · ไม่ใช่คำแนะนำการลงทุน</p>`;
+  if (html !== box._html) { box._html = html; box.innerHTML = html; bindBounce(box); } // unchanged → keep DOM (buttons/clicks stay stable)
+  zs.forEach((z, k) => { const d = box.querySelector(`[data-bd="${k}"]`); if (d) d.textContent = z.status === 'wait' ? `ห่าง ${fmt(Math.abs(z.dist))} (${Math.abs(z.distAtr).toFixed(1)} ATR)` : ''; });
+}
+function bindBounce(box) {
+  const sw = $('bn-show'); if (sw) sw.onchange = () => { S.an.bounce = sw.checked; store.set('an', S.an); dirty = true; };
+  box.querySelectorAll('[data-bs]').forEach((b) => (b.onclick = () => { S.an.bounceSide = b.dataset.bs; store.set('an', S.an); renderBounce(); dirty = true; }));
+  box.querySelectorAll('[data-bz]').forEach((b) => (b.onclick = () => {
+    const sd = S.an.bounceSide === 'sell' ? 'sell' : 'buy', z = S.B && S.B[sd][+b.dataset.k]; if (!z) return;
+    if (b.dataset.bz === 'calc') {
+      Object.assign(S.plan, { side: sd, entry: fmt(z.entry), sl: fmt(z.sl), tp1: fmt(z.tp1), tp2: fmt(z.tp2) });
+      savePlan(); renderPlanner(); dirty = true; document.querySelector('#tabs [data-tab="calc"]').click();
+    } else if (typeof SIM !== 'undefined') SIM.prefill({ side: sd === 'buy' ? 1 : -1, type: 'limit', price: fmt(z.entry), sl: fmt(z.sl), tp: fmt(z.tp1), tag: 'range' });
+  }));
+}
+function drawBounce(W) {
+  const sd = S.an.bounceSide === 'sell' ? 'sell' : 'buy', zs = S.B[sd]; const col = sd === 'buy' ? UP : DOWN;
+  zs.forEach((z, k) => {
+    const yt = yOf(Math.max(z.lo, z.hi)), yb = yOf(Math.min(z.lo, z.hi)); if (yt == null || yb == null) return;
+    const x0 = Math.max(0, xIdx(z.born) ?? 0);
+    el('rect', { x: x0, y: yt, width: Math.max(0, W - x0), height: Math.max(3, yb - yt), fill: col + (k === 0 ? '30' : '1c'), stroke: col + (k === 0 ? 'cc' : '66'), 'stroke-width': k === 0 ? 1.5 : 1 });
+    txt(W - 8, (sd === 'buy' ? yb + 12 : yt - 4), `${sd === 'buy' ? 'จุดเด้ง Buy' : 'จุดเด้ง Sell'} ${'★'.repeat(z.stars)} ${z.types.map((t) => BOUNCE.TYPE[t].short).join('+')}`, col, 'end', 10, k === 0 ? 700 : 400);
+    if (k === 0) {
+      const ys = yOf(z.sl), ytp = yOf(z.tp1);
+      if (ys != null) { el('line', { x1: x0, y1: ys, x2: W, y2: ys, stroke: DOWN, 'stroke-dasharray': '4 3' }); txt(x0 + 4, ys + (sd === 'buy' ? 12 : -4), `SL ${fmt(z.sl)}`, DOWN, 'start', 10); }
+      if (ytp != null) { el('line', { x1: x0, y1: ytp, x2: W, y2: ytp, stroke: UP, 'stroke-dasharray': '4 3' }); txt(x0 + 4, ytp - 4, `TP ${fmt(z.tp1)} (${z.rr1.toFixed(1)}R)`, UP, 'start', 10); }
+    }
+  });
+}
+let bounceTimer = 0;
+function bounceTick() { // re-evaluate status as the live price moves (throttled)
+  if (!S.A || bounceTimer) return;
+  bounceTimer = setTimeout(() => { bounceTimer = 0; if (S.A) { runBounce(); dirty = true; } }, 1500);
+}
+function checkBounce() {
+  const B = S.B; if (!B || !S.an.notify) return;
+  for (const sd of ['buy', 'sell']) {
+    const z = B[sd][0]; if (!z || z.stars < 3 || z.status === 'wait') continue;
+    const key = `bn|${S.symbol}|${tf().label}|${sd}|${fmt(z.entry)}|${z.status}`;
+    if (S.notified[key]) continue;
+    S.notified[key] = Date.now(); store.set('notified', S.notified);
+    const title = `${z.status === 'confirmed' ? '✅' : '👀'} ${S.symbol} ${tf().label} ${z.status === 'confirmed' ? 'ยืนยันเด้ง' : 'เข้าโซนเด้ง'} ${sd === 'buy' ? 'Buy' : 'Sell'}`;
+    const body = `โซน ${fmt(Math.min(z.lo, z.hi))}–${fmt(Math.max(z.lo, z.hi))} · Entry ${fmt(z.entry)} · SL ${fmt(z.sl)} · TP ${fmt(z.tp1)}`;
+    desktopNotify(title, body); beep(); toast(title + ' · ' + body, 'ok', 8000);
+    vcg.log('info', title + ' ' + body, null, 'signal');
+    vcg.notify('bounce', { symbol: S.symbol, timeframe: tf().label, side: sd.toUpperCase(), status: z.status, zone: [z.lo, z.hi], entry: z.entry, sl: z.sl, tp1: z.tp1, tp2: z.tp2, stars: z.stars }, title + '\n' + body);
+  }
+}
+
 function checkNewSignal() {
   const A = S.A; if (!A || !S.an.notify) return;
   const s = A.signals[A.signals.length - 1];
@@ -614,6 +701,7 @@ function onQuotesMsg(list) {
     if (askLine && cur.ask != null) askLine.applyOptions({ price: cur.ask });
     else if (S.showAsk && !askLine) refreshPriceLines();
     updateHeader();
+    bounceTick();
   }
 }
 vcg.onQuotes((list) => { if (S.source !== 'demo') onQuotesMsg(list); });
@@ -817,6 +905,7 @@ function drawAnalysis(W, H) {
   const a = A.atr[A.n - 1] || 0;
   const pad = 14;
 
+  if (S.an.bounce && S.B) drawBounce(W);
   if (S.an.zones) for (const z of A.zones) {
     const yt = yOf(z.top), yb = yOf(z.bottom); if (yt == null || yb == null) continue;
     const x0 = Math.max(0, xIdx(z.first) ?? 0);

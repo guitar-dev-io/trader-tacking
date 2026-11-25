@@ -278,7 +278,9 @@ const SIM = (() => {
       label(W - 6, y + 4, `${o.type.toUpperCase()} ${o.side === 1 ? 'BUY' : 'SELL'} ${o.lot}`, '#ff9800', '#000', 'end');
     }
   }
-  return { place, onQuote, onBar, render, tickUpdate, draw, stats, acc: () => acc, positionsOpen: () => A().positions.length + A().orders.length };
+  // fill the order ticket from another panel (e.g. bounce finder) and open the practice tab — the user still presses the button
+  function prefill(t) { ticket = { ...ticket, ...t }; store.set('sim.ticket', ticket); document.querySelector('#tabs [data-tab="practice"]').click(); render(); toast('กรอกคำสั่งฝึกให้แล้ว ตรวจแล้วกดส่งคำสั่ง', 'ok'); }
+  return { prefill, place, onQuote, onBar, render, tickUpdate, draw, stats, acc: () => acc, positionsOpen: () => A().positions.length + A().orders.length };
 })();
 
 // hook live quotes into the simulator
