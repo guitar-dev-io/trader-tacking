@@ -110,7 +110,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
-        with: { path: out, merge-multiple: true }
+        with: { path: out, merge-multiple: true, pattern: '{android,mac}*' }
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -120,8 +120,8 @@ jobs:
           • Android: ติดตั้งไฟล์ .apk (อนุญาตติดตั้งจากแหล่งที่ไม่รู้จัก)
           • Mac: แตก zip แล้วลากไป Applications — เปิดครั้งแรกด้วยคลิกขวา > Open (หรือ: xattr -cr \"/Applications/Price Tracker.app\")"
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            gh release create "$GITHUB_REF_NAME" out/* --title "Price Tracker $GITHUB_REF_NAME" --notes "$NOTES"
+            gh release create "$GITHUB_REF_NAME" out/*.apk out/*.zip --title "Price Tracker $GITHUB_REF_NAME" --notes "$NOTES"
           else
             TAG="build-${GITHUB_RUN_NUMBER}"
-            gh release create "$TAG" out/* --prerelease --target "$GITHUB_SHA" --title "Test build #${GITHUB_RUN_NUMBER} (v$VER, ${GITHUB_REF_NAME})" --notes "$NOTES"
+            gh release create "$TAG" out/*.apk out/*.zip --prerelease --target "$GITHUB_SHA" --title "Test build #${GITHUB_RUN_NUMBER} (v$VER, ${GITHUB_REF_NAME})" --notes "$NOTES"
           fi
