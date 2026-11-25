@@ -11,7 +11,8 @@ const TOOLS = {
   hline: { icon: 'hline', name: 'เส้นแนวนอน', n: 1, key: 'H' },
   vline: { icon: 'vline', name: 'เส้นแนวตั้ง', n: 1, key: 'V' },
   channel: { icon: 'channel', name: 'Parallel channel (3 คลิก)', n: 3, key: 'C' },
-  fib: { icon: 'fib', name: 'Fibonacci retracement', n: 2, key: 'F' },
+  fib: { icon: 'fib', name: 'Fibonacci retracement (ย่อตัว)', n: 2, key: 'F' },
+  fibext: { icon: 'fibext', name: 'Fibonacci extension (เป้า 161.8 / 261.8) · 3 คลิก', n: 3, key: 'G' },
   rect: { icon: 'rect', name: 'กรอบโซน (Rectangle)', n: 2, key: 'B' },
   brush: { icon: 'brush', name: 'ปากกา (Brush)', n: -1, key: 'P' },
   long: { icon: 'long', name: 'Long position (Entry → SL)', n: 2, key: 'L' },
@@ -22,7 +23,7 @@ const TOOLS = {
   measure: { icon: 'measure', name: 'วัดระยะ (Measure)', n: 2, key: 'M' },
   alert: { icon: 'alert', name: 'ตั้งแจ้งเตือนราคา', n: 1, key: 'A' },
 };
-const GROUPS = [['cursor'], ['trend', 'ray', 'hline', 'vline', 'channel'], ['fib'], ['rect', 'brush'], ['long', 'short'], ['text', 'arrowUp', 'arrowDown'], ['measure'], ['alert']];
+const GROUPS = [['cursor'], ['trend', 'ray', 'hline', 'vline', 'channel'], ['fib', 'fibext'], ['rect', 'brush'], ['long', 'short'], ['text', 'arrowUp', 'arrowDown'], ['measure'], ['alert']];
 const groupSel = store.get('groupSel', GROUPS.map((g) => g[0]));
 S.locked = store.get('locked', false);
 S.hidden = false;
@@ -92,7 +93,7 @@ function setTool(t) {
   $('chart-wrap').style.touchAction = drawing ? 'none' : '';
   chart.applyOptions({ handleScroll: !drawing, handleScale: !drawing });
   const hints = { hline: 'คลิกที่ราคาเพื่อวางเส้นแนวนอน', vline: 'คลิกเพื่อวางเส้นแนวตั้ง', trend: 'คลิก 2 จุดเพื่อวาดเส้นเทรนด์', ray: 'คลิก 2 จุด เส้นจะยืดไปทางขวา',
-    channel: 'คลิก 2 จุดเป็นเส้นหลัก แล้วคลิกจุดที่ 3 เพื่อกำหนดความกว้างช่อง', fib: 'คลิกจุดเริ่ม (100%) แล้วจุดจบ (0%)', rect: 'คลิก 2 มุมเพื่อวาดกรอบโซน',
+    channel: 'คลิก 2 จุดเป็นเส้นหลัก แล้วคลิกจุดที่ 3 เพื่อกำหนดความกว้างช่อง', fib: 'คลิกจุดเริ่ม (100%) แล้วจุดจบ (0%)', fibext: 'คลิก 3 จุด: ① จุดเริ่มขา ② ปลายขา ③ จุดย่อ → ได้เป้า 100% / 161.8% / 261.8% จากจุดย่อ', rect: 'คลิก 2 มุมเพื่อวาดกรอบโซน',
     brush: 'กดค้างแล้วลากเพื่อวาด', long: 'คลิกจุด Entry แล้วคลิกระดับ SL (TP ตั้งที่ 2R ลากปรับได้)', short: 'คลิกจุด Entry แล้วคลิกระดับ SL (TP ตั้งที่ 2R ลากปรับได้)',
     text: 'คลิกตรงที่ต้องการแล้วพิมพ์ข้อความ (Enter = บันทึก)', arrowUp: 'คลิกเพื่อวางลูกศร', arrowDown: 'คลิกเพื่อวางลูกศร',
     measure: 'คลิก 2 จุดเพื่อวัดระยะ', alert: 'คลิกที่ราคาเพื่อตั้งแจ้งเตือน',
@@ -169,13 +170,27 @@ function renderDrawing(d, sel, W, H) {
     case 'fib': {
       if (bad) return;
       const L = Math.min(P[0].x, P[1].x), R = Math.max(P[0].x, P[1].x, W - 70);
-      FIB.forEach((lv, i) => {
-        const price = d.pts[1].price + (d.pts[0].price - d.pts[1].price) * lv, y = yOf(price);
-        if (i < FIB.length - 1) { const yn = yOf(d.pts[1].price + (d.pts[0].price - d.pts[1].price) * FIB[i + 1]); el('rect', { x: L, y: Math.min(y, yn), width: R - L, height: Math.abs(yn - y), fill: FIB_COLORS[i + 1] + '14' }); }
-        el('line', { x1: L, y1: y, x2: R, y2: y, stroke: sel ? '#fff' : FIB_COLORS[i], 'stroke-width': 1 });
-        txt(L + 4, y - 3, `${lv} (${fmt(price)})`, FIB_COLORS[i]);
+      const lv = [...FIB].sort((x, y) => x - y), at = (k) => d.pts[1].price + (d.pts[0].price - d.pts[1].price) * k;
+      lv.forEach((k, i) => {
+        const y = yOf(at(k)); if (y == null) return;
+        if (i < lv.length - 1) { const yn = yOf(at(lv[i + 1])); if (yn != null) el('rect', { x: L, y: Math.min(y, yn), width: R - L, height: Math.abs(yn - y), fill: fibColor(lv[i + 1]) + '14' }); }
+        el('line', { x1: L, y1: y, x2: R, y2: y, stroke: sel ? '#fff' : fibColor(k), 'stroke-width': 1 });
+        txt(L + 4, y - 3, `${k} (${fmt(at(k))})`, fibColor(k));
       });
       el('line', { x1: P[0].x, y1: P[0].y, x2: P[1].x, y2: P[1].y, stroke: '#787b86', 'stroke-width': 1, 'stroke-dasharray': '4 4' });
+      break;
+    }
+    case 'fibext': {
+      if (bad) return;
+      el('polyline', { points: P.map((p) => `${p.x},${p.y}`).join(' '), fill: 'none', stroke: '#787b86', 'stroke-width': 1, 'stroke-dasharray': '4 4' });
+      if (d.pts.length < 3) break;
+      const leg = d.pts[1].price - d.pts[0].price, base = d.pts[2].price, at = (k) => base + leg * k;
+      const L = Math.min(P[2].x, P[1].x), R = Math.max(P[2].x + 40, W - 70);
+      [...FIBX].sort((x, y) => x - y).forEach((k) => {
+        const y = yOf(at(k)); if (y == null) return; const big = k === 1.618 || k === 2.618;
+        el('line', { x1: L, y1: y, x2: R, y2: y, stroke: sel ? '#fff' : fibColor(k), 'stroke-width': big ? 1.6 : 1, 'stroke-dasharray': k === 0 ? '3 3' : '' });
+        txt(L + 4, y - 3, `${(k * 100).toFixed(1).replace(/\.0$/, '')}% (${fmt(at(k))})${big ? ' 🎯' : ''}`, fibColor(k), 'start', 11, big ? 700 : 400);
+      });
       break;
     }
     case 'brush': { const pts = P.filter((p) => p.x != null && p.y != null).map((p) => `${p.x},${p.y}`).join(' '); if (pts) el('polyline', { points: pts, fill: 'none', stroke: col, 'stroke-width': sel ? 3 : 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }); break; }
@@ -259,6 +274,11 @@ function hitTest(x, y) {
         if (d.type === 'fib') xs.push(W - 70);
         if (d.type === 'long' || d.type === 'short') { const L = posLevels(d); ys = [yOf(L.sl), yOf(L.tp)]; if (P[1].x - P[0].x < 40) xs = [P[0].x, P[0].x + 120]; }
         if (x >= Math.min(...xs) - 4 && x <= Math.max(...xs) + 4 && y >= Math.min(...ys) - 4 && y <= Math.max(...ys) + 4) return i; break;
+      }
+      case 'fibext': {
+        for (let k = 1; k < P.length; k++) if (distToSeg(x, y, P[k - 1].x, P[k - 1].y, P[k].x, P[k].y) < 6) return i;
+        if (d.pts.length === 3) { const leg = d.pts[1].price - d.pts[0].price; for (const k of FIBX) { const yy = yOf(d.pts[2].price + leg * k); if (yy != null && Math.abs(yy - y) < 5 && x >= Math.min(P[1].x, P[2].x) - 4) return i; } }
+        break;
       }
       case 'brush': for (let k = 1; k < P.length; k++) if (distToSeg(x, y, P[k - 1].x, P[k - 1].y, P[k].x, P[k].y) < 6) return i; break;
       case 'text': if (x >= P[0].x - 4 && x <= P[0].x + (d.text || '').length * 7.5 + 10 && y >= P[0].y - 16 && y <= P[0].y + 6) return i; break;
@@ -431,7 +451,11 @@ $('cs-btn').onclick = (e) => {
     <div class="item"><span>สีแบบ VCG (น้ำเงิน/แดง)</span><button id="cs-vcg">ใช้</button></div>
     <label class="item"><input type="checkbox" id="cs-grid" ${S.chartCfg.grid ? 'checked' : ''}> เส้นตาราง</label>
     <label class="item"><input type="checkbox" id="cs-sess" ${S.showSessions ? 'checked' : ''}> แสดงช่วงเวลาตลาด (Sessions)</label>
-    <label class="item"><input type="checkbox" id="cs-news" ${S.chartCfg.news ? 'checked' : ''}> แสดงเวลาข่าวสำคัญบนกราฟ</label>`;
+    <label class="item"><input type="checkbox" id="cs-news" ${S.chartCfg.news ? 'checked' : ''}> แสดงเวลาข่าวสำคัญบนกราฟ</label>
+    <div class="group">ระดับ Fibonacci (คั่นด้วย ,)</div>
+    <div class="item fibrow"><span>ย่อตัว</span><input id="cs-fib" value="${FIB.join(', ')}"></div>
+    <div class="item fibrow"><span>เป้า (Extension)</span><input id="cs-fibx" value="${FIBX.join(', ')}"></div>
+    <div class="item" style="gap:6px;justify-content:flex-start"><button id="cs-fib-tv">+ 1.618 / 2.618 ในย่อตัว</button><button id="cs-fib-reset">ค่าเริ่มต้น</button></div>`;
   m.classList.remove('hidden');
   const save = () => { store.set('chartCfg', S.chartCfg); applyChartCfg(); buildMain(); buildIndicators(); dirty = true; };
   $('cs-up').oninput = () => { S.chartCfg.up = $('cs-up').value; save(); };
@@ -439,6 +463,11 @@ $('cs-btn').onclick = (e) => {
   $('cs-vcg').onclick = () => { S.chartCfg.up = '#3b5bdb'; S.chartCfg.down = '#e03131'; $('cs-up').value = S.chartCfg.up; $('cs-down').value = S.chartCfg.down; save(); };
   $('cs-grid').onchange = () => { S.chartCfg.grid = $('cs-grid').checked; save(); };
   $('cs-news').onchange = () => { S.chartCfg.news = $('cs-news').checked; store.set('chartCfg', S.chartCfg); dirty = true; };
+  const parseLv = (v) => [...new Set(String(v).split(/[,\s]+/).map(Number).filter((x) => isFinite(x) && x >= -5 && x <= 10))];
+  $('cs-fib').onchange = () => { const a = parseLv($('cs-fib').value); if (a.length) { FIB = a; store.set('fibLevels', FIB); } $('cs-fib').value = FIB.join(', '); dirty = true; };
+  $('cs-fibx').onchange = () => { const a = parseLv($('cs-fibx').value); if (a.length) { FIBX = a; store.set('fibExtLevels', FIBX); } $('cs-fibx').value = FIBX.join(', '); dirty = true; };
+  $('cs-fib-tv').onclick = () => { FIB = [...new Set([...FIB, 1.618, 2.618])]; store.set('fibLevels', FIB); $('cs-fib').value = FIB.join(', '); dirty = true; };
+  $('cs-fib-reset').onclick = () => { FIB = FIB_DEF.slice(); FIBX = FIBX_DEF.slice(); store.set('fibLevels', FIB); store.set('fibExtLevels', FIBX); $('cs-fib').value = FIB.join(', '); $('cs-fibx').value = FIBX.join(', '); dirty = true; };
   $('cs-sess').onchange = () => { S.showSessions = $('cs-sess').checked; store.set('sessions', S.showSessions); dirty = true; };
 };
 document.addEventListener('click', (e) => { if (!e.target.closest('#cs-menu') && !e.target.closest('#cs-btn')) $('cs-menu').classList.add('hidden'); });

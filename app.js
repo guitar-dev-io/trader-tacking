@@ -22,7 +22,9 @@ function zoneOffsetSec(zone, date = new Date()) {
   return Math.round((Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - Math.floor(date.getTime() / 1000) * 1000) / 1000);
 }
 let TZ = zoneOffsetSec(store.get('tz', 'local'));
-const FIB = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
+const FIB_DEF = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1], FIBX_DEF = [0, 0.618, 1, 1.272, 1.618, 2, 2.618];
+let FIB = store.get('fibLevels', FIB_DEF), FIBX = store.get('fibExtLevels', FIBX_DEF);
+const fibColor = (lv) => ({ 0: '#787b86', 0.236: '#f23645', 0.382: '#ff9800', 0.5: '#4caf50', 0.618: '#089981', 0.786: '#00bcd4', 1: '#787b86', 1.272: '#2962ff', 1.414: '#9c27b0', 1.618: '#f23645', 2: '#ff9800', 2.618: '#e91e63', 3.618: '#9c27b0', 4.236: '#00bcd4' })[lv] || '#b2b5be';
 const FIB_COLORS = ['#787b86', '#f23645', '#ff9800', '#4caf50', '#089981', '#00bcd4', '#787b86'];
 const IND_COLORS = ['#f5a623', '#2962ff', '#e040fb', '#00bcd4', '#ff5252', '#8bc34a', '#ffeb3b'];
 let UP = '#26a69a', DOWN = '#ef5350';
@@ -30,8 +32,8 @@ let UP = '#26a69a', DOWN = '#ef5350';
 
 
 // Clean chart by default: analysis overlays are opt-in from the 🧠 menu.
-const AN_DEFAULT = { bounce: false, liquidity: false, bounceSide: 'both', swing: false, legs: false, structure: false, zones: false, patterns: false, signals: false, history: false, td: false, learnOnly: false, notify: false, swingLen: 5 };
-const AN_VIEW_KEYS = ['bounce', 'liquidity', 'swing', 'legs', 'structure', 'zones', 'patterns', 'signals', 'history', 'td'];
+const AN_DEFAULT = { autofib: false, bounce: false, liquidity: false, bounceSide: 'both', swing: false, legs: false, structure: false, zones: false, patterns: false, signals: false, history: false, td: false, learnOnly: false, notify: false, swingLen: 5 };
+const AN_VIEW_KEYS = ['autofib', 'bounce', 'liquidity', 'swing', 'legs', 'structure', 'zones', 'patterns', 'signals', 'history', 'td'];
 // one-time migration (v2.0.3): switch existing installs to the clean default
 if (store.get('defaultsV', 1) < 2) {
   const an = store.get('an', null);
@@ -351,6 +353,7 @@ document.querySelectorAll('[data-close]').forEach((b) => (b.onclick = () => b.cl
 const AN_ITEMS = [
   ['bounce', 'จุดเด้ง / จุดเข้าซื้อ-ขาย (โซนรอเข้า)'],
   ['liquidity', 'จุด SL เม่า / สภาพคล่อง ($$$) + การกวาด'],
+  ['autofib', 'Fibo อัตโนมัติ ขาล่าสุด (61.8 / 161.8 / 261.8)'],
   ['swing', 'Swing + HH/HL/LH/LL'], ['legs', 'จำนวนแท่งในแต่ละขา'], ['structure', 'โครงสร้าง BOS / CHoCH'],
   ['zones', 'แนวรับ / แนวต้าน (โซน)'], ['patterns', 'แพทเทิร์นแท่งเทียน'], ['td', 'นับแท่ง TD Sequential 1–9'],
   ['signals', 'สัญญาณ Entry / SL / TP'], ['history', 'สัญญาณย้อนหลัง + ผลลัพธ์'],
@@ -585,6 +588,31 @@ function drawLiquidity(W) {
     el('line', { x1: xx - 14, y1: y, x2: xx + 14, y2: y, stroke: AMB, 'stroke-width': 2 });
     txt(xx, x.side === 'low' ? y + 22 : y - 12, '🧹 กวาด', AMB, 'middle', 10, 700);
   }
+}
+// auto Fibonacci on the latest completed swing leg: retracement inside the leg + extension targets beyond it
+function autoFibLeg() {
+  const A = S.A; if (!A || A.swings.length < 2) return null;
+  // the most recent leg that is big enough to matter (≥ 3 ATR); tiny last legs make unreadable levels
+  const atr = A.atr[A.n - 1] || 0, sw = A.swings;
+  for (let k = sw.length - 1; k >= 1 && k >= sw.length - 8; k--) {
+    const a = sw[k - 1], b = sw[k];
+    if (Math.abs(b.price - a.price) >= 3 * atr) return { a, b, dir: b.price > a.price ? 1 : -1 };
+  }
+  const a = sw[sw.length - 2], b = sw[sw.length - 1];
+  return { a, b, dir: b.price > a.price ? 1 : -1 };
+}
+function drawAutoFib(W) {
+  const L = autoFibLeg(); if (!L) return;
+  const { a, b } = L, x0 = Math.max(0, xIdx(a.i) ?? 0), at = (k) => b.price - (b.price - a.price) * k, ext = (k) => a.price + (b.price - a.price) * k;
+  const xa = xIdx(a.i), xb = xIdx(b.i), ya = yOf(a.price), yb = yOf(b.price);
+  if (xa != null && xb != null && ya != null && yb != null) el('line', { x1: xa, y1: ya, x2: xb, y2: yb, stroke: '#b2b5be', 'stroke-dasharray': '4 4' });
+  const line = (price, k, text, strong) => { const y = yOf(price); if (y == null) return; const c = fibColor(k);
+    el('line', { x1: x0, y1: y, x2: W, y2: y, stroke: c, 'stroke-width': strong ? 1.5 : 1, opacity: strong ? 1 : 0.75, 'stroke-dasharray': strong ? '' : '5 4' });
+    txt(x0 + 4, y - 3, `${text} ${fmt(price)}`, c, 'start', 10, strong ? 700 : 400); };
+  const g1 = yOf(at(0.618)), g2 = yOf(at(0.786));
+  if (g1 != null && g2 != null) el('rect', { x: x0, y: Math.min(g1, g2), width: W - x0, height: Math.abs(g2 - g1), fill: '#08998118' });
+  for (const k of [0.382, 0.5, 0.618, 0.786]) line(at(k), k, `Fibo ${(k * 100).toFixed(1)}%`, k === 0.618);
+  for (const k of [1.272, 1.618, 2.618]) line(ext(k), k, `เป้า ${(k * 100).toFixed(1)}%${k >= 1.618 ? ' 🎯' : ''}`, k === 1.618 || k === 2.618);
 }
 let bounceTimer = 0;
 function bounceTick() { // re-evaluate status as the live price moves (throttled)
@@ -960,6 +988,7 @@ function drawAnalysis(W, H) {
   const a = A.atr[A.n - 1] || 0;
   const pad = 14;
 
+  if (S.an.autofib) drawAutoFib(W);
   if (S.an.liquidity && S.B) drawLiquidity(W);
   if (S.an.bounce && S.B) drawBounce(W);
   if (S.an.zones) for (const z of A.zones) {
