@@ -68,11 +68,11 @@
   }
 
   // ---------------- Android: hidden VCG WebView ----------------
-  let V = null, lastChartReq = null, shownForLogin = false, notConnectedSince = Date.now(), reconnects = 0;
+  let V = null, lastChartReq = {}, shownForLogin = false, notConnectedSince = Date.now(), reconnects = 0;
   const subTries = new Map();
   const jsEval = async (js) => { const r = await V.eval({ js }); try { return JSON.parse(r.value); } catch (_) { return r.value; } };
   async function sendChartReq(o) {
-    lastChartReq = o;
+    lastChartReq[o.slot || 'main'] = o;
     log('info', 'chart', `ขอแท่งเทียน ${o.symbol} type=${o.candleType} limit=${o.limit}`);
     if (!V || !state.connected) return;
     try { await jsEval(VCGI.CHART_REQ_JS(o)); } catch (e) { log('error', 'chart', e.message); }
@@ -96,7 +96,7 @@
       notConnectedSince = Date.now();
       if (shownForLogin) { shownForLogin = false; V.hide(); log('info', 'auth', 'login สำเร็จ ซ่อนหน้าต่าง WebTrader'); }
       try { if ((await jsEval(VCGI.FEED_JS)) === 'ok') log('info', 'feed', 'ติดตั้งตัวรับราคาในหน้า WebTrader แล้ว'); } catch (_) {}
-      try { if ((await jsEval(VCGI.CHART_JS)) === 'ok' && lastChartReq) sendChartReq(lastChartReq); } catch (_) {}
+      try { if ((await jsEval(VCGI.CHART_JS)) === 'ok') Object.values(lastChartReq).forEach(sendChartReq); } catch (_) {}
       const want = settings.symbols.filter((s) => !state.invalid.has(s));
       const missing = want.filter((s) => !state.serverSubs.has(s));
       if (missing.length) {

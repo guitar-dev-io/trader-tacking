@@ -102,7 +102,7 @@ function setTool(t) {
 }
 
 // ---------------------------------------------------------------- geometry helpers
-const xOfT = (t) => { const l = timeToLogical(t); return l == null ? null : chart.timeScale().logicalToCoordinate(l); };
+const xOfT = (t) => { const l = timeToLogical(t); return l == null ? null : lToX(chart.timeScale(), l); };
 let _cw = $('chart').clientWidth, _ch = $('chart').clientHeight;   // cached: reading clientWidth every frame forces a re-layout
 const chartW = () => _cw - chart.priceScale('right').width();
 const paneH = () => (chart.panes()[0] ? chart.panes()[0].getHeight() : _ch);
@@ -221,6 +221,7 @@ function redraw() {
   if (!S.candles.length) return;
   if (S.showSessions) drawSessions(W, H);
   if (typeof NEWS !== 'undefined') NEWS.draw(W, H);
+  if (typeof MTF !== 'undefined') MTF.drawOnMain(W);
   drawAnalysis(W, H);
   if (!S.hidden) drawings.forEach((d, i) => renderDrawing(d, S.selected === i, W, H));
   if (S.tool !== 'cursor' && S.pts.length && S.mouse) {

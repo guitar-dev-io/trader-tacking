@@ -24,6 +24,7 @@ const REPLAY = (() => {
     setAllData();
     chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, idx - 120), to: idx + 25 });
     bar.classList.remove('hidden'); document.body.classList.add('replaying');
+    if (typeof MTF !== 'undefined') MTF.replaySync();
     update(); vcg.log('info', `เริ่ม Replay ${S.symbol} ${tf().label} ที่แท่ง ${idx}`, null, 'learn');
   }
   function step(n = 1) {
@@ -35,12 +36,14 @@ const REPLAY = (() => {
       pushLast(true);
       SIM.onBar(b);
       QUIZ.onBar();
+      if (typeof MTF !== 'undefined') MTF.replaySync();
     }
     update();
   }
   function back() {
     const R = S.replay; if (!R || R.idx <= 30) return;
     R.idx--; S.candles = R.full.slice(0, R.idx + 1); setAllData(); update();
+    if (typeof MTF !== 'undefined') MTF.replaySync();
   }
   function play() { if (timer) return stopPlay(); const sp = +bar.querySelector('[data-r=speed]').value; timer = setInterval(() => step(1), 1000 / sp); playBtn.textContent = '⏸'; }
   function stopPlay() { clearInterval(timer); timer = null; playBtn.textContent = '▶'; }

@@ -16,17 +16,19 @@ const DEMO = (() => {
   const digitsOf = (s) => (/JPY/.test(s) ? 3 : /^[A-Z]{6}$/.test(s) && !/^(XAU|XAG|BTC|ETH|SOL|XRP|BNB)/.test(s) ? 5 : 2);
   let ws = null, wsKey = '', cur = null, retry = null;
 
-  async function requestChart(o) {
-    cur = o;
+  async function requestChart(o, handler) {
+    if (o.slot === 'mtf') handler = (m) => MTF.onMsg({ ...m, slot: 'mtf' });
+    handler = handler || onChartMsg;
+    if (o.slot !== 'mtf') cur = o;
     try {
       const url = `${REST}?symbol=${map(o.symbol)}&interval=${IV[o.candleType]}&limit=${Math.min(1000, o.limit || 1000)}&endTime=${Date.parse(o.to)}`;
       const rows = await fetchJSON(url);
-      if (cur !== o && o.inclusive) return;
+      if (o.slot !== 'mtf' && cur !== o && o.inclusive) return;
       const candles = rows.map((r) => ({ timeSeconds: r[0] / 1000, open: +r[1], high: +r[2], low: +r[3], close: +r[4] }));
-      onChartMsg({ type: 'chart', data: { symbol: o.symbol, history: { candles } } });
+      handler({ type: 'chart', data: { symbol: o.symbol, history: { candles } } });
       vcg.log('info', `Demo: ได้ ${candles.length} แท่ง ${o.symbol} (${map(o.symbol)})`, null, 'demo');
     } catch (e) {
-      onChartMsg({ type: 'chartError', data: { message: 'Demo (Binance): ' + e.message } });
+      handler({ type: 'chartError', data: { message: 'Demo (Binance): ' + e.message } });
       vcg.log('error', 'Demo โหลดกราฟไม่สำเร็จ: ' + e.message, null, 'demo');
     }
     connect();
@@ -36,6 +38,8 @@ const DEMO = (() => {
     const syms = [...new Set([...S.symbols, S.symbol])];
     const streams = syms.map((s) => map(s).toLowerCase() + '@ticker');
     streams.push(map(S.symbol).toLowerCase() + '@kline_' + IV[S.tf]);
+    const mtfType = typeof MTF !== 'undefined' ? MTF.activeType() : null;
+    if (mtfType != null && mtfType !== S.tf) streams.push(map(S.symbol).toLowerCase() + '@kline_' + IV[mtfType]);
     const key = streams.join('/');
     if (ws && wsKey === key && ws.readyState <= 1) return;
     stop(); wsKey = key;
@@ -51,8 +55,9 @@ const DEMO = (() => {
         const dg = digitsOf(sym), bid = +d.b, ask = +d.a;
         onQuotesMsg([{ symbol: sym, time: new Date(d.E).toISOString(), bid, ask: ask > bid ? ask : bid, digits: dg, spread: +(ask - bid).toFixed(dg), change: +d.p, changePct: +(+d.P).toFixed(3) }]);
       } else if (d.e === 'kline' && map(S.symbol) === d.s) {
-        const k = d.k;
-        onChartMsg({ type: 'chart', data: { updates: { candles: [{ timeSeconds: k.t / 1000, open: +k.o, high: +k.h, low: +k.l, close: +k.c }] } } });
+        const k = d.k, msg = { type: 'chart', data: { updates: { candles: [{ timeSeconds: k.t / 1000, open: +k.o, high: +k.h, low: +k.l, close: +k.c }] } } };
+        if (k.i === IV[S.tf]) onChartMsg(msg);
+        if (typeof MTF !== 'undefined' && MTF.activeType() != null && k.i === IV[MTF.activeType()]) MTF.onMsg({ ...msg, slot: 'mtf' });
       }
     };
   }
@@ -150,7 +155,7 @@ const NEWS = (() => {
     const first = S.candles[0].time - TZ, last = S.candles[S.candles.length - 1].time - TZ + tf().sec * 30;
     for (const e of relevant()) {
       if (e.t < first || e.t > last) continue;
-      const l = timeToLogical(e.t + TZ); const x = l == null ? null : chart.timeScale().logicalToCoordinate(l);
+      const l = timeToLogical(e.t + TZ); const x = l == null ? null : lToX(chart.timeScale(), l);
       if (x == null || x < 0 || x > W) continue;
       const col = e.impact === 'High' ? '#ef5350' : '#ff9800';
       el('line', { x1: x, y1: 0, x2: x, y2: H, stroke: col, 'stroke-dasharray': '2 4', 'stroke-opacity': 0.7 });

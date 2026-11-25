@@ -38,7 +38,7 @@ public class VcgWebPlugin extends Plugin {
     private static final String UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
     private static final String RELAY_JS = "(() => { if (window.__vcgRelay || !window.__vcgNative) return; window.__vcgRelay = true;"
             + " window.addEventListener('message', (e) => { if (e.source === window && e.data && typeof e.data.__vcg === 'string') {"
-            + " try { window.__vcgNative.post(JSON.stringify({ type: e.data.__vcg, data: e.data.d })); } catch (_) {} } }); })()";
+            + " try { window.__vcgNative.post(JSON.stringify({ type: e.data.__vcg, data: e.data.d, slot: e.data.slot })); } catch (_) {} } }); })()";
 
     private WebView web;
 

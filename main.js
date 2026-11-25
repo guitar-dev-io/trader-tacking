@@ -186,16 +186,16 @@ async function ensureFeed() {
 // Chart history: a second Socket.IO connection (namespace /chart-history), created inside the
 // WebTrader page with the same auth the app uses, like the page's own chart does.
 
-let lastChartReq = null;
+const lastChartReq = {};   // slot → last request
 async function ensureChart() {
   try {
     const r = await traderWin.webContents.executeJavaScript(CHART_JS, true);
-    if (r === 'ok') { log.info('chart', 'สร้างการเชื่อมต่อ chart-history'); if (lastChartReq) sendChartReq(lastChartReq); }
+    if (r === 'ok') { log.info('chart', 'สร้างการเชื่อมต่อ chart-history'); Object.values(lastChartReq).forEach(sendChartReq); }
   } catch (e) { log.error('chart', 'ensureChart: ' + e.message); }
 }
 async function sendChartReq(o) {
-  lastChartReq = o;
-  log.info('chart', `ขอแท่งเทียน ${o.symbol} type=${o.candleType} limit=${o.limit}`, { to: o.to });
+  lastChartReq[o.slot || 'main'] = o;
+  log.info('chart', `ขอแท่งเทียน ${o.symbol} type=${o.candleType} limit=${o.limit}${o.slot ? ' [' + o.slot + ']' : ''}`, { to: o.to });
   if (!state.connected) return;
   try { await traderWin.webContents.executeJavaScript(CHART_REQ_JS(o), true); } catch (e) { log.error('chart', e.message); }
 }

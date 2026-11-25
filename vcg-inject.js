@@ -32,9 +32,9 @@
   })()`;
 
   const CHART_JS = `(() => {
-    if (window.__vcgChart) return 'exists';
+    if (window.__vcgChart && window.__vcgChart.v === 2) return 'exists';
     const shared = globalThis._wsSharedManager; if (!shared) return 'none';
-    const post = (type, d) => window.postMessage({ __vcg: type, d }, '*');
+    const post = (type, d, slot) => window.postMessage({ __vcg: type, d, slot: slot || 'main' }, '*');
     // Fresh token from the web app's own token getter (it caches and renews ~1 min before expiry).
     function tokenGetter() {
       try {
@@ -52,36 +52,44 @@
       } else post('chartLog', 'token getter not found — using feed token');
       return base;
     }
-    // Last resort: make the page renew its own feed token (same path as its PERMISSION_DENIED handler).
     function nudgePageToken() {
       try { const s = shared.socket('/symbol'); (s._anyListeners || []).forEach((f) => f('symbol:error', { message: 'PERMISSION_DENIED (renew)' })); } catch (_) {}
     }
     const M = shared.constructor;
-    const m = new M('wss://${WS_HOST}:443', { reconnection: false, transports: ['websocket'], autoConnect: false });
-    const s = m.socket('/chart-history');
-    s.auth = (cb) => { freshAuth().then(cb, () => cb({ ...(shared.socket('/symbol').auth || {}) })); };
-    const api = { s, last: null, denied: [], req(o) { this.last = o; if (s.connected) s.emit('chart:subscribe', o); } };
-    s.on('chart:data', (d) => post('chart', d));
-    s.on('chart:error', (d) => {
-      const denied = d && typeof d.message === 'string' && d.message.includes('PERMISSION_DENIED');
-      post(denied ? 'chartAuthRenew' : 'chartError', d);
-      if (denied) {
-        const now = Date.now(); api.denied = api.denied.filter((t) => now - t < 60000); api.denied.push(now);
-        if (api.denied.length >= 3) { post('chartLog', 'token ถูกปฏิเสธซ้ำ — ให้หน้าเว็บต่อ token ใหม่'); nudgePageToken(); }
-        s.disconnect();  // 'disconnect' handler reconnects with freshAuth() and re-sends the last request
-      }
-    });
-    s.on('connect', () => { post('chartConnected'); if (api.last) s.emit('chart:subscribe', api.last); });
-    s.on('disconnect', (r) => { post('chartDisconnected', r); setTimeout(() => s.connect(), r === 'io client disconnect' ? 500 : 2000); });
-    s.on('connect_error', (e) => { post('chartConnectError', e && e.message); setTimeout(() => s.connect(), 5000); });
+    // one /chart-history connection per "slot" (main chart, higher-timeframe chart, …)
+    function makeSlot(slot) {
+      const m = new M('wss://${WS_HOST}:443', { reconnection: false, transports: ['websocket'], autoConnect: false });
+      const s = m.socket('/chart-history');
+      s.auth = (cb) => { freshAuth().then(cb, () => cb({ ...(shared.socket('/symbol').auth || {}) })); };
+      const st = { s, last: null, denied: [] };
+      s.on('chart:data', (d) => post('chart', d, slot));
+      s.on('chart:error', (d) => {
+        const denied = d && typeof d.message === 'string' && d.message.includes('PERMISSION_DENIED');
+        post(denied ? 'chartAuthRenew' : 'chartError', d, slot);
+        if (denied) {
+          const now = Date.now(); st.denied = st.denied.filter((t) => now - t < 60000); st.denied.push(now);
+          if (st.denied.length >= 3) { post('chartLog', 'token ถูกปฏิเสธซ้ำ — ให้หน้าเว็บต่อ token ใหม่', slot); nudgePageToken(); }
+          s.disconnect();
+        }
+      });
+      s.on('connect', () => { post('chartConnected', null, slot); if (st.last) s.emit('chart:subscribe', st.last); });
+      s.on('disconnect', (r) => { post('chartDisconnected', r, slot); setTimeout(() => s.connect(), r === 'io client disconnect' ? 500 : 2000); });
+      s.on('connect_error', (e) => { post('chartConnectError', e && e.message, slot); setTimeout(() => s.connect(), 5000); });
+      s.connect();
+      return st;
+    }
+    const api = { v: 2, slots: {}, req(o) {
+      const slot = o.slot || 'main'; const st = this.slots[slot] || (this.slots[slot] = makeSlot(slot));
+      const { slot: _x, ...msg } = o; st.last = msg; if (st.s.connected) st.s.emit('chart:subscribe', msg);
+    } };
     window.__vcgChart = api;
-    s.connect();
+    api.slots.main = makeSlot('main');
     return 'ok';
   })()`;
   const CHART_REQ_JS = (o) => `window.__vcgChart && window.__vcgChart.req(${JSON.stringify(o)})`;
   // Forwards window.postMessage({__vcg}) from the page to the Android native bridge (no-op on desktop).
   const ANDROID_RELAY_JS = `(() => { if (window.__vcgRelay || !window.__vcgNative) return; window.__vcgRelay = true;
-    window.addEventListener('message', (e) => { if (e.source === window && e.data && typeof e.data.__vcg === 'string') { try { window.__vcgNative.post(JSON.stringify({ type: e.data.__vcg, data: e.data.d })); } catch (_) {} } }); })()`;
+    window.addEventListener('message', (e) => { if (e.source === window && e.data && typeof e.data.__vcg === 'string') { try { window.__vcgNative.post(JSON.stringify({ type: e.data.__vcg, data: e.data.d, slot: e.data.slot })); } catch (_) {} } }); })()`;
 
   const dec = (v) => (v && typeof v === 'object' && 'value' in v ? v.value / 10 ** (v.scale || 0) : null);
   function parseQuote(q) {

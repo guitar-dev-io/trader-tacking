@@ -559,7 +559,7 @@ function onChartMsg(m) {
   }
   if (d.updates && d.updates.candles && !S.pendingHistory) d.updates.candles.map(toCandle).filter(valid).forEach(upsert);
 }
-vcg.onChart((m) => { if (S.source !== 'demo') onChartMsg(m); });
+vcg.onChart((m) => { if (S.source === 'demo') return; if (m.slot === 'mtf') { if (typeof MTF !== 'undefined') MTF.onMsg(m); } else onChartMsg(m); });
 
 function upsert(c) {
   if (S.replay) return;
@@ -756,7 +756,15 @@ function logicalToTime(l) {
   if (l >= n - 1) return c[n - 1].time + (l - (n - 1)) * period();
   const i = Math.floor(l); return c[i].time + (l - i) * (c[i + 1].time - c[i].time);
 }
-const xOf = (t) => { const l = timeToLogical(t); return l == null ? null : chart.timeScale().logicalToCoordinate(l); };
+// logicalToCoordinate() only handles whole bar indexes → interpolate fractional positions ourselves
+function lToX(ts, l) {
+  if (l == null || !isFinite(l)) return null;
+  const f = Math.floor(l), a = ts.logicalToCoordinate(f);
+  if (l === f || a == null) return a;
+  const b = ts.logicalToCoordinate(f + 1);
+  return b == null ? a : a + (b - a) * (l - f);
+}
+const xOf = (t) => { const l = timeToLogical(t); return l == null ? null : lToX(chart.timeScale(), l); };
 const xIdx = (i) => chart.timeScale().logicalToCoordinate(i);
 const yOf = (p) => (main ? main.priceToCoordinate(p) : null);
 
