@@ -79,3 +79,26 @@ test('planLaunch on Windows: portable install and AppData data folder', () => {
   assert.equal(q.launch.cmd, path.join(inst, 'terminal64.exe'));
   assert.ok(!q.launch.args.includes('/portable'));
 });
+
+test('EA v2: positions push (POS|1) and deal history (DEALS) are read-only requests', async () => {
+  const port = 19500 + Math.floor(Math.random() * 400), pushed = [];
+  mt5.start(port, { symbols: () => [], quote: () => {}, chart: () => {}, status: () => {}, positions: (p) => pushed.push(p) });
+  mt5.positions(true);                                   // asked before the EA connects
+  await new Promise((r) => setTimeout(r, 100));
+  const sock = net.connect(port, '127.0.0.1'); await new Promise((r) => sock.on('connect', r));
+  const cmds = []; let buf = '';
+  sock.on('data', (d) => { buf += d; let i; while ((i = buf.indexOf('\n')) >= 0) { const line = buf.slice(0, i); buf = buf.slice(i + 1); cmds.push(line); const f = line.split('|');
+    if (f[0] === 'POS') sock.write(JSON.stringify({ t: 'pos', acct: { currency: 'USD', balance: 1000, equity: 990.5, demo: true }, positions: [{ ticket: 1, s: 'XAUUSDbrex.', side: 'buy', vol: 0.01, open: 3581.39, sl: 3570, tp: 0, price: 3570.55, profit: -10.84, swap: 0, time: 1.79e9 }], orders: [] }) + '\n');
+    if (f[0] === 'DEALS') sock.write(JSON.stringify({ t: 'deals', id: +f[1], deals: [{ ticket: 9, pos: 1, s: 'XAUUSDbrex.', side: 'buy', entry: 'in', vol: 0.01, price: 3581.39, profit: 0, commission: 0, swap: 0, time: 1.79e9 }] }) + '\n'); } });
+  sock.write(JSON.stringify({ t: 'hello', v: 2, caps: ['pos', 'deals'], broker: 'Brex', server: 'B-1', offset: 7200, symbols: ['XAUUSDbrex.'] }) + '\n');
+  await new Promise((r) => setTimeout(r, 150));
+  assert.ok(cmds.includes('POS|1'), 'subscribed on hello');
+  assert.equal(pushed.at(-1).positions[0].profit, -10.84);
+  assert.equal(mt5.getPositions().acct.equity, 990.5);
+  const d = await mt5.deals(1.78e9, 0);
+  assert.equal(d[0].entry, 'in');
+  assert.ok(cmds.every((c) => /^(WATCH|POS|DEALS|SUB|HIST|PING)\b/.test(c)), 'only read commands sent: ' + cmds.join(','));
+  sock.destroy(); await new Promise((r) => setTimeout(r, 50));
+  assert.equal(mt5.getPositions(), null, 'cleared on disconnect');
+  mt5.stop();
+});

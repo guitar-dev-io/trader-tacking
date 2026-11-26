@@ -4,7 +4,7 @@ const net = require('net');
 const log = require('./logger');
 
 const TF = ['M1', 'M5', 'M15', 'H1', 'H4', 'D1', 'W1'];
-const st = { server: null, sock: null, buf: '', connected: false, info: null, reqId: 0, pending: new Map(), last: {}, unknown: new Set(), lastTick: 0 };
+const st = { dealWait: new Map(), wantPos: false, positions: null, server: null, sock: null, buf: '', connected: false, info: null, reqId: 0, pending: new Map(), last: {}, unknown: new Set(), lastTick: 0 };
 let hooks = null, port = 7788;
 
 function send(line) { if (st.sock && !st.sock.destroyed) { st.sock.write(line + '\n'); return true; } return false; }
@@ -21,7 +21,7 @@ function start(p, h) {
       let i;
       while ((i = st.buf.indexOf('\n')) >= 0) { const line = st.buf.slice(0, i); st.buf = st.buf.slice(i + 1); if (line.trim()) handle(line); }
     });
-    sock.on('close', () => { if (st.sock === sock) { st.sock = null; st.connected = false; log.warn('mt5', 'EA ตัดการเชื่อมต่อ'); hooks.status(); } });
+    sock.on('close', () => { if (st.sock === sock) { st.sock = null; st.connected = false; st.positions = null; if (hooks.positions) hooks.positions(null); log.warn('mt5', 'EA ตัดการเชื่อมต่อ'); hooks.status(); } });
     sock.on('error', (e) => log.warn('mt5', 'socket: ' + e.message));
   });
   st.server.on('error', (e) => log.error('mt5', `เปิดพอร์ต MT5 ${port} ไม่ได้: ${e.message}`));
@@ -37,9 +37,11 @@ function handle(line) {
   let m; try { m = JSON.parse(line); } catch (_) { return log.warn('mt5', 'ข้อความจาก EA อ่านไม่ได้', line.slice(0, 200)); }
   switch (m.t) {
     case 'hello':
-      st.connected = true; st.info = { broker: m.broker, server: m.server, offset: m.offset, symbols: m.symbols || [] };
+      st.connected = true; st.info = { broker: m.broker, server: m.server, offset: m.offset, symbols: m.symbols || [], v: m.v || 1, caps: m.caps || [] }; st.positions = null;
       log.info('mt5', `EA เชื่อมต่อแล้ว: ${m.broker} (${m.server}) เวลา server = GMT${m.offset >= 0 ? '+' : ''}${m.offset / 3600}`, { symbols: (m.symbols || []).slice(0, 40) });
       watch(hooks.symbols());
+      if (st.wantPos && st.info.caps.includes('pos')) send('POS|1');
+      if (st.info.v < 2) log.warn('mt5', 'EA ใน MT5 เป็นรุ่นเก่า — ติดตั้ง EA ใหม่เพื่อดูออเดอร์/โพซิชันของคุณ (ตั้งค่า → แหล่งราคา → MT5)');
       Object.values(st.last).forEach(request);   // resend chart requests made before the EA connected
       hooks.status();
       break;
@@ -63,6 +65,7 @@ function handle(line) {
       hooks.chart({ type: 'chart', slot: m.slot || 'main', data: { symbol: (st.last[m.slot || 'main'] || {}).symbol || m.s, updates: { candles: (m.bars || []).map((b) => ({ timeSeconds: b[0], open: b[1], high: b[2], low: b[3], close: b[4] })) } } });
       break;
     case 'err': {
+      const dw = st.dealWait.get(String(m.id)); if (dw) { st.dealWait.delete(String(m.id)); dw.reject(new Error(m.msg)); break; }
       const p = st.pending.get(String(m.id));
       log.warn('mt5', 'EA: ' + m.msg);
       if (p && m.retry && (p.tries || 0) < 5) { p.tries = (p.tries || 0) + 1; setTimeout(() => sendHist(m.id, p), 1500); }   // MT5 is still downloading history
@@ -72,6 +75,14 @@ function handle(line) {
     case 'unknown':
       if (!st.unknown.has(m.s)) { st.unknown.add(m.s); log.warn('mt5', `ไม่พบ ${m.s} ใน MT5 — ชื่อ symbol ของโบรกเกอร์อาจมีคำต่อท้าย เช่น ${m.s}.m / ${m.s}m`); hooks.status(); }
       break;
+    case 'pos':
+      st.positions = { at: Date.now(), acct: m.acct || {}, positions: m.positions || [], orders: m.orders || [] };
+      if (hooks.positions) hooks.positions(st.positions);
+      break;
+    case 'deals': {
+      const w = st.dealWait.get(String(m.id)); if (w) { st.dealWait.delete(String(m.id)); w.resolve(m.deals || []); }
+      break;
+    }
     case 'pong': break;
   }
 }
@@ -101,6 +112,22 @@ function resolve(sym, list = st.info ? st.info.symbols : []) {
   return pre[0] || sym;
 }
 const alias = new Map();   // MT5 name -> watchlist names that point to it
+// Read-only account data from the EA (v2+): push of positions/orders, and deal history on request.
+function positions(on) {
+  st.wantPos = !!on;
+  if (st.connected && st.info && st.info.caps.includes('pos')) send('POS|' + (on ? 1 : 0));
+  return st.positions;
+}
+function deals(fromUnix, toUnix = 0) {
+  if (!st.connected) return Promise.reject(new Error('EA ยังไม่ได้เชื่อมต่อ'));
+  if (!st.info.caps.includes('deals')) return Promise.reject(new Error('EA รุ่นเก่า — ติดตั้ง EA ใหม่'));
+  const id = String(++st.reqId);
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => { if (st.dealWait.delete(id)) reject(new Error('EA ไม่ตอบ')); }, 15000);
+    st.dealWait.set(id, { resolve: (v) => { clearTimeout(t); resolve(v); }, reject: (e) => { clearTimeout(t); reject(e); } });
+    send(`DEALS|${id}|${Math.floor(fromUnix)}|${Math.floor(toUnix)}`);
+  });
+}
 function watch(symbols) {
   st.unknown.clear(); alias.clear();
   const out = [];
@@ -171,7 +198,7 @@ function planLaunch({ expertsDir, platform, appBundles = [], symbol, period = 'M
 }
 
 module.exports = { findExpertDirs, resolve, planLaunch,
-  start, stop, request, watch,
+  start, stop, request, watch, positions, deals, getPositions: () => st.positions,
   status: () => ({ listening: !!st.server, connected: st.connected, broker: st.info && st.info.broker, server: st.info && st.info.server,
-    symbols: st.info ? st.info.symbols : [], unknown: [...st.unknown], port, lastTick: st.lastTick }),
+    symbols: st.info ? st.info.symbols : [], eaVersion: st.info ? st.info.v : null, unknown: [...st.unknown], port, lastTick: st.lastTick }),
 };

@@ -10,10 +10,11 @@
 //|  2. In Price Tracker choose data source "MT5"                     |
 //|  3. Drag this EA onto any chart (keep that chart open)            |
 //|                                                                   |
-//| The EA never places or changes orders. It only reads prices.      |
+//| The EA never places or changes orders. It only READS prices and   |
+//| (when asked) your own positions, pending orders and deal history. |
 //+------------------------------------------------------------------+
 #property copyright "Price Tracker"
-#property version   "1.01"
+#property version   "1.02"
 #property description "Sends ticks and candles to Price Tracker (127.0.0.1). Read-only: it never trades."
 
 input string InpHost    = "127.0.0.1"; // Price Tracker address
@@ -40,6 +41,9 @@ SubInfo  g_subs[];
 long     g_offset = 0;           // broker server time - GMT (seconds)
 datetime g_lastTry = 0;
 bool     g_warned4014 = false;
+bool     g_posSub = false;       // app wants positions/orders pushed when they change
+string   g_posLast = "";
+uint     g_posAt = 0;
 
 // forward declarations (older MetaEditor builds want them)
 bool   EnsureConnected();
@@ -54,6 +58,9 @@ string BarJson(const MqlRates &r, int digits);
 long   ServerOffset();
 string MarketWatchJson();
 ENUM_TIMEFRAMES TfFrom(string s);
+string PositionsJson();
+void   SendPositions(bool force);
+void   SendDeals(string id, long fromUnix, long toUnix);
 //+------------------------------------------------------------------+
 int OnInit()
   {
@@ -77,6 +84,7 @@ void OnTimer()
    ReadCommands();
    SendTicks();
    SendSubscriptions();
+   SendPositions(false);
   }
 //+------------------------------------------------------------------+
 long ServerOffset()
@@ -155,10 +163,12 @@ bool EnsureConnected()
       return false;
      }
    g_rx = "";
+   g_posSub = false;
+   g_posLast = "";
    g_offset = ServerOffset();
    ArrayResize(g_subs, 0);
    Print("PriceTrackerBridge: connected to Price Tracker");
-   string hello = StringFormat("{\"t\":\"hello\",\"v\":1,\"broker\":\"%s\",\"server\":\"%s\",\"offset\":%I64d,\"symbols\":[%s]}",
+   string hello = StringFormat("{\"t\":\"hello\",\"v\":2,\"caps\":[\"pos\",\"deals\"],\"broker\":\"%s\",\"server\":\"%s\",\"offset\":%I64d,\"symbols\":[%s]}",
                                Esc(AccountInfoString(ACCOUNT_COMPANY)), Esc(AccountInfoString(ACCOUNT_SERVER)), g_offset, MarketWatchJson());
    return SendLine(hello);
   }
@@ -208,6 +218,8 @@ void ReadCommands()
 //|   WATCH|SYM1,SYM2              send ticks for these symbols       |
 //|   HIST|id|SYM|TF|count|toUnix  send history (toUnix = UTC, 0=now) |
 //|   SUB|slot|SYM|TF              stream the forming candle          |
+//|   POS|1 / POS|0                 push my positions + orders (on/off)|
+//|   DEALS|id|fromUnix|toUnix      my deal history (UTC, read-only)   |
 //|   PING                                                             |
 //+------------------------------------------------------------------+
 void HandleCommand(string line)
@@ -249,6 +261,17 @@ void HandleCommand(string line)
    if(f[0] == "HIST" && n >= 6)
      {
       SendHistory(f[1], f[2], f[3], (int)StringToInteger(f[4]), StringToInteger(f[5]));
+      return;
+     }
+   if(f[0] == "POS")
+     {
+      g_posSub = (n < 2 || f[1] != "0");
+      SendPositions(true);
+      return;
+     }
+   if(f[0] == "DEALS" && n >= 4)
+     {
+      SendDeals(f[1], StringToInteger(f[2]), StringToInteger(f[3]));
       return;
      }
    if(f[0] == "SUB" && n >= 4)
@@ -345,5 +368,111 @@ void SendSubscriptions()
       g_subs[i].lastHigh = r[1].high;
       g_subs[i].lastLow = r[1].low;
      }
+  }
+//+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
+//| Read-only: the trader's own positions, pending orders and account |
+//+------------------------------------------------------------------+
+string Num(double v, int digits)
+  {
+   return DoubleToString(v, digits);
+  }
+string PositionsJson()
+  {
+   string s = "{\"t\":\"pos\",\"acct\":{";
+   s += StringFormat("\"currency\":\"%s\",\"balance\":%s,\"equity\":%s,\"margin\":%s,\"free\":%s,\"leverage\":%I64d,\"demo\":%s",
+                     Esc(AccountInfoString(ACCOUNT_CURRENCY)), Num(AccountInfoDouble(ACCOUNT_BALANCE), 2), Num(AccountInfoDouble(ACCOUNT_EQUITY), 2),
+                     Num(AccountInfoDouble(ACCOUNT_MARGIN), 2), Num(AccountInfoDouble(ACCOUNT_MARGIN_FREE), 2), AccountInfoInteger(ACCOUNT_LEVERAGE),
+                     (AccountInfoInteger(ACCOUNT_TRADE_MODE) == ACCOUNT_TRADE_MODE_REAL) ? "false" : "true");
+   s += "},\"positions\":[";
+   int n = PositionsTotal();
+   for(int i = 0; i < n; i++)
+     {
+      ulong tk = PositionGetTicket(i);
+      if(tk == 0)
+         continue;
+      string sym = PositionGetString(POSITION_SYMBOL);
+      int dg = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
+      if(StringLen(s) > 0 && StringSubstr(s, StringLen(s) - 1) != "[")
+         s += ",";
+      s += StringFormat("{\"ticket\":%I64u,\"s\":\"%s\",\"side\":\"%s\",\"vol\":%s,\"open\":%s,\"sl\":%s,\"tp\":%s,\"price\":%s,\"profit\":%s,\"swap\":%s,\"time\":%I64d,\"magic\":%I64d,\"comment\":\"%s\"}",
+                        tk, Esc(sym), (PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY) ? "buy" : "sell",
+                        Num(PositionGetDouble(POSITION_VOLUME), 2), Num(PositionGetDouble(POSITION_PRICE_OPEN), dg),
+                        Num(PositionGetDouble(POSITION_SL), dg), Num(PositionGetDouble(POSITION_TP), dg),
+                        Num(PositionGetDouble(POSITION_PRICE_CURRENT), dg), Num(PositionGetDouble(POSITION_PROFIT), 2),
+                        Num(PositionGetDouble(POSITION_SWAP), 2), (long)PositionGetInteger(POSITION_TIME) - g_offset,
+                        PositionGetInteger(POSITION_MAGIC), Esc(PositionGetString(POSITION_COMMENT)));
+     }
+   s += "],\"orders\":[";
+   n = OrdersTotal();
+   for(int i = 0; i < n; i++)
+     {
+      ulong tk = OrderGetTicket(i);
+      if(tk == 0)
+         continue;
+      string sym = OrderGetString(ORDER_SYMBOL);
+      int dg = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
+      string ty = EnumToString((ENUM_ORDER_TYPE)OrderGetInteger(ORDER_TYPE));
+      StringReplace(ty, "ORDER_TYPE_", "");
+      StringToLower(ty);
+      if(StringSubstr(s, StringLen(s) - 1) != "[")
+         s += ",";
+      s += StringFormat("{\"ticket\":%I64u,\"s\":\"%s\",\"type\":\"%s\",\"vol\":%s,\"price\":%s,\"sl\":%s,\"tp\":%s,\"time\":%I64d}",
+                        tk, Esc(sym), ty, Num(OrderGetDouble(ORDER_VOLUME_CURRENT), 2), Num(OrderGetDouble(ORDER_PRICE_OPEN), dg),
+                        Num(OrderGetDouble(ORDER_SL), dg), Num(OrderGetDouble(ORDER_TP), dg), (long)OrderGetInteger(ORDER_TIME_SETUP) - g_offset);
+     }
+   s += "]}";
+   return s;
+  }
+//+------------------------------------------------------------------+
+void SendPositions(bool force)
+  {
+   if(!force && !g_posSub)
+      return;
+   if(!force && GetTickCount() - g_posAt < 1000)
+      return;                                  // at most once per second
+   g_posAt = GetTickCount();
+   string s = PositionsJson();
+   if(!force && s == g_posLast)
+      return;
+   g_posLast = s;
+   SendLine(s);
+  }
+//+------------------------------------------------------------------+
+void SendDeals(string id, long fromUnix, long toUnix)
+  {
+   datetime fromT = (datetime)(fromUnix + g_offset);
+   datetime toT = (toUnix > 0) ? (datetime)(toUnix + g_offset) : TimeTradeServer() + 3600;
+   if(!HistorySelect(fromT, toT))
+     {
+      SendLine(StringFormat("{\"t\":\"err\",\"id\":%s,\"msg\":\"HistorySelect failed (%d)\"}", id, GetLastError()));
+      return;
+     }
+   string s = StringFormat("{\"t\":\"deals\",\"id\":%s,\"deals\":[", id);
+   int n = (int)MathMin(HistoryDealsTotal(), 2000);
+   bool first = true;
+   for(int i = 0; i < n; i++)
+     {
+      ulong tk = HistoryDealGetTicket(i);
+      if(tk == 0)
+         continue;
+      long ty = HistoryDealGetInteger(tk, DEAL_TYPE);
+      if(ty != DEAL_TYPE_BUY && ty != DEAL_TYPE_SELL)
+         continue;                             // skip balance / credit / commission rows
+      string sym = HistoryDealGetString(tk, DEAL_SYMBOL);
+      int dg = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
+      long en = HistoryDealGetInteger(tk, DEAL_ENTRY);
+      if(!first)
+         s += ",";
+      first = false;
+      s += StringFormat("{\"ticket\":%I64u,\"pos\":%I64d,\"s\":\"%s\",\"side\":\"%s\",\"entry\":\"%s\",\"vol\":%s,\"price\":%s,\"profit\":%s,\"commission\":%s,\"swap\":%s,\"time\":%I64d}",
+                        tk, HistoryDealGetInteger(tk, DEAL_POSITION_ID), Esc(sym), (ty == DEAL_TYPE_BUY) ? "buy" : "sell",
+                        (en == DEAL_ENTRY_IN) ? "in" : (en == DEAL_ENTRY_OUT) ? "out" : (en == DEAL_ENTRY_INOUT) ? "inout" : "outby",
+                        Num(HistoryDealGetDouble(tk, DEAL_VOLUME), 2), Num(HistoryDealGetDouble(tk, DEAL_PRICE), dg),
+                        Num(HistoryDealGetDouble(tk, DEAL_PROFIT), 2), Num(HistoryDealGetDouble(tk, DEAL_COMMISSION), 2),
+                        Num(HistoryDealGetDouble(tk, DEAL_SWAP), 2), (long)HistoryDealGetInteger(tk, DEAL_TIME) - g_offset);
+     }
+   s += "]}";
+   SendLine(s);
   }
 //+------------------------------------------------------------------+

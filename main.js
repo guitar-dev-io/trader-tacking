@@ -308,6 +308,11 @@ const apiHooks = {
   symbols: () => settings.symbols,
   addSymbol, removeSymbol,
   chart: () => state.chart,
+  positions: async () => {
+    if (!mt5.getPositions()) { mt5.positions(true); for (let i = 0; i < 20 && !mt5.getPositions(); i++) await new Promise((r) => setTimeout(r, 100)); }
+    return mt5.getPositions() || { note: settings.source === 'mt5' ? 'ยังไม่มีข้อมูล — เปิดแท็บราคาในแอป หรือ EA ใน MT5 เป็นรุ่นเก่า' : 'ใช้ได้เมื่อเลือก MT5 เป็นแหล่งราคา' };
+  },
+  deals: (from, to) => mt5.deals(from, to),
   analysis: () => state.analysis || { note: 'ยังไม่มีผลวิเคราะห์ (เปิดกราฟในแอปก่อน)' },
   command: rendererCommand,
   screenshot: chartScreenshot,
@@ -469,6 +474,8 @@ ipcMain.handle('mt5-launch', async (_e, opt = {}) => {
   catch (e) { bad('เปิด MT5 ไม่ได้: ' + e.message); return { ok: false, steps }; }
   return { ok: true, steps };
 });
+ipcMain.handle('mt5-positions', (_e, on) => mt5.positions(on));
+ipcMain.handle('mt5-deals', (_e, from, to) => mt5.deals(from, to));
 ipcMain.handle('mt5-ea-source', () => fs.readFileSync(path.join(__dirname, 'mt5', 'PriceTrackerBridge.mq5'), 'utf8'));
 function startMt5() {
   mt5.start(settings.mt5.port, {
@@ -476,6 +483,7 @@ function startMt5() {
     quote: (q) => { if (settings.source === 'mt5') acceptQuote(q); },
     chart: (m) => { if (settings.source === 'mt5') send('chart', m); },
     status: () => sendStatus(),
+    positions: (p) => { send('positions', p); api.broadcast('positions', p); },
   });
 }
 ipcMain.on('chart-data', (_e, d) => { state.chart = d; });

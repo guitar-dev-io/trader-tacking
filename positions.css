@@ -1,0 +1,25 @@
+/* My orders (MT5, read-only) — positions.js */
+#positions-panel { padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 12px; }
+#positions-panel.hidden { display: none; }
+#positions-panel .pos-h { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+#positions-panel .pos-h b { font-size: 13px; color: var(--text); margin-right: auto; }
+#positions-panel .pos-ro, #positions-panel .pos-acc { font-size: 10px; padding: 1px 6px; border-radius: 8px; border: 1px solid var(--line); color: var(--muted); }
+#positions-panel .pos-acc.demo { color: var(--warn); border-color: var(--warn); }
+#positions-panel .pos-acc.real { color: var(--up); border-color: var(--up); }
+#positions-panel .pos-acct { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; margin-bottom: 6px; color: var(--muted); }
+#positions-panel .pos-acct span { display: flex; flex-direction: column; }
+#positions-panel .pos-acct b { color: var(--text); font-size: 13px; font-variant-numeric: tabular-nums; }
+#positions-panel .pos-acct small { margin-left: auto; }
+#positions-panel .pos-t { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+#positions-panel .pos-t td { padding: 4px 2px; border-top: 1px solid var(--line); white-space: nowrap; }
+#positions-panel .pos-t td:last-child { text-align: right; }
+#positions-panel .pos-t td small { display: block; color: var(--muted); }
+#positions-panel .pos-t tr { cursor: pointer; }
+#positions-panel .pos-t tr:hover td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+#positions-panel .pos-t tr.cur td:first-child { box-shadow: inset 2px 0 var(--accent); padding-left: 6px; }
+#positions-panel .up { color: var(--up); } #positions-panel .down { color: var(--down); }
+#positions-panel .pos-empty { margin: 4px 0; }
+#positions-panel .pos-opts { display: flex; gap: 10px; align-items: center; margin-top: 6px; }
+#positions-panel .pos-opts select { padding: 1px 4px; font-size: 11px; }
+#positions-panel .pos-hist { margin-top: 6px; }
+#positions-panel .pos-sum { color: var(--muted); margin-bottom: 4px; }
