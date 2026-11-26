@@ -2,7 +2,7 @@
 // Run: node scripts/build-icons.js   (needs devDependency lucide-static)
 const fs = require('fs'), path = require('path');
 const root = path.join(__dirname, '..');
-const NAMES = ['lock', 'lock-open', 'log-in', 'book-open', 'graduation-cap', 'globe', 'monitor', 'rocket', 'download', 'circle-check',
+const NAMES = ['wallet', 'trending-up', 'trending-down', 'percent', 'scale', 'timer', 'sigma', 'chart-area', 'filter', 'arrow-up-down', 'activity', 'banknote', 'calendar-range', 'lock', 'lock-open', 'log-in', 'book-open', 'graduation-cap', 'globe', 'monitor', 'rocket', 'download', 'circle-check',
   'hourglass', 'triangle-alert', 'chart-line', 'file-text', 'folder-open', 'clipboard-copy', 'pencil', 'save', 'star', 'newspaper',
   'target', 'camera', 'settings', 'rewind', 'skip-back', 'skip-forward', 'play', 'pause', 'octagon-x', 'circle-x', 'flask-conical',
   'eye', 'eye-off', 'brush-cleaning', 'chart-column', 'coins', 'sparkles', 'bell', 'undo-2', 'redo-2', 'trash-2', 'layers', 'magnet',

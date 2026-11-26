@@ -55,6 +55,8 @@ async function openSettings(section) {
   $('st-autoupd').checked = store.get('autoUpdateCheck', true);
   $('st-bars').value = P.historyBars; $('st-login').checked = !!mainCfg.openAtLogin;
   const n = mainCfg.net;
+  if ($('st-ea-auto')) $('st-ea-auto').checked = !(mainCfg.mt5 && mainCfg.mt5.autoUpdateEA === false);
+  eaInfo();
   if ($('st-mt5-port')) { $('st-mt5-port').value = (mainCfg.mt5 && mainCfg.mt5.port) || 7788; $('st-save-ea').disabled = !vcg.saveEA; renderMt5Info(); }
   $('st-slow').value = n.slowMs; $('st-delay').value = n.delayMs; $('st-stale').value = n.staleSec; $('st-stuck').value = n.stuckSec; $('st-netnotify').checked = n.notify;
   $('st-sound').checked = P.sound; $('st-desktop').checked = P.desktop; $('st-toast').checked = P.toast;
@@ -103,7 +105,7 @@ async function saveSettingsUI() {
     net: { slowMs: clampNum(v('st-slow'), 100, 10000, 800), delayMs: clampNum(v('st-delay'), 500, 60000, 3000), staleSec: clampNum(v('st-stale'), 10, 3600, 45),
       stuckSec: clampNum(v('st-stuck'), 20, 3600, 60), notify: chk('st-netnotify') },
     openAtLogin: chk('st-login'),
-    mt5: { port: clampNum(v('st-mt5-port'), 1024, 65535, 7788) },
+    mt5: { port: clampNum(v('st-mt5-port'), 1024, 65535, 7788), autoUpdateEA: $('st-ea-auto') ? $('st-ea-auto').checked : true },
   });
   if (chk('st-csv') !== $('csv').checked) vcg.toggleCsv();
   const tz = v('st-tz');
@@ -286,3 +288,21 @@ document.querySelectorAll('#st-theme [data-theme-v]').forEach((b) => (b.onclick 
 if ($('theme-btn')) $('theme-btn').onclick = () => { THEME.next(); toast('ธีม: ' + THEME.NAMES[THEME.get()], 'info', 1800); };
 THEME.onChange(syncThemeUI);
 syncThemeUI();
+
+// ---------------------------------------------------------------- EA auto-update (MT5)
+async function eaInfo() {
+  const el = $('st-ea-ver'); if (!el || !vcg.mt5EAInfo) return;
+  try { const i = await vcg.mt5EAInfo(); const f = (b) => (b / 100).toFixed(2);
+    el.textContent = i.running ? `EA ใน MT5: ${f(i.running)} · ในแอป: ${f(i.bundled)}${i.running < i.bundled ? ' — มีรุ่นใหม่' : ' — ล่าสุดแล้ว'}` : `EA ในแอป: ${f(i.bundled)}`; } catch (_) {}
+}
+if ($('st-ea-update')) {
+  if (!vcg.mt5UpdateEA) { $('st-ea-update').disabled = $('st-ea-editor').disabled = $('st-ea-auto').disabled = true; }
+  else {
+    $('st-ea-update').onclick = async () => { $('st-ea-update').disabled = true; try { await vcg.mt5UpdateEA(); } finally { $('st-ea-update').disabled = false; eaInfo(); } };
+    $('st-ea-editor').onclick = async () => { const r = await vcg.mt5OpenEditor(); toast(r === true ? 'กำลังเปิด MetaEditor — กด Compile (F7)' : r === 'folder' ? 'เปิดโฟลเดอร์ EA แล้ว — ดับเบิลคลิกไฟล์เพื่อเปิดใน MetaEditor' : 'ไม่พบ MT5 ในเครื่อง', r ? 'info' : 'warn', 7000); };
+  }
+}
+if (vcg.onEAUpdate) vcg.onEAUpdate((d) => {
+  toast(d.msg + (d.manual ? ' · การตั้งค่า → แหล่งราคา → MT5 → "เปิด MetaEditor"' : ''), d.state === 'ok' ? 'ok' : d.state === 'fail' ? 'warn' : 'info', d.state === 'start' ? 6000 : 12000);
+  if (d.state !== 'start') eaInfo();
+});

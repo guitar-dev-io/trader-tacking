@@ -147,6 +147,7 @@
     <button data-do="dash">${ICON.svg('chart-candlestick', 22)}<span><b>แดชบอร์ด</b><small>หลายกราฟพร้อมกัน + ข่าว ราคา Session</small></span></button>
     <button data-go="calc">${ICON.svg('calc', 22)}<span><b>คำนวณ lot / จุดเติม</b><small>ขนาดไม้จาก % ความเสี่ยง, SL เป็นจุด</small></span></button>
     <button data-do="news">${ICON.svg('newspaper', 22)}<span><b>ข่าวและปฏิทิน</b><small>FXStreet, Investing, Fed, ECB, BLS + ปฏิทินเศรษฐกิจ</small></span></button>
+    <button data-do="journal">${ICON.svg('wallet', 22)}<span><b>ผลการเทรด</b><small>กำไร/ขาดทุน รายวัน รายเดือน จาก MT5 · ดูตัวอย่างได้</small></span></button>
     <button data-do="learn">${ICON.svg('graduation-cap', 22)}<span><b>ศูนย์การเรียนรู้</b><small>บทเรียน แท่งเทียน, Demand & Supply, MM + แบบฝึก</small></span></button>
     <button data-go="log">${ICON.svg('logs', 22)}<span><b>Log</b><small>สถานะการเชื่อมต่อ · ส่งให้ผู้พัฒนาเมื่อมีปัญหา</small></span><i id="m-logb"></i></button>
     <button data-do="settings">${ICON.svg('gear', 22)}<span><b>การตั้งค่า</b><small>เวลา, แจ้งเตือน, Session, ข้อมูล</small></span></button>
@@ -175,10 +176,11 @@
   on(side.querySelector('[data-do=settings]'), 'click', () => $('open-settings').click());
   on(side.querySelector('[data-do=guide]'), 'click', () => SETUP.open());
   on(side.querySelector('[data-do=dash]'), 'click', () => window.DASH && DASH.open());
+  on(side.querySelector('[data-do=journal]'), 'click', () => window.JOURNALPAGE && JOURNALPAGE.open());
   on(side.querySelector('[data-do=learn]'), 'click', () => window.LEARN && LEARN.open());
   on(side.querySelector('[data-do=news]'), 'click', () => window.NEWSPAGE && NEWSPAGE.open());
   // full-screen pages (learning center, news, dashboard) sit above the side panel: close them when the bottom nav is used
-  const closeOverlays = () => { if (window.LEARN) LEARN.close(); if (window.NEWSPAGE) NEWSPAGE.close(); if (window.DASH && document.body.classList.contains('dash-open')) DASH.close(); };
+  const closeOverlays = () => { if (window.JOURNALPAGE && JOURNALPAGE.isOpen()) JOURNALPAGE.close(); if (window.LEARN) LEARN.close(); if (window.NEWSPAGE) NEWSPAGE.close(); if (window.DASH && document.body.classList.contains('dash-open')) DASH.close(); };
   on(side.querySelector('[data-do=login]'), 'click', () => { vcg.showTrader(); });
   on(side.querySelector('[data-do=reconnect]'), 'click', () => { vcg.reloadTrader(); toast('กำลังเชื่อมต่อใหม่…', 'info'); });
   side.querySelector('.m-ver').textContent = 'Price Tracker ' + (window.APP_VERSION || '');

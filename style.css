@@ -575,3 +575,6 @@ button > .ic:first-child, button > [data-icon]:first-child { margin-left: -2px; 
 #connect .cn-primary, .cn-row button { display: inline-flex; align-items: center; justify-content: center; }
 .cn-link { display: inline-flex; align-items: center; }
 .wl-tip [data-icon], .tb-btn > [data-icon], .modal-h .x [data-icon] { margin-right: 0; }
+.ea-auto { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 8px 0 2px; }
+.ea-auto .btns { margin-left: auto; }
+.ea-auto-note { font-size: 12px; margin: 2px 0 6px; }

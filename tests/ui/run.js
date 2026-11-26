@@ -44,7 +44,7 @@ async function open(file, { width = 1400, height = 900, preload = true, mock = f
 
 app.whenReady().then(async () => {
   const reqs = [];
-  ipcMain.handle('mt5-positions', () => null); ipcMain.handle('open-site', (_e, u) => { globalThis.__siteOpened = u; return true; }); ipcMain.handle('mt5-deals', () => []);
+  ipcMain.handle('mt5-positions', () => null); ipcMain.handle('open-site', (_e, u) => { globalThis.__siteOpened = u; return true; }); ipcMain.handle('mt5-deals', () => []); ipcMain.handle('journal-get', () => ({ account: null, deals: [], snapshots: [], status: { state: 'ready' } })); ipcMain.handle('journal-sync', () => ({ added: 0, state: 'ok' })); ipcMain.handle('mt5-ea-info', () => ({ bundled: 103, running: null, auto: true }));
   ipcMain.handle('get-settings', () => ({ api: {}, webhook: {}, telegram: {}, net: { slowMs: 800, delayMs: 3000, staleSec: 45, stuckSec: 60, notify: false }, version: 'test', source: 'vcg' }));
   ipcMain.handle('set-settings', () => true); ipcMain.handle('notify', () => 0); ipcMain.handle('sign-out', () => true);
   ipcMain.handle('fetch-json', () => { throw new Error('offline (test)'); });
@@ -404,6 +404,36 @@ app.whenReady().then(async () => {
     const ff = JSON.parse(await js(`(async () => { NEWSPAGE.open(); await new Promise((r) => setTimeout(r, 200)); const r = { btns: document.querySelectorAll('#news-page [data-ff]').length };
       const b = document.querySelector('#news-page [data-ff=calendar]'); if (b) b.click(); await new Promise((r) => setTimeout(r, 100)); NEWSPAGE.close(); return JSON.stringify(r); })()`));
     check('news page: Forex Factory buttons open the site in-app', ff.btns === 2 && globalThis.__siteOpened === 'https://www.forexfactory.com/calendar', { ...ff, opened: globalThis.__siteOpened });
+    // trading journal ("ผลการเทรด") with the sample account
+    const w8 = (ms) => new Promise((r) => setTimeout(r, ms));
+    await js(`JOURNALPAGE.setRange && store.set('jr.range', 'all'); JOURNALPAGE.sample(true).then(() => JOURNALPAGE.open()); true`); await w8(700); await js(`JOURNALPAGE.setRange('all'); true`); await w8(400);
+    const jr = JSON.parse(await js(`(() => { const d = JOURNALPAGE.data(), st = d.st, el = document.getElementById('journal-page');
+      const sum = Math.round(d.ts.reduce((a, t) => a + t.net, 0) * 100) / 100;
+      const big = el.querySelector('.jr-kpi.big .jr-kv').textContent;
+      return JSON.stringify({ page: PAGES.active(), trades: st.trades, net: st.net, sum, big, kpis: el.querySelectorAll('.jr-kpi').length,
+        days: el.querySelectorAll('.jr-cd[data-day]:not([disabled])').length, rows: el.querySelectorAll('tr[data-pos]').length,
+        charts: el.querySelectorAll('.jr-chart canvas').length, months: el.querySelectorAll('.jr-mt tbody td:not(.none):not(.tot)').length, note: /เก็บไว้ในเครื่องนี้เท่านั้น/.test(el.textContent) }); })()`));
+    await shot('journal-dark');
+    check('journal: opens with the sample account, KPIs match the trades', jr.page === 'journal' && jr.trades > 50 && Math.abs(jr.net - jr.sum) < 0.01 && jr.big.includes(Math.abs(jr.net).toLocaleString('en-US', { minimumFractionDigits: 2 })) && jr.kpis === 8 && jr.note, jr);
+    check('journal: calendar days, monthly table, charts and trade rows', jr.days > 3 && jr.months >= 4 && jr.charts >= 2 && jr.rows === 15, jr);
+    const jr7 = JSON.parse(await js(`(() => { JOURNALPAGE.setRange('7d'); const a = JOURNALPAGE.data().st.trades; JOURNALPAGE.setRange('all'); return JSON.stringify({ a, all: JOURNALPAGE.data().st.trades }); })()`));
+    check('journal: range switch changes the numbers', jr7.a < jr7.all && jr7.a >= 0, jr7);
+    await js(`document.querySelector('#journal-page .jr-cd[data-day]:not([disabled])').click(); true`); await w8(300);
+    await js(`document.getElementById('journal-page').scrollTop = 520; document.getElementById('pages').scrollTop = 520; true`); await w8(200); await shot('journal-calendar');
+    const dayRows = await js(`document.querySelectorAll('#journal-page tr[data-pos]').length`);
+    check('journal: calendar day filters the trades', dayRows >= 1 && dayRows <= 3, dayRows);
+    const before = reqs.length;
+    await js(`document.querySelector('#journal-page tr[data-pos]').click(); true`); await w8(4600);
+    const jt = JSON.parse(await js(`JSON.stringify({ page: PAGES.active(), marks: drawings.filter((d) => d.by === 'journal').length })`));
+    check('journal: trade click opens the chart with entry/exit marks', jt.page === 'chart' && jt.marks >= 1 && reqs.length >= before, { ...jt, reqs: reqs.length - before });
+    await js(`JOURNALPAGE.open(); THEME.set('light'); true`); await w8(600); await js(`document.getElementById('journal-page').scrollTop = 0; document.getElementById('pages').scrollTop = 0; true`); await w8(100); await shot('journal-light');
+    const jl = await js(`getComputedStyle(document.getElementById('journal-page')).backgroundColor`);
+    check('journal: light theme', /255, 255, 255|24[0-9], 24[0-9], 2[45][0-9]/.test(jl), jl);
+    await js(`THEME.set('dark'); JOURNALPAGE.sample(false); true`); await w8(700); await shot('journal-empty');
+    check('journal: empty state when no MT5 history', await js(`!!document.querySelector('#journal-page .jr-empty') && /ดูตัวอย่าง/.test(document.querySelector('#journal-page .jr-empty').textContent)`));
+    await js(`JOURNALPAGE.close(); drawings = drawings.filter((d) => d.by !== 'journal'); dirty = true; true`);
+    // EA auto-update controls in settings
+    check('settings: EA auto-update toggle + buttons', await js(`!!document.getElementById('st-ea-auto') && !!document.getElementById('st-ea-update') && !!document.getElementById('st-ea-editor')`));
     check('desktop: no console errors', A.errs.length === 0, A.errs.slice(0, 3));
     A.w.destroy();
 
@@ -457,6 +487,9 @@ app.whenReady().then(async () => {
       check('android shell: pages fill the screen', ['market', 'analysis', 'practice', 'more'].every((k) => shell[k] >= 380), shell);
       check('android shell: learning center list → reader → back, from More and the bottom nav; back to chart', shell.learnVisible && shell.reader && shell.backToList && shell.backClose && shell.navLearn && shell.chartHidden, shell);
       await N.js(`LEARN.open(); true`); await sleep(250); await N.shot('learn-mobile-list');
+      await N.js(`JOURNALPAGE.sample(true).then(() => JOURNALPAGE.open()); true`); await sleep(900); await N.shot('journal-mobile');
+      check('journal (phone): full-screen page with KPI cards', await N.js(`!document.getElementById('journal-page').classList.contains('hidden') && document.querySelectorAll('#journal-page .jr-kpi').length === 8 && document.getElementById('journal-page').scrollWidth <= 392`));
+      await N.js(`JOURNALPAGE.close(); true`);
       await N.js(`LEARN.open(LEARN.lessons().find((l) => /^Hammer/.test(l.title)).id); true`); await sleep(300); await N.shot('learn-mobile-reader'); await N.js(`LEARN.close(); true`);
       check('android shell: drawing sheet + tool pill + back', shell.toolsSheet && shell.pill && shell.back1, shell);
       check('android shell: indicator sheet borrows and returns the menu', shell.indSheet && shell.back2, shell);

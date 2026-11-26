@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="positions.css">
 <link rel="stylesheet" href="pages.css">
 <link rel="stylesheet" href="about.css">
+<link rel="stylesheet" href="journal.css">
 <link rel="stylesheet" href="learn-center.css">
 <link rel="stylesheet" href="dashboard.css">
 </head>
@@ -240,6 +241,9 @@
               <div id="st-mt5-info" class="net-now"></div>
               <p>ใช้ได้ทุกโบรกเกอร์ที่มี MetaTrader 5 (Exness, XM, Brex ฯลฯ) · <b>EA อ่านอย่างเดียว ส่งออเดอร์ไม่ได้ — ดูออเดอร์/โพซิชันของตัวเองได้</b> · รหัสผ่านกรอกใน MT5 เท่านั้น</p>
               <div class="btns"><button id="st-use-mt5">ใช้ MT5</button><button id="st-mt5-guide"><i data-icon="book-open"></i>ตัวช่วยเชื่อมต่อ MT5</button></div>
+              <div class="ea-auto"><label class="chk"><input type="checkbox" id="st-ea-auto" checked> อัปเดต EA อัตโนมัติ</label><span id="st-ea-ver" class="muted"></span>
+                <span class="btns"><button id="st-ea-update"><i data-icon="refresh-cw"></i>อัปเดต EA ตอนนี้</button><button id="st-ea-editor"><i data-icon="file-text"></i>เปิด MetaEditor</button></span></div>
+              <p class="muted ea-auto-note">เมื่อแอปมี EA รุ่นใหม่ แอปจะคัดลอกและ compile ให้เอง โดยไม่ต้องเปิด MetaEditor — EA บนกราฟโหลดรุ่นใหม่เอง</p>
               <details><summary>ขั้นสูง: ติดตั้ง EA เอง / เปลี่ยนพอร์ต</summary>
                 <div class="row"><label>พอร์ต MT5</label><input id="st-mt5-port" type="number" min="1024" max="65535"><button id="st-save-ea"><i data-icon="download"></i>บันทึกไฟล์ EA</button></div>
                 <div class="btns" style="margin:6px 0"><button id="st-install-ea">ติดตั้ง EA ลง MT5</button><button id="st-copy-ea">คัดลอกโค้ด EA</button></div>
@@ -377,6 +381,8 @@
 <script src="mobile.js"></script>
 <script src="pages.js"></script>
 <script src="about.js"></script>
+<script src="journal.js"></script>
+<script src="journal-page.js"></script>
 <script src="dashboard.js"></script>
 <script src="learn-center.js"></script>
 <script src="news-page.js"></script>
