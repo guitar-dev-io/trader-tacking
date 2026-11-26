@@ -1,0 +1,68 @@
+/* Text on the chart: editor, style bar, selection toolbar, context menu, notes (text-tools.js) */
+.txe { position: absolute; z-index: 30; width: 340px; max-width: calc(100% - 8px); background: var(--surface, var(--panel)); border: 1px solid var(--accent);
+  border-radius: 10px; box-shadow: 0 10px 30px var(--shadow, #0008); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.txe-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; }
+.txe-h b { display: inline-flex; align-items: center; gap: 6px; color: var(--text); font-size: 13px; }
+.txe-h .muted { margin: 0; font-size: 11px; }
+.txe textarea { width: 100%; min-height: 34px; max-height: 260px; resize: none; box-sizing: border-box; padding: 7px 9px; border-radius: 6px;
+  border: 1px solid var(--line); background: var(--bg); line-height: 1.38; overflow-y: auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans Thai", "Sukhumvit Set", Tahoma, sans-serif; }
+.txe textarea:focus { outline: none; border-color: var(--accent); }
+.txe-f { display: flex; justify-content: flex-end; gap: 6px; }
+.txe-f button { padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+.txe-f .primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+/* phone: bottom sheet above the keyboard */
+.txe.txe-sheet { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; max-width: none; border-radius: 14px 14px 0 0; border-width: 1px 0 0;
+  padding: 12px 12px calc(12px + env(safe-area-inset-bottom)); z-index: 9500; }
+.txe.txe-sheet textarea { font-size: 16px !important; min-height: 64px; }
+.txe.txe-sheet .txe-f button { padding: 10px 18px; font-size: 14px; }
+
+/* style bar (editor + selection toolbar) */
+.txs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.txs-seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.txs-seg button { border: none; border-radius: 0; background: transparent; padding: 3px 7px; min-width: 26px; height: 26px; font-size: 11px; font-weight: 600;
+  color: var(--muted); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.txs-seg button + button { border-left: 1px solid var(--line); }
+.txs-seg button.on { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--text); }
+.txs-sw { display: inline-flex; align-items: center; gap: 3px; }
+.txs-sw button { width: 16px; height: 16px; padding: 0; border-radius: 50%; border: 1px solid var(--line); background: var(--c); cursor: pointer; }
+.txs-sw button.on { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--accent); }
+.txs-sw input[type=color] { width: 20px; height: 20px; padding: 0; border: none; background: none; cursor: pointer; }
+.txs-op input { width: 64px; vertical-align: middle; }
+
+/* toolbar over the selected drawing */
+.txt-bar { position: absolute; z-index: 25; display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 8px;
+  background: var(--surface, var(--panel)); border: 1px solid var(--line); box-shadow: 0 6px 18px var(--shadow, #0006); }
+.txt-bar.hidden { display: none; }
+.txt-bar > button { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; height: 26px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+.txt-bar .txb-del:hover { color: var(--down); border-color: var(--down); }
+body.mobile .txt-bar { position: fixed; left: 8px; right: 8px; bottom: calc(68px + env(safe-area-inset-bottom)); top: auto !important; flex-wrap: wrap; z-index: 9000; justify-content: center; }
+
+/* right-click / long-press menu */
+.ctx-menu { position: fixed; z-index: 9600; min-width: 220px; padding: 4px; border-radius: 10px; background: var(--surface, var(--panel));
+  border: 1px solid var(--line); box-shadow: 0 10px 30px var(--shadow, #0008); display: flex; flex-direction: column; }
+.ctx-menu.hidden { display: none; }
+.ctx-menu .ctx-h { padding: 6px 10px 4px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ctx-menu button { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: none; border-radius: 6px; background: transparent; text-align: left;
+  font-size: 13px; color: var(--text); cursor: pointer; }
+.ctx-menu button:hover, .ctx-menu button:focus-visible { background: var(--hover, rgba(127,127,127,.12)); }
+.ctx-menu button svg { color: var(--muted); }
+.ctx-menu .ctx-sep { height: 1px; margin: 4px 6px; background: var(--line); }
+
+/* my notes (per symbol) */
+#notes-btn { position: relative; }
+#notes-btn.has::after { content: ''; position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--warn); }
+.notes-pop { position: absolute; z-index: 28; top: 8px; right: 70px; width: 340px; max-width: calc(100% - 16px); padding: 10px; border-radius: 10px;
+  background: var(--surface, var(--panel)); border: 1px solid var(--line); box-shadow: 0 10px 30px var(--shadow, #0008); display: flex; flex-direction: column; gap: 8px; }
+.notes-pop.hidden { display: none; }
+.notes-pop .nt-h { display: flex; align-items: center; justify-content: space-between; }
+.notes-pop .nt-h b { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.notes-pop .nt-x { width: 26px; height: 26px; padding: 0; font-size: 16px; }
+.notes-pop textarea { width: 100%; box-sizing: border-box; min-height: 180px; resize: vertical; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line);
+  background: var(--bg); line-height: 1.5; font-size: 13px; font-family: inherit; }
+.notes-pop textarea:focus { outline: none; border-color: var(--accent); }
+.notes-pop .nt-f { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--muted); }
+.notes-pop .nt-stamp { padding: 3px 8px; font-size: 11px; border-radius: 6px; cursor: pointer; }
+.notes-pop.np-sheet { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; max-width: none; border-radius: 14px 14px 0 0; z-index: 9500;
+  padding: 12px 12px calc(12px + env(safe-area-inset-bottom)); }
+.notes-pop.np-sheet textarea { font-size: 16px; min-height: 40vh; }

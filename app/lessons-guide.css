@@ -1,0 +1,23 @@
+/* lesson figures follow the theme (wicks/labels/background) */
+:root { --fig-bg: #0f1115; --fig-wick: #b2b5be; --fig-text: #d1d4dc; }
+:root[data-theme="light"] { --fig-bg: #ffffff; --fig-wick: #5d6475; --fig-text: #1f2430; }
+:root[data-theme="contrast"], :root[data-theme="hc"] { --fig-bg: #000000; --fig-wick: #ffffff; --fig-text: #ffffff; }
+/* Lesson book (lessons-guide.js) */
+.lg-fig { margin: 8px auto; max-width: 260px; text-align: center; }
+.lg-fig svg { width: 100%; height: auto; display: block; background: var(--fig-bg, #0f1115); border: 1px solid var(--hover); border-radius: 6px; }
+.lg-cap { font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+#lessons table.lt .lg-fig { margin: 2px auto; max-width: 150px; }
+.lesson-cats { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.lesson-cats button { background: var(--surface-2); color: var(--text); border: 1px solid var(--hover); border-radius: 14px; padding: 4px 10px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.lesson-cats button:hover { border-color: #2962ff; }
+.lesson-cats button.on { background: #2962ff; border-color: #2962ff; color: #fff; }
+.lesson-cats button .n { opacity: .7; margin-left: 4px; font-size: 11px; }
+.lesson-search { width: 100%; box-sizing: border-box; background: var(--surface-2); color: var(--text); border: 1px solid var(--hover); border-radius: 6px; padding: 6px 9px; font-size: 13px; margin-bottom: 6px; }
+.lesson-search:focus { outline: none; border-color: #2962ff; }
+.lesson-cat-h { font-weight: 700; color: var(--text); margin: 14px 0 2px; padding-bottom: 4px; border-bottom: 1px solid var(--hover); font-size: 13px; }
+.lg-tip { background: #2962ff14; border-left: 3px solid #2962ff; padding: 6px 9px; border-radius: 4px; color: var(--text) !important; }
+.lg-warn { background: #ef535014; border-left: 3px solid #ef5350; padding: 6px 9px; border-radius: 4px; color: var(--text) !important; }
+.lg-check { list-style: none; padding-left: 2px; margin: 6px 0; }
+.lg-check li { position: relative; padding: 3px 0 3px 24px; line-height: 1.5; color: var(--text-2); }
+.lg-check li::before { content: '☐'; position: absolute; left: 2px; top: 2px; color: #26a69a; font-size: 14px; }
+#lessons td.up { color: #26a69a; } #lessons td.down { color: #ef5350; }
