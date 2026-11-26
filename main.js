@@ -92,7 +92,9 @@ function onQuotes(rawList) {
 }
 function acceptQuote(q) {
   {
-    if (!settings.symbols.includes(q.symbol)) return;
+    // MT5 also reports the broker's exact name (XAUUSDbrex.) next to the watchlist name (XAUUSDBREX.): keep both,
+    // so a chart opened with the exact name gets live prices too
+    if (!settings.symbols.includes(q.symbol) && !settings.symbols.some((x) => x.toUpperCase() === String(q.symbol).toUpperCase())) return;
     state.quotes[q.symbol] = q;
     if (state.invalid.has(q.symbol)) state.invalid.delete(q.symbol);
     subTries.delete(q.symbol);
