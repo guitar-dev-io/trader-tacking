@@ -9,7 +9,13 @@
     const s = m.socket('/symbol'); if (!s.connected) return 'down';
     s.emit('symbol:subscribe', { symbols: ${JSON.stringify(symbols)} }); return 'ok';
   })()`;
-  const CONNECTED_JS = `(() => { const m = globalThis._wsSharedManager;
+  // Is the WebTrader page showing a login form? (VCG can show login on the /webtrader URL itself, so the URL alone is not enough)
+const LOGIN_STATE_JS = `(() => { try {
+  const vis = (e) => !!(e && e.offsetParent !== null);
+  const pw = [...document.querySelectorAll('input[type=password]')].some(vis);
+  return JSON.stringify({ pw, mgr: !!globalThis._wsSharedManager, path: location.pathname, title: String(document.title || '').slice(0, 60) });
+} catch (e) { return JSON.stringify({ err: String(e) }); } })()`;
+const CONNECTED_JS = `(() => { const m = globalThis._wsSharedManager;
     return !!(m && m.socket('/symbol').connected); })()`;
 
   const FEED_JS = `(() => {
@@ -138,6 +144,6 @@
       change: dec(q.priceChange), changePct: pct != null ? +(pct * 100).toFixed(3) : null };
   }
 
-  const api = { WEBTRADER_URL, WS_HOST, SUB_JS, CONNECTED_JS, FEED_JS, CHART_JS, CHART_REQ_JS, ANDROID_RELAY_JS, parseQuote };
+  const api = { WEBTRADER_URL, WS_HOST, SUB_JS, CONNECTED_JS, LOGIN_STATE_JS, FEED_JS, CHART_JS, CHART_REQ_JS, ANDROID_RELAY_JS, parseQuote };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.VCGI = api;
 })(typeof window !== 'undefined' ? window : globalThis);

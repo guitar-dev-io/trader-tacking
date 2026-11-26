@@ -74,6 +74,7 @@ function setSource(src) {
   if (src === 'demo') { DEMO.connect(); toast('ใช้ข้อมูล Demo จาก Binance สำหรับฝึก — XAUUSD ใช้ PAXG แทนทองคำ ราคาใกล้เคียงแต่ไม่เท่ากับโบรกเกอร์', 'info', 9000); }
   else DEMO.stop();
   renderWatchlist(); renderSourceSel(); loadChart();
+  if (typeof renderConnect === 'function') renderConnect();
 }
 function renderSourceSel() {
   if (!$('src-sel')) {

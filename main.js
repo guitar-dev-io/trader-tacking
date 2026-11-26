@@ -107,7 +107,7 @@ function send(ch, data) {
   if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send(ch, data);
 }
 function statusObj() {
-  return { connected: state.connected, loggedIn: state.loggedIn, csv: settings.csv, symbols: settings.symbols,
+  return { stage: state.connected ? 'connected' : state.loggedIn ? 'connecting' : 'login', connected: state.connected, loggedIn: state.loggedIn, csv: settings.csv, symbols: settings.symbols,
     traySymbol: settings.traySymbol, lastTick: state.lastTick, ticks: state.ticks, api: settings.api, invalid: [...state.invalid], source: settings.source, mt5: mt5.status() };
 }
 function sendStatus() { send('status', statusObj()); }

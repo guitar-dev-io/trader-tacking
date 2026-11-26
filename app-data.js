@@ -189,7 +189,49 @@ function switchSymbol(s) {
 
 // ---------------------------------------------------------------- status
 let lastConnected = null;
+// ---------------------------------------------------------------- connect screen (shown until VCG prices flow)
+const BOOT_AT = Date.now();
+let connStatus = {};
+function renderConnect(st = connStatus) {
+  const box = $('connect'); if (!box) return;
+  const show = S.source === 'vcg' && !st.connected && !S.replay && (Date.now() - BOOT_AT > 2500 || st.stage === 'login');
+  box.classList.toggle('hidden', !show);
+  if (!show) return;
+  $('loading').classList.add('hidden');
+  const web = st.platform === 'web' || st.stage === 'web', mobile = document.body.classList.contains('mobile');
+  const stage = web ? 'web' : st.stage || (st.loggedIn ? 'connecting' : 'login');
+  const step = { starting: 0, login: 1, connecting: 2 }[stage] ?? 1;
+  const li = (i, t, sub) => `<li class="${i < step ? 'done' : i === step ? 'now' : ''}"><b>${i < step ? '✓' : i + 1}</b><span>${t}<small>${sub}</small></span></li>`;
+  const html = web ? `<div class="cn-card"><div class="cn-logo">📈 Price Tracker</div><h3>เวอร์ชันเว็บเชื่อมต่อ VCG ไม่ได้</h3>
+      <p class="muted">ราคาจาก VCG ใช้ได้ในแอป Mac และแอป Android · ในเบราว์เซอร์ใช้ข้อมูล Demo ฝึกได้ทุกอย่าง</p>
+      <button class="cn-primary" data-cn="demo">ใช้ข้อมูล Demo</button></div>`
+    : `<div class="cn-card"><div class="cn-logo">📈 Price Tracker</div>
+      <h3>เชื่อมต่อราคาจาก VCG Markets</h3>
+      <ol class="cn-steps">
+        ${li(0, 'เปิดหน้า VCG WebTrader', stage === 'starting' ? 'กำลังโหลด…' : 'โหลดแล้ว')}
+        ${li(1, 'เข้าสู่ระบบบัญชี VCG', stage === 'login' ? (st.overlay ? 'หน้า login เปิดอยู่ — กรอกอีเมล/รหัสผ่านของ VCG' : 'กดปุ่มด้านล่างเพื่อเปิดหน้า login') : 'login ครั้งเดียว แอปจำไว้ให้')}
+        ${li(2, 'รับราคาสด', stage === 'connecting' ? 'กำลังเชื่อมต่อ… (ถ้านานเกิน 1 นาที กดเชื่อมต่อใหม่)' : '')}
+      </ol>
+      <button class="cn-primary" data-cn="login">🔐 ${stage === 'connecting' ? 'เปิดหน้า VCG' : 'เข้าสู่ระบบ VCG'}</button>
+      <p class="muted cn-hint">${mobile ? 'หน้า login จะเปิดเต็มจอ · login เสร็จแอปจะปิดให้เอง หรือกด "กลับไปที่แอป" ด้านบน' : 'จะเปิดหน้าต่าง VCG WebTrader · login แล้วปิดหน้าต่างได้เลย แอปยังรับราคาต่อ'}</p>
+      <div class="cn-row"><button data-cn="demo">ลองด้วยข้อมูล Demo<small>ไม่ต้อง login</small></button><button data-cn="retry">↻ เชื่อมต่อใหม่</button></div>
+      <button class="cn-link" data-cn="log">ดู Log — ถ้ามีปัญหาส่งภาพหน้านี้ให้ผู้พัฒนา</button>
+      <div class="cn-diag">${esc(stage)}${st.page ? ' · ' + esc(st.page) : ''}${st.nativeOk === false ? ' · ⚠️ native bridge ไม่ทำงาน' : ''}${st.overlay ? ' · login window เปิดอยู่' : ''}</div>
+    </div>`;
+  if (html !== box._html) {
+    box._html = html; box.innerHTML = html;
+    box.querySelectorAll('[data-cn]').forEach((b) => (b.onclick = () => {
+      const k = b.dataset.cn;
+      if (k === 'login') { const ok = vcg.showTrader(); vcg.log('info', 'ผู้ใช้กดเข้าสู่ระบบ VCG จากหน้าเชื่อมต่อ', null, 'auth'); if (ok === false) toast('เปิดหน้า login ไม่ได้ — ดูแท็บ Log', 'error'); }
+      else if (k === 'demo') setSource('demo');
+      else if (k === 'retry') { vcg.reloadTrader(); toast('กำลังเชื่อมต่อใหม่…', 'info'); setTimeout(loadChart, 8000); }
+      else if (k === 'log') document.querySelector('#tabs [data-tab="log"]').click();
+    }));
+  }
+}
+setTimeout(() => renderConnect(), 2600);
 vcg.onStatus((st) => {
+  connStatus = st; renderConnect(st);
   const symChanged = JSON.stringify(st.symbols) !== JSON.stringify(S.symbols) || st.traySymbol !== S.traySymbol;
   S.symbols = st.symbols; S.traySymbol = st.traySymbol;
   if (symChanged) renderWatchlist();
@@ -214,7 +256,7 @@ vcg.onStatus((st) => {
     S.mt5WasDown = !m.connected;
   }
   if (S.source === 'vcg') $('conn').classList.toggle('ok', st.connected);
-  if (S.source === 'vcg') $('conn-text').textContent = st.connected ? 'เชื่อมต่อแล้ว' : st.loggedIn ? 'กำลังเชื่อมต่อ…' : 'ยังไม่ได้ login — กด "เปิด WebTrader / Login"';
+  if (S.source === 'vcg') $('conn-text').textContent = st.connected ? 'เชื่อมต่อแล้ว' : st.loggedIn ? 'กำลังเชื่อมต่อ…' : 'ยังไม่ได้ login';
   $('api-info').innerHTML = st.api && st.api.enabled ? `API: <b>http://127.0.0.1:${st.api.port}</b>${st.api.lan ? ' (เปิดให้วง LAN)' : ''}` : 'API: ปิดอยู่';
   if (st.connected && lastConnected === false && S.pendingHistory) loadChart();
   lastConnected = st.connected;

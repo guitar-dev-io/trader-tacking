@@ -22,9 +22,10 @@ function candles(n, sec, seed, start = 3500) {
   return c;
 }
 
-async function open(file, { width = 1400, height = 900, preload = true } = {}) {
-  const w = new BrowserWindow({ width, height, show: true, webPreferences: preload ? { preload: path.join(ROOT, 'preload.js'), contextIsolation: true } : { partition: 'mobile-' + Date.now() } });   // fresh storage, like a new phone
-  const errs = [];
+async function open(file, { width = 1400, height = 900, preload = true, mock = false } = {}) {
+  const w = new BrowserWindow({ width, height, show: true, webPreferences: preload ? { preload: path.join(ROOT, 'preload.js'), contextIsolation: true }
+    : { partition: 'mobile-' + Date.now() + Math.random(), ...(mock ? { preload: path.join(__dirname, 'capacitor-mock.js'), contextIsolation: false } : {}) } });   // fresh storage, like a new phone
+  const errs = []; globalThis.__lastErrs = errs;
   w.webContents.on('console-message', (e) => { if (e.level === 'error') errs.push(e.message); });
   w.webContents.on('preload-error', (_e, p, err) => errs.push('preload ' + err));
   await w.loadFile(file);
@@ -143,9 +144,25 @@ app.whenReady().then(async () => {
       await M.shot('mobile');
       const real = M.errs.filter((e) => !/net::|Failed to fetch|WebSocket|offline/i.test(e));
       check('mobile: no console errors', real.length === 0, real.slice(0, 3));
+      const card = JSON.parse(await M.js(`JSON.stringify({ source: S.source, shown: !document.getElementById('connect').classList.contains('hidden') })`));
+      check('mobile (browser): starts on Demo data, no connect screen', card.source === 'demo' && !card.shown, card);
       M.w.destroy();
+
+      // Android app path (Capacitor mock): not logged in → login window opens by itself, connect screen guides the user
+      const N = await open(www, { width: 390, height: 844, preload: false, mock: true });
+      await sleep(4500);
+      const n1 = JSON.parse(await N.js(`JSON.stringify({ shows: __mock.shows, connect: !document.getElementById('connect').classList.contains('hidden'), text: document.getElementById('connect').textContent, overflow: document.documentElement.scrollWidth - innerWidth })`));
+      check('android: login window opened automatically on first run', n1.shows >= 1, n1.shows);
+      check('android: connect screen visible with login step', n1.connect && /เข้าสู่ระบบ VCG/.test(n1.text), n1.connect);
+      check('android: page has no horizontal overflow', n1.overflow <= 1, n1.overflow);
+      await N.js(`__mock.visible = false; document.querySelector('[data-cn=login]').click(); 1`); await sleep(400);
+      check('android: login button opens the login window', await N.js(`__mock.shows`) >= 2);
+      await N.shot('android-connect');
+      await N.js(`document.querySelector('[data-cn=demo]').click(); 1`); await sleep(800);
+      check('android: demo button hides connect screen', await N.js(`S.source === 'demo' && document.getElementById('connect').classList.contains('hidden')`));
+      N.w.destroy();
     } else console.log('skip mobile: run `npm run build:www` first');
-  } catch (e) { check('suite crashed', false, String(e && e.stack || e)); }
+  } catch (e) { check('suite crashed', false, String(e && e.message || e) + ' | renderer: ' + (globalThis.__lastErrs || []).slice(-3).join(' || ')); }
 
   fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify(results, null, 2));
   console.log(`\n${results.length - failed}/${results.length} passed`);

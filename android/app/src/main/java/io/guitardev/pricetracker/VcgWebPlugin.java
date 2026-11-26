@@ -185,7 +185,28 @@ public class VcgWebPlugin extends Plugin {
 
     @PluginMethod
     public void show(PluginCall call) {
-        getActivity().runOnUiThread(() -> { create(); overlay.setVisibility(View.VISIBLE); overlay.bringToFront(); ViewCompat.requestApplyInsets(overlay); call.resolve(); });
+        getActivity().runOnUiThread(() -> {
+            create();
+            // make sure the overlay is attached and drawn above the Capacitor WebView
+            if (overlay.getParent() == null) {
+                ViewGroup root = getActivity().findViewById(android.R.id.content);
+                root.addView(overlay, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            }
+            overlay.setElevation(1000f);
+            overlay.setTranslationZ(1000f);
+            overlay.setVisibility(View.VISIBLE);
+            web.setVisibility(View.VISIBLE);
+            overlay.bringToFront();
+            ViewCompat.requestApplyInsets(overlay);
+            overlay.post(() -> {
+                JSObject o = new JSObject();
+                o.put("visible", overlay.isShown());
+                o.put("w", overlay.getWidth());
+                o.put("h", overlay.getHeight());
+                o.put("url", currentUrl == null ? "" : currentUrl);
+                call.resolve(o);
+            });
+        });
     }
 
     @PluginMethod

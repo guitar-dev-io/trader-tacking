@@ -39,7 +39,8 @@
   const save = () => ls.set('bridge.settings', settings);
   const state = { connected: false, loggedIn: false, serverSubs: new Set(), invalid: new Set(), quotes: {}, lastTick: 0, ticks: 0 };
   const statusObj = () => ({ connected: state.connected, loggedIn: state.loggedIn, csv: false, symbols: settings.symbols, traySymbol: settings.traySymbol,
-    lastTick: state.lastTick, ticks: state.ticks, api: { enabled: false }, invalid: [...state.invalid], platform: native ? 'android' : 'web' });
+    lastTick: state.lastTick, ticks: state.ticks, api: { enabled: false }, invalid: [...state.invalid], platform: native ? 'android' : 'web',
+    stage: native ? (state.stage || 'starting') : 'web', page: state.page || '', overlay: !!state.overlay, nativeOk: !!V });
   const sendStatus = () => emit('status', statusObj());
 
   let pendingQuotes = {};
@@ -68,6 +69,16 @@
   }
 
   // ---------------- Android: hidden VCG WebView ----------------
+  let lastStage = '', startedAt = Date.now(), overlayInfo = null;
+  // show the native WebTrader overlay and record what Android reports (visible? size?) for the Log tab
+  async function showOverlay(why) {
+    if (!V) return false;
+    try {
+      const r = await V.show(); overlayInfo = r || {}; state.overlay = true;
+      log(r && r.visible === false ? 'error' : 'info', 'auth', `${why || 'เปิดหน้า WebTrader'} · overlay visible=${r && r.visible} ${r && r.w}x${r && r.h}`);
+      sendStatus(); return !(r && r.visible === false);
+    } catch (e) { log('error', 'auth', 'เปิดหน้า WebTrader ไม่ได้: ' + (e && e.message)); return false; }
+  }
   let hiddenAt = 0, V = null, lastChartReq = {}, shownForLogin = false, notConnectedSince = Date.now(), reconnects = 0;
   const subTries = new Map();
   const jsEval = async (js) => { const r = await V.eval({ js }); try { return JSON.parse(r.value); } catch (_) { return r.value; } };
@@ -86,7 +97,14 @@
     if (onTrader) {
       try { await jsEval(VCGI.ANDROID_RELAY_JS); connected = (await jsEval(VCGI.CONNECTED_JS)) === true; } catch (_) {}
     }
-    state.loggedIn = onTrader;
+    // login form visible? (the login can live on the /webtrader URL itself)
+    let page = null;
+    if (url) { try { page = await jsEval(VCGI.LOGIN_STATE_JS); if (typeof page === 'string') page = JSON.parse(page); } catch (_) { page = null; } }
+    const needsLogin = !connected && (!onTrader || /login|signin|sign-in|auth/i.test(url) || !!(page && page.pw));
+    state.loggedIn = onTrader && !needsLogin;
+    state.stage = connected ? 'connected' : !url ? 'starting' : needsLogin ? 'login' : 'connecting';
+    state.page = page ? `${page.path || ''}${page.title ? ' · ' + page.title : ''}` : url.replace(/^https?:\/\/[^/]+/, '');
+    if (state.stage !== lastStage) { log('info', 'auth', `สถานะหน้า VCG: ${state.stage} (${state.page})`); lastStage = state.stage; }
     if (connected !== state.connected) {
       if (!connected && state.connected) reconnects++;
       state.connected = connected;
@@ -94,7 +112,7 @@
     }
     if (connected) {
       notConnectedSince = Date.now();
-      if (shownForLogin) { shownForLogin = false; V.hide(); log('info', 'auth', 'login สำเร็จ ซ่อนหน้าต่าง WebTrader'); }
+      if (shownForLogin) { shownForLogin = false; state.overlay = false; V.hide(); log('info', 'auth', 'login สำเร็จ ซ่อนหน้าต่าง WebTrader'); }
       ls.set('bridge.everConnected', true);
       try { if ((await jsEval(VCGI.FEED_JS)) === 'ok') log('info', 'feed', 'ติดตั้งตัวรับราคาในหน้า WebTrader แล้ว'); } catch (_) {}
       try { if ((await jsEval(VCGI.CHART_JS)) === 'ok') Object.values(lastChartReq).forEach(sendChartReq); } catch (_) {}
@@ -105,8 +123,9 @@
         const merged = [...new Set([...state.serverSubs, ...want.filter((s) => !state.invalid.has(s))])];
         try { await jsEval(VCGI.SUB_JS(merged)); } catch (_) {}
       }
-    } else if (!onTrader && url && !shownForLogin && Date.now() - hiddenAt > 60000) {   // user closed it → don't pop up again for a minute
-      shownForLogin = true; V.show(); log('info', 'auth', 'ต้อง login — เปิดหน้า WebTrader');
+    } else if (!shownForLogin && Date.now() - hiddenAt > 60000 &&      // user closed it → don't pop up again for a minute
+      (needsLogin || (!ls.get('bridge.everConnected', false) && Date.now() - startedAt > 10000))) {
+      shownForLogin = true; showOverlay('ต้อง login — เปิดหน้า WebTrader');
     } else if (onTrader && Date.now() - notConnectedSince > settings.net.stuckSec * 1000) {
       notConnectedSince = Date.now(); log('warn', 'feed', 'เชื่อมต่อไม่ได้นาน — โหลด WebTrader ใหม่'); V.reload();
     }
@@ -172,7 +191,7 @@
     removeSymbol: (s) => { settings.symbols = settings.symbols.filter((x) => x !== s); delete state.quotes[s]; if (settings.traySymbol === s) settings.traySymbol = settings.symbols[0] || ''; save(); sendStatus(); },
     setTray: (s) => { settings.traySymbol = s; save(); sendStatus(); },
     showTrader: () => {
-      if (V) { V.show(); return; }
+      if (V) { shownForLogin = true; showOverlay('ผู้ใช้กดเปิดหน้า Login'); return true; }
       log('error', 'app', 'เปิดหน้า VCG ไม่ได้: ส่วนเชื่อมต่อ Android ไม่ทำงาน (platform=' + (native ? 'android' : 'web') + ')');
       if (typeof toast === 'function') toast(/Android/.test(navigator.userAgent) ? 'ส่วนเชื่อมต่อ Android ไม่ทำงาน — ส่งภาพแท็บ Log ให้ผู้พัฒนา' : 'โหมดเว็บต่อ VCG ไม่ได้ — ใช้ข้อมูล Demo', 'error', 10000);
     },
@@ -186,11 +205,11 @@
     V.addListener('message', (e) => { try { handlePageMsg(JSON.parse(e.data)); } catch (_) {} });
     V.addListener('page', (e) => log('info', 'webtrader', 'เปิดหน้า ' + e.url));
     V.addListener('pageError', (e) => log('error', 'webtrader', `โหลดหน้าไม่สำเร็จ ${e.code} ${e.description}`));
-    V.addListener('hidden', () => { shownForLogin = false; hiddenAt = Date.now(); });
+    V.addListener('hidden', () => { shownForLogin = false; hiddenAt = Date.now(); state.overlay = false; sendStatus(); });
     V.addListener('back', () => emit('back'));
     V.start({ url: VCGI.WEBTRADER_URL }).then(() => {
       // first run (never connected yet): show the VCG login page straight away instead of waiting for the checks
-      if (!ls.get('bridge.everConnected', false)) { shownForLogin = true; V.show(); }
+      if (!ls.get('bridge.everConnected', false)) { shownForLogin = true; showOverlay('เปิดครั้งแรก — แสดงหน้า login'); }
     }, (e) => log('error', 'app', 'เริ่มหน้า VCG ไม่ได้: ' + (e && e.message)));
     log('info', 'app', `เริ่มโปรแกรม (Android) · Capacitor ${C.getPlatform ? C.getPlatform() : ''} · plugins: ${Object.keys(C.Plugins || {}).join(', ')}`);
     setInterval(tick, 3000); setInterval(probe, 10000); setInterval(evalNet, 2000); probe();

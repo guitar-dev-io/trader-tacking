@@ -389,3 +389,25 @@ body.mobile #toasts { bottom: 70px; }
 #planner { overflow-x: hidden; } #planner table { display: block; overflow-x: auto; max-width: 100%; white-space: nowrap; }
 
 .bn-st td, .bn-st th { padding: 3px 4px; font-size: 11.5px; } .bn-st td:nth-child(n+3), .bn-st th:nth-child(n+3) { text-align: right; }
+
+/* v2.5.1 connect screen + mobile fixes */
+#loading { padding: 0 18px; text-align: center; line-height: 1.6; white-space: normal; }
+#connect { position: absolute; inset: 0; z-index: 30; display: flex; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 28px 14px; background: rgba(15, 17, 21, 0.92); }
+#connect.hidden { display: none; }
+.cn-card { width: 100%; max-width: 420px; background: #151924; border: 1px solid var(--line); border-radius: 14px; padding: 20px 18px; box-shadow: 0 10px 40px #0008; }
+.cn-logo { font-weight: 700; color: var(--muted); font-size: 13px; }
+.cn-card h3 { margin: 6px 0 14px; font-size: 18px; }
+.cn-steps { list-style: none; padding: 0; margin: 0 0 16px; }
+.cn-steps li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; color: var(--muted); }
+.cn-steps li b { flex: 0 0 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; background: #1f2433; border: 1px solid var(--line); }
+.cn-steps li span { display: flex; flex-direction: column; gap: 2px; }
+.cn-steps li small { font-size: 12px; color: var(--muted); }
+.cn-steps li.done { color: #d1d4dc; } .cn-steps li.done b { background: #26a69a; border-color: #26a69a; color: #fff; }
+.cn-steps li.now { color: #fff; } .cn-steps li.now b { background: #2962ff; border-color: #2962ff; color: #fff; box-shadow: 0 0 0 4px #2962ff33; }
+#connect .cn-primary { width: 100%; padding: 14px; font-size: 16px; font-weight: 700; border-radius: 10px; background: #2962ff; border: none; color: #fff; cursor: pointer; }
+#connect .cn-primary:active { transform: scale(0.99); }
+.cn-hint { font-size: 12px; margin: 8px 0 14px; text-align: center; }
+.cn-row { display: flex; gap: 8px; } .cn-row button { flex: 1; padding: 10px 8px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.cn-row button small { font-size: 11px; color: var(--muted); }
+.cn-link { display: block; margin: 14px auto 0; background: none; border: none; color: #8ab4ff; text-decoration: underline; font-size: 12.5px; }
+.cn-diag { margin-top: 10px; font-size: 10.5px; color: #5d6373; text-align: center; word-break: break-all; }
