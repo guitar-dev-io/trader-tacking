@@ -26,12 +26,11 @@ const MTF = (() => {
 
   const mch = LightweightCharts.createChart($('mtf-chart'), {
     autoSize: true,
-    layout: { background: { type: 'solid', color: '#0f1115' }, textColor: '#9aa0ad', fontSize: 10 },
-    grid: { vertLines: { color: '#1a1d27' }, horzLines: { color: '#1a1d27' } },
-    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-    rightPriceScale: { borderColor: '#232734' },
-    timeScale: { borderColor: '#232734', timeVisible: true, secondsVisible: false, rightOffset: 6 },
+    ...chartThemeOptions(10),
+    crosshair: { ...chartThemeOptions(10).crosshair, mode: LightweightCharts.CrosshairMode.Normal },
+    timeScale: { borderColor: TC().border, timeVisible: true, secondsVisible: false, rightOffset: 6 },
   });
+  THEME.onChange(() => mch.applyOptions(chartThemeOptions(10)));
   let ms = null;
   function buildSeries() {
     if (ms) mch.removeSeries(ms);
@@ -153,7 +152,7 @@ const MTF = (() => {
         mel('rect', { x: x0, y: Math.min(yt, yb), width: Math.max(0, W - x0), height: Math.max(2, Math.abs(yb - yt)), fill: col + '1f', stroke: col + '66', 'stroke-dasharray': '2 3' });
       }
       const sw = A.swings.slice(-14);
-      if (sw.length > 1) mel('polyline', { points: sw.map((s) => `${mx(view[s.i].time)},${my(s.price)}`).join(' '), fill: 'none', stroke: '#b2b5be', 'stroke-width': 1.2, 'stroke-opacity': 0.8 });
+      if (sw.length > 1) mel('polyline', { points: sw.map((s) => `${mx(view[s.i].time)},${my(s.price)}`).join(' '), fill: 'none', stroke: TC().muted, 'stroke-width': 1.2, 'stroke-opacity': 0.8 });
       for (const s of sw) {
         const x = mx(view[s.i].time), y = my(s.price); if (x == null || y == null) continue;
         const good = s.label === 'HH' || s.label === 'HL';

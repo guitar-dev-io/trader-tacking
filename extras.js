@@ -77,14 +77,16 @@ function setSource(src) {
   if (typeof renderConnect === 'function') renderConnect();
 }
 function renderSourceSel() {
+  // the plain <select> is kept for the phone "more" page; on desktop the source pill menu (SRC_UI) switches sources
   if (!$('src-sel')) {
-    $('add-form').insertAdjacentHTML('afterend', `<div class="row" style="display:flex;gap:6px;align-items:center;margin-top:8px"><span class="muted">แหล่งข้อมูล</span>
+    ($('src-sel-home') || $('add-form')).insertAdjacentHTML('beforeend', `<div class="row src-row"><span class="muted">แหล่งข้อมูล</span>
       <select id="src-sel" style="flex:1"><option value="vcg">VCG (ราคาจริง)</option><option value="mt5">MT5 — โบรกเกอร์ใดก็ได้ (EA)</option><option value="demo">Demo — Binance (ฝึก)</option></select></div>`);
     $('src-sel').onchange = () => setSource($('src-sel').value);
   }
   $('src-sel').value = S.source;
   $('src-sel').querySelector('[value=vcg]').disabled = !vcg.capabilities?.vcg;
   const o5 = $('src-sel').querySelector('[value=mt5]'); o5.disabled = !vcg.capabilities?.mt5; o5.hidden = !vcg.capabilities?.mt5;
+  if (typeof SRC_UI !== 'undefined') SRC_UI.render();
 }
 renderSourceSel();
 if (S.source === 'mt5' && !vcg.capabilities?.mt5) { S.source = vcg.capabilities?.vcg ? 'vcg' : 'demo'; store.set('source', S.source); }

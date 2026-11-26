@@ -37,6 +37,7 @@ async function open(file, { width = 1400, height = 900, preload = true, mock = f
 
 app.whenReady().then(async () => {
   const reqs = [];
+  ipcMain.handle('mt5-positions', () => null); ipcMain.handle('mt5-deals', () => []);
   ipcMain.handle('get-settings', () => ({ api: {}, webhook: {}, telegram: {}, net: { slowMs: 800, delayMs: 3000, staleSec: 45, stuckSec: 60, notify: false }, version: 'test', source: 'vcg' }));
   ipcMain.handle('set-settings', () => true); ipcMain.handle('notify', () => 0); ipcMain.handle('sign-out', () => true);
   ipcMain.handle('fetch-json', () => { throw new Error('offline (test)'); });
@@ -85,6 +86,27 @@ app.whenReady().then(async () => {
     const winTxt = await js(`(() => { document.documentElement.classList.add('os-win32'); SETUP.open('mt5', 2); const t = document.querySelector('#setup .su-body').textContent; SETUP.open('install', 0); document.querySelector('#setup [data-nav=back]').click(); document.querySelector('#setup [data-path=install]').click(); const w = document.querySelector('#setup h3').textContent; SETUP.close(); document.documentElement.classList.remove('os-win32'); return JSON.stringify({ ctrl: /Ctrl/.test(t) && !/⌘/.test(t), w }); })()`);
     check('windows: Ctrl shortcuts in MT5 guide, install opens on Windows step', JSON.parse(winTxt).ctrl && /Windows/.test(JSON.parse(winTxt).w), winTxt);
     check('watchlist: source pill shown', await js(`!!document.querySelector('#src-pill') && /VCG/.test(document.querySelector('#src-pill').textContent)`));
+    // reorganized ราคา tab: pill in the watchlist header, no source <select> on desktop, collapsible sections
+    const pnl = JSON.parse(await js(`(() => { const tab = $('tab-market'), sel = $('src-sel');
+      const selVisible = !!sel && sel.offsetParent !== null;
+      const tools = tab.querySelector('details[data-fold=tools]'), alerts = tab.querySelector('details[data-fold=alerts]');
+      $('src-pill').click(); const menu = document.querySelectorAll('#src-menu [data-src]').length; document.body.click(); document.getElementById('src-menu')?.remove();
+      return JSON.stringify({ inHeader: !!tab.querySelector('.wl-h #src-pill'), selVisible, tools: !!tools && !tools.open, alerts: !!alerts, positions: !!$('positions-panel'), menu,
+        legendTip: /⭐/.test(tab.querySelector('.wl-tip').title), ro: /ไม่ส่งคำสั่งซื้อขาย/.test(tab.textContent) }); })()`));
+    check('panel: pill in watchlist header + source menu, no duplicate select, tools folded, read-only note', pnl.inHeader && !pnl.selVisible && pnl.tools && pnl.alerts && pnl.positions && pnl.menu >= 3 && pnl.legendTip && pnl.ro, pnl);
+    await js(`THEME.set('dark')`); await new Promise((r) => setTimeout(r, 200)); await shot('panel-dark');
+    // themes: light switches CSS variables and the chart background; dark restores
+    const th = JSON.parse(await js(`(() => { THEME.set('light'); const bg = getComputedStyle(document.body).backgroundColor, chartBg = chart.options().layout.background.color, attr = document.documentElement.dataset.theme;
+      return JSON.stringify({ bg, chartBg, attr }); })()`));
+    check('theme: light → page + chart background white', th.attr === 'light' && th.bg === 'rgb(255, 255, 255)' && th.chartBg === '#ffffff', th);
+    await new Promise((r) => setTimeout(r, 300)); await shot('theme-light-desktop');
+    await js(`SETUP.open()`); await new Promise((r) => setTimeout(r, 300)); await shot('theme-light-setup'); await js(`SETUP.close(true)`);
+    const th2 = JSON.parse(await js(`(() => { THEME.set('contrast'); const c = chart.options().layout.background.color; THEME.set('dark'); return JSON.stringify({ contrast: c, dark: chart.options().layout.background.color, btn: $('theme-btn').innerHTML }); })()`));
+    check('theme: high-contrast + back to dark, titlebar toggle', th2.contrast === '#000000' && th2.dark === '#0f1115' && /svg/.test(th2.btn), th2);
+    const ab = await js(`(() => { $('modal-settings').classList.remove('hidden'); document.querySelector('.st-nav [data-st=about]').click(); const t = document.querySelector('[data-sec=about]').textContent; return /ไม่ส่งคำสั่งซื้อขาย/.test(t) && /ไม่ใช่คำแนะนำการลงทุน/.test(t) && !!document.querySelector('#st-theme [data-theme-v=light]'); })()`);
+    await new Promise((r) => setTimeout(r, 400)); await shot('settings-about');
+    await js(`document.querySelector('.st-nav [data-st=general]').click(); $('modal-settings').classList.add('hidden')`);
+    check('disclaimer: settings เกี่ยวกับ + theme picker', ab);
     await js(`SETUP.open()`); await new Promise((r) => setTimeout(r, 300)); await shot('setup-start');
     await js(`SETUP.open('mt5', 3)`); await new Promise((r) => setTimeout(r, 300)); await shot('setup-mt5'); await js(`SETUP.open('install', 0)`); await new Promise((r) => setTimeout(r, 300)); await shot('setup-install'); await js(`SETUP.close(true)`);
     check('setup guide: start cards, MT5 5 steps, navigation, close', su.cards === 4 && su.steps === 5 && /Login/.test(su.h) && su.vcgBtn && su.closed, su);
@@ -271,6 +293,12 @@ app.whenReady().then(async () => {
       await N.js(`document.getElementById('connect').classList.remove('hidden'); renderConnect(); 1`);
       await N.js(`document.querySelector('[data-cn=demo]').click(); 1`); await sleep(800);
       check('android: demo button hides connect screen', await N.js(`S.source === 'demo' && document.getElementById('connect').classList.contains('hidden')`));
+      // light theme on the phone: market page + chart
+      const ml = JSON.parse(await N.js(`(async () => { THEME.set('light'); await new Promise((r) => setTimeout(r, 200)); return JSON.stringify({ bg: getComputedStyle(document.body).backgroundColor, nav: getComputedStyle(document.getElementById('mnav2')).backgroundColor, chart: chart.options().layout.background.color }); })()`));
+      check('mobile: light theme (page, bottom nav, chart)', ml.bg === 'rgb(255, 255, 255)' && ml.nav !== 'rgb(18, 21, 29)' && ml.chart === '#ffffff', ml);
+      await sleep(300); await N.shot('theme-light-mobile');
+      await N.js(`document.querySelector('#mnav2 [data-nav=market]').click(); 1`); await sleep(400); await N.shot('theme-light-mobile-market');
+      await N.js(`THEME.set('dark'); 1`);
       N.w.destroy();
     } else console.log('skip mobile: run `npm run build:www` first');
   } catch (e) { check('suite crashed', false, String(e && e.message || e) + ' | renderer: ' + (globalThis.__lastErrs || []).slice(-3).join(' || ')); }

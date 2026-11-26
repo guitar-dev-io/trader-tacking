@@ -1,4 +1,4 @@
-/* global S, store, $, esc, vcg, ICON, ZONES, TZ:writable, zoneOffsetSec, loadChart, runAnalysis, PREF_DEFAULT, SETUP, osKeys, setSource */
+/* global S, store, $, esc, vcg, ICON, ZONES, TZ:writable, zoneOffsetSec, loadChart, runAnalysis, PREF_DEFAULT, SETUP, osKeys, setSource, THEME */
 // Toasts, network status, the Settings window, backup / restore / reset.
 
 // ---------------------------------------------------------------- toasts
@@ -64,6 +64,7 @@ async function openSettings(section) {
   $('st-tg-token').value = t.botToken; $('st-tg-chat').value = t.chatId; $('st-tg-sig').checked = t.onSignal; $('st-tg-alert').checked = t.onAlert;
   $('st-csv').checked = $('csv').checked;
   $('st-ver').textContent = `Price Tracker v${mainCfg.version} · ข้อมูลแอป: ${mainCfg.userData}`;
+  if ($('st-about-ver')) $('st-about-ver').textContent = `เวอร์ชัน ${mainCfg.version || window.APP_VERSION || ''}`;
   $('st-msg').textContent = ''; $('st-reset-msg').textContent = ''; resetArmed = false; $('st-reset').textContent = 'ล้างข้อมูลในแอปทั้งหมด';
   sessDraft = JSON.parse(JSON.stringify(SESSIONS_ALL)); renderSessRows();
   renderNetNow();
@@ -267,3 +268,18 @@ $('st-reset').onclick = () => {
   if (!resetArmed) { resetArmed = true; $('st-reset').textContent = 'กดอีกครั้งเพื่อยืนยัน (ลบรูปวาด/indicator/สคริปต์/alert)'; $('st-reset-msg').textContent = 'แนะนำให้สำรองก่อน'; return; }
   localStorage.clear(); vcg.log('warn', 'ผู้ใช้ล้างข้อมูลในแอป', null, 'data'); location.reload();
 };
+
+// ---------------------------------------------------------------- theme (settings picker + titlebar toggle)
+function syncThemeUI() {
+  const pref = THEME.pref();
+  document.querySelectorAll('#st-theme [data-theme-v]').forEach((b) => { const on = b.dataset.themeV === pref; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); });
+  const tb = $('theme-btn');
+  if (tb) { const t = THEME.get();
+    tb.innerHTML = t === 'light' ? '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>'
+      : '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>';
+    tb.title = `ธีม: ${THEME.NAMES[t]} — กดเพื่อเปลี่ยน (มืด → สว่าง → คอนทราสต์สูง)`; }
+}
+document.querySelectorAll('#st-theme [data-theme-v]').forEach((b) => (b.onclick = () => THEME.set(b.dataset.themeV)));
+if ($('theme-btn')) $('theme-btn').onclick = () => { THEME.next(); toast('ธีม: ' + THEME.NAMES[THEME.get()], 'info', 1800); };
+THEME.onChange(syncThemeUI);
+syncThemeUI();

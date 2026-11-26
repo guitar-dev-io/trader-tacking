@@ -1,15 +1,30 @@
 // Price Tracker renderer · chart: main series, indicators, legend, custom-script editor
 /* global LightweightCharts, IND, AN, BOUNCE, CUSTOM, LESSONS, ICON, vcg */
 // ---------------------------------------------------------------- chart
+// colors of a lightweight-charts chart for the current theme (also used by the MTF chart)
+function chartThemeOptions(fontSize = 11) {
+  const c = TC();
+  return {
+    layout: { background: { type: 'solid', color: c.bg }, textColor: c.text, fontSize, panes: { separatorColor: c.border, separatorHoverColor: '#2962ff55' } },
+    grid: { vertLines: { color: c.grid }, horzLines: { color: c.grid } },
+    crosshair: { vertLine: { color: c.cross, labelBackgroundColor: c.text === '#4a4f5c' ? '#4a4f5c' : '#2a2e39' }, horzLine: { color: c.cross, labelBackgroundColor: c.text === '#4a4f5c' ? '#4a4f5c' : '#2a2e39' } },
+    rightPriceScale: { borderColor: c.border }, leftPriceScale: { borderColor: c.border },
+    timeScale: { borderColor: c.border },
+  };
+}
 const chart = createChart($('chart'), {
   autoSize: true,
-  layout: { background: { type: 'solid', color: '#0f1115' }, textColor: '#9aa0ad', fontSize: 11,
-    panes: { separatorColor: '#232734', separatorHoverColor: '#2962ff55' } },
-  grid: { vertLines: { color: '#1a1d27' }, horzLines: { color: '#1a1d27' } },
-  crosshair: { mode: CrosshairMode.Normal },
-  rightPriceScale: { borderColor: '#232734' },
-  timeScale: { borderColor: '#232734', timeVisible: true, secondsVisible: false, rightOffset: 10 },
+  ...chartThemeOptions(11),
+  crosshair: { ...chartThemeOptions(11).crosshair, mode: CrosshairMode.Normal },
+  timeScale: { borderColor: TC().border, timeVisible: true, secondsVisible: false, rightOffset: 10 },
 });
+// re-apply theme colors to the chart(s) — called on theme change
+function applyChartTheme() {
+  chart.applyOptions(chartThemeOptions(11));
+  if (typeof applyChartCfg === 'function') applyChartCfg();     // keep the user's grid on/off
+  try { dirty = true; } catch (_) {}                              // redraw SVG overlays with the new colors
+}
+THEME.onChange(() => { applyChartTheme(); if (typeof redraw === 'function') try { redraw(); } catch (_) {} });
 let main = null, askLine = null, hlineObjs = [], alertLines = [], indSeries = [];
 const customOut = new Map(); // ind.id -> last run output
 
@@ -160,12 +175,12 @@ function renderLegend(param) {
     const vals = indSeries.filter((x) => x.ind === ind).map((x) => {
       const d = param && param.seriesData ? param.seriesData.get(x.series) : null;
       const v = d ? d.value : x.last;
-      const col = x.hist ? '#9aa0ad' : isC ? (x.color || '#d6d9e0') : (Object.keys(def.lines).length === 1 ? ind.color : def.lines[x.key]);
+      const col = x.hist ? '#9aa0ad' : isC ? (x.color || TC().fg) : (Object.keys(def.lines).length === 1 ? ind.color : def.lines[x.key]);
       const isMain = isC ? (customOut.get(ind.id)?.plots[x.key]?.pane === 'main') : def.pane === 'main';
       return `<span style="color:${col}">${v == null ? '—' : isMain ? fmt(v) : v.toFixed(2)}</span>`;
     }).join(' ');
     const err = isC && customOut.get(ind.id)?.error ? `<span class="err" title="${esc(customOut.get(ind.id).error)}">⚠ error</span>` : '';
-    html += `<div class="row"><span class="ind" data-id="${ind.id}"><b style="color:${ind.color || '#d6d9e0'}">${esc(indName(ind))}</b> ${vals} ${err}
+    html += `<div class="row"><span class="ind" data-id="${ind.id}"><b style="color:${ind.color || 'var(--text)'}">${esc(indName(ind))}</b> ${vals} ${err}
       ${isC ? '<button data-act="code" title="แก้โค้ด">{ }</button>' : ''}<button data-act="edit" title="ตั้งค่า">⚙</button><button data-act="del" title="ลบ">✕</button></span></div>`;
   }
   el.innerHTML = html;

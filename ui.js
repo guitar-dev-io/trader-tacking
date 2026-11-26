@@ -90,4 +90,20 @@
   });
   // phones: layout lives in mobile.js (header, bottom nav, sheets)
   apply(); syncSettings();
+
+  // ---------- collapsible sections in the side panel ----------
+  // <details class="fold" data-fold="key">: remember open/closed
+  const folds = store.get('folds', {});
+  document.querySelectorAll('details.fold[data-fold]').forEach((d) => {
+    const k = d.dataset.fold; if (k in folds) d.open = !!folds[k];
+    d.addEventListener('toggle', () => { folds[k] = d.open; store.set('folds', folds); });
+  });
+  // rendered panels (analysis, practice…): click the first header to fold the panel; state kept per panel id
+  const FOLDABLE = ['an-trend', 'an-bounce', 'an-signal', 'an-stats', 'quiz', 'sim', 'lesson-pack'];
+  FOLDABLE.forEach((id) => { const p = $(id); if (!p) return; p.classList.add('foldable'); if (folds[id] === false) p.classList.add('folded'); });
+  document.getElementById('side').addEventListener('click', (e) => {
+    const h = e.target.closest('.panel-h'); if (!h || e.target.closest('button, input, select, a, label')) return;
+    const p = h.parentElement; if (!p || !p.classList.contains('foldable') || p.querySelector('.panel-h') !== h) return;
+    const f = p.classList.toggle('folded'); folds[p.id] = !f; store.set('folds', folds);
+  });
 })();

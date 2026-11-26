@@ -146,7 +146,7 @@ function drawAutoFib(W) {
   const L = autoFibLeg(); if (!L) return;
   const { a, b } = L, x0 = Math.max(0, xIdx(a.i) ?? 0), at = (k) => b.price - (b.price - a.price) * k, ext = (k) => a.price + (b.price - a.price) * k;
   const xa = xIdx(a.i), xb = xIdx(b.i), ya = yOf(a.price), yb = yOf(b.price);
-  if (xa != null && xb != null && ya != null && yb != null) el('line', { x1: xa, y1: ya, x2: xb, y2: yb, stroke: '#b2b5be', 'stroke-dasharray': '4 4' });
+  if (xa != null && xb != null && ya != null && yb != null) el('line', { x1: xa, y1: ya, x2: xb, y2: yb, stroke: TC().muted, 'stroke-dasharray': '4 4' });
   const line = (price, k, text, strong) => { const y = yOf(price); if (y == null) return; const c = fibColor(k);
     el('line', { x1: x0, y1: y, x2: W, y2: y, stroke: c, 'stroke-width': strong ? 1.5 : 1, opacity: strong ? 1 : 0.75, 'stroke-dasharray': strong ? '' : '5 4' });
     ltxt(x0 + 4, y - 3, `${text} ${fmt(price)}`, c, 'start', 10, strong ? 700 : 400); };

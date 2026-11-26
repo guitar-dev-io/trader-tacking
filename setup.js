@@ -151,9 +151,10 @@ const SETUP = (() => {
       <div class="su-now ${cur.ok ? 'ok' : ''}">สถานะตอนนี้: ${esc(cur.t)}${s.version ? ' · v' + esc(s.version) : ''}</div>
       ${card('demo', '🎓', 'ฝึก / เรียน (Demo)', 'ไม่ต้องสมัคร ไม่ต้อง login · เริ่มได้ทันที')}
       ${card('vcg', '🟢', 'VCG Markets', 'login ด้วยอีเมล + รหัสผ่านของ VCG · ใช้ได้ทั้ง Mac และ Android')}
-      ${card('mt5', '🔵', 'MT5 โบรกเกอร์ของฉัน', mob ? 'ใช้ได้เฉพาะแอปบนคอม (Mac/Windows)' : 'Exness, XM, Brex ฯลฯ · ราคาและสเปรดตรงกับบัญชีจริง', mob)}
+      ${card('mt5', '🔵', 'MT5 โบรกเกอร์ของฉัน', mob ? 'ใช้ได้เฉพาะแอปบนคอม (Mac/Windows)' : 'Exness, XM, Brex ฯลฯ · EA อ่านอย่างเดียว ส่งออเดอร์ไม่ได้ — ดูออเดอร์/โพซิชันของตัวเองได้', mob)}
       <div class="su-sec">ยังไม่ได้ติดตั้ง หรืออยากอัปเดต?</div>
-      ${card('install', '⬇️', 'วิธีติดตั้งแอป', 'Mac (zip) และ Android (apk) · แก้ปัญหาเปิดครั้งแรกไม่ได้')}`;
+      ${card('install', '⬇️', 'วิธีติดตั้งแอป', 'Mac (zip) และ Android (apk) · แก้ปัญหาเปิดครั้งแรกไม่ได้')}
+      <p class="su-ro">🔒 แอปนี้<b>อ่านและแสดงราคาเท่านั้น</b> ไม่ส่งคำสั่งซื้อขาย · ผลวิเคราะห์มีไว้เพื่อการเรียนรู้ ไม่ใช่คำแนะนำการลงทุน</p>`;
   }
   function pathHtml() {
     const P = PATHS[path], s = P.steps[step], n = P.steps.length;
@@ -237,27 +238,43 @@ const SRC_UI = (() => {
     const s = st(), m = s.mt5 || {}, nq = Object.keys(S.quotes || {}).length;
     if (S.source === 'demo') return { cls: 'ok', t: 'Demo · Binance (ฝึก)', hint: '' };
     if (S.source === 'mt5') {
-      if (!m.connected) return { cls: 'wait', t: 'MT5 · รอ EA เชื่อมต่อ', hint: 'เปิด MT5 แล้วติด EA PriceTrackerBridge บนกราฟ — กดที่ป้ายนี้เพื่อดูวิธี' };
+      if (!m.connected) return { cls: 'wait', t: 'MT5 · รอ EA เชื่อมต่อ', hint: 'เปิด MT5 แล้วติด EA PriceTrackerBridge บนกราฟ — กดที่ป้าย → วิธีเชื่อมต่อ' };
       const unk = (m.unknown || []);
       return { cls: nq ? 'ok' : 'wait', t: 'MT5 · ' + (m.broker || 'เชื่อมต่อแล้ว'),
         hint: unk.length ? `⚠️ ไม่พบใน MT5: ${unk.join(', ')} — โบรกเกอร์นี้ใช้ชื่อเช่น ${(m.symbols || [])[0] || 'XAUUSD.m'} (แอปจับคู่ให้เองในเวอร์ชันใหม่)` : nq ? '' : 'Bid / Ask จะขึ้นเมื่อมี tick แรก · ช่วงตลาดปิดจะเป็น —' };
     }
     if (s.connected) return { cls: nq ? 'ok' : 'wait', t: 'VCG · ' + (nq ? 'ราคาสด' : 'รอ tick แรก'), hint: nq ? '' : 'Bid / Ask จะขึ้นเมื่อมี tick แรก · ช่วงตลาดปิดจะเป็น —' };
-    return { cls: s.loggedIn ? 'wait' : 'bad', t: 'VCG · ' + (s.loggedIn ? 'กำลังเชื่อมต่อ…' : 'ยังไม่ได้ login'), hint: s.loggedIn ? '' : 'กดที่ป้ายนี้เพื่อ login' };
+    return { cls: s.loggedIn ? 'wait' : 'bad', t: 'VCG · ' + (s.loggedIn ? 'กำลังเชื่อมต่อ…' : 'ยังไม่ได้ login'), hint: s.loggedIn ? '' : 'กดที่ป้ายด้านบน → วิธีเชื่อมต่อ / login' };
+  }
+  // pill menu: switch source / open the guide
+  function menu() {
+    let m = document.getElementById('src-menu');
+    if (m) { m.remove(); return; }
+    const pill = document.getElementById('src-pill'), r = pill.getBoundingClientRect();
+    const cap = vcg.capabilities || {};
+    const it = (k, icon, t, sub, dis) => `<button role="menuitemradio" aria-checked="${S.source === k}" data-src="${k}" ${dis ? 'disabled' : ''}><i>${icon}</i><span><b>${t}</b><small>${sub}</small></span>${S.source === k ? '<em>✓</em>' : ''}</button>`;
+    m = document.createElement('div'); m.id = 'src-menu'; m.setAttribute('role', 'menu');
+    m.innerHTML = it('vcg', '🟢', 'VCG Markets', 'ราคาจริงจากบัญชี VCG', !cap.vcg)
+      + (cap.mt5 ? it('mt5', '🔵', 'MT5 โบรกเกอร์ของฉัน', 'EA อ่านอย่างเดียว ส่งออเดอร์ไม่ได้') : '')
+      + it('demo', '🎓', 'Demo (ฝึก)', 'ไม่ต้อง login')
+      + '<hr><button data-src="guide"><i>📘</i><span><b>วิธีเชื่อมต่อ / login</b><small>คู่มือเริ่มต้นทีละขั้น</small></span></button>';
+    document.body.appendChild(m);
+    const w = 260; m.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.right - w)) + 'px'; m.style.top = (r.bottom + 6) + 'px';
+    m.onclick = (e) => {
+      const b = e.target.closest('[data-src]'); if (!b || b.disabled) return;
+      m.remove();
+      if (b.dataset.src === 'guide') SETUP.open(S.source === 'mt5' ? 'mt5' : S.source === 'demo' ? 'start' : 'vcg', S.source === 'vcg' ? 1 : 0);
+      else if (b.dataset.src !== S.source) setSource(b.dataset.src);
+    };
+    setTimeout(() => document.addEventListener('click', function off(e) { if (!m.contains(e.target) && e.target !== pill) { m.remove(); } document.removeEventListener('click', off, true); }, true), 0);
   }
   function render() {
-    const sel = document.getElementById('src-sel'); if (!sel) return;
-    let pill = document.getElementById('src-pill');
-    if (!pill) {
-      const row = sel.closest('.row') || sel.parentElement;
-      row.insertAdjacentHTML('afterend', '<button id="src-pill" class="src-pill" title="สถานะแหล่งราคา — กดเพื่อดูวิธีเชื่อมต่อ"></button><div id="src-hint"></div>');
-      pill = document.getElementById('src-pill');
-      pill.onclick = () => SETUP.open(S.source === 'mt5' ? 'mt5' : S.source === 'demo' ? 'start' : 'vcg', S.source === 'vcg' ? 1 : 0);
-    }
+    const pill = document.getElementById('src-pill'); if (!pill) return;
+    if (!pill._wired) { pill._wired = 1; pill.onclick = (e) => { e.stopPropagation(); menu(); }; }
     const i = info(), cls = 'src-pill ' + i.cls;
     if (pill.className !== cls) pill.className = cls;
     if (pill.textContent !== i.t) pill.textContent = i.t;
-    const h = document.getElementById('src-hint'); if (h.textContent !== i.hint) h.textContent = i.hint;
+    const h = document.getElementById('src-hint'); if (h && h.textContent !== i.hint) h.textContent = i.hint;
   }
   function osText() {
     if (!isWin()) return;
@@ -265,6 +282,6 @@ const SRC_UI = (() => {
   }
   setTimeout(() => { render(); osText(); }, 0);
   setInterval(render, 1000);
-  return { render, info };
+  return { render, info, menu };
 })();
 window.SRC_UI = SRC_UI;

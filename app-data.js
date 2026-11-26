@@ -211,9 +211,10 @@ function renderConnect(st = connStatus) {
   const li = (i, t, sub) => `<li class="${i < step ? 'done' : i === step ? 'now' : ''}"><b>${i < step ? '✓' : i + 1}</b><span>${t}${sub ? `<small>${sub}</small>` : ''}</span></li>`;
   const chip = (k, icon, t, sub) => `<button class="cn-src ${S.source === k ? 'on' : ''}" data-src="${k}"${k === 'demo' ? ' data-cn="demo"' : ''}><i>${icon}</i><b>${t}</b><small>${sub}</small></button>`;
   const choices = `<div class="cn-q">ดึงราคาจากไหน?</div><div class="cn-srcs">
-      ${chip('demo', '🎓', 'Demo', 'ฝึก ไม่ต้อง login')}${chip('vcg', '🟢', 'VCG', 'บัญชี VCG Markets')}${desktopMt5 ? chip('mt5', '🔵', 'MT5', 'โบรกเกอร์ของฉัน') : ''}</div>`;
+      ${chip('demo', '🎓', 'Demo', 'ฝึก ไม่ต้อง login')}${chip('vcg', '🟢', 'VCG', 'บัญชี VCG Markets')}${desktopMt5 ? chip('mt5', '🔵', 'MT5', 'อ่านอย่างเดียว') : ''}</div>`;
   const status = (cls, t) => `<div class="cn-status ${cls}"><span class="cn-dot"></span>${t}</div>`;
-  const foot = `<div class="cn-links"><button class="cn-link" data-cn="guide">📘 คู่มือเริ่มต้น</button><span>·</span><button class="cn-link" data-cn="log">ดู Log</button></div>`;
+  const foot = `<div class="cn-links"><button class="cn-link" data-cn="guide">📘 คู่มือเริ่มต้น</button><span>·</span><button class="cn-link" data-cn="log">ดู Log</button></div>
+    <p class="cn-ro">🔒 อ่านและแสดงราคาเท่านั้น · ไม่ส่งคำสั่งซื้อขาย · ไม่ใช่คำแนะนำการลงทุน</p>`;
   let html;
   if (web) {
     html = `<div class="cn-card"><div class="cn-logo">📈 Price Tracker</div><h3>เวอร์ชันเว็บใช้ข้อมูล Demo</h3>
@@ -225,7 +226,7 @@ function renderConnect(st = connStatus) {
       ${status('wait', `รอ EA PriceTrackerBridge ใน MT5 (พอร์ต ${m5.port || 7788})`)}
       <ol class="cn-steps">${['เปิด MT5 และ login บัญชีโบรกเกอร์', 'อนุญาต WebRequest ให้ 127.0.0.1', 'ติด EA PriceTrackerBridge บนกราฟ'].map((t, i) => `<li><b>${i + 1}</b><span>${t}</span></li>`).join('')}</ol>
       <button class="cn-primary" data-cn="mt5guide">ตัวช่วยเชื่อมต่อ MT5</button>
-      <p class="cn-safe">🔒 รหัสผ่านบัญชีกรอกใน MT5 เท่านั้น · EA อ่านราคาอย่างเดียว ไม่ส่งออเดอร์</p>${foot}</div>`;
+      <p class="cn-safe">🔒 รหัสผ่านบัญชีกรอกใน MT5 เท่านั้น · EA อ่านอย่างเดียว ส่งออเดอร์ไม่ได้ — ดูออเดอร์/โพซิชันของตัวเองได้</p>${foot}</div>`;
   } else {
     const st1 = netBad ? status('bad', 'ไม่มีอินเทอร์เน็ต — ตรวจการเชื่อมต่อแล้วกดเชื่อมต่อใหม่')
       : st.nativeOk === false ? status('bad', 'ส่วนเชื่อมต่อของแอปไม่ทำงาน — ปิดแล้วเปิดแอปใหม่')
@@ -306,6 +307,7 @@ function renderAlerts() {
   const list = S.alerts.filter((a) => a.symbol === S.symbol);
   ul.innerHTML = list.length ? list.map((a) => `<li class="${a.fired ? 'fired' : ''}"><span>${a.symbol} ${a.dir === 'up' ? '≥' : '≤'} ${fmt(a.price)}</span><button data-id="${a.id}">✕</button></li>`).join('')
     : '<li class="muted" style="border:none">ยังไม่มีการแจ้งเตือนของ ' + S.symbol + '</li>';
+  const n = $('alerts-n'); if (n) n.textContent = list.length ? String(list.length) : '';
 }
 function addAlert(price) {
   const q = S.quotes[S.symbol]; if (!isFinite(price)) return;

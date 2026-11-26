@@ -43,6 +43,8 @@ drawings = loadDrawings();
 function pushHistory() { hist.push(JSON.stringify(drawings)); if (hist.length > 100) hist.shift(); redoStack = []; }
 function undo() { if (!hist.length) return; redoStack.push(JSON.stringify(drawings)); drawings = JSON.parse(hist.pop()); S.selected = null; saveDrawings(); dirty = true; }
 function redo() { if (!redoStack.length) return; hist.push(JSON.stringify(drawings)); drawings = JSON.parse(redoStack.pop()); S.selected = null; saveDrawings(); dirty = true; }
+// white/near-white user colors are drawn in the theme's ink color on the light theme
+const inkColor = (c) => { c = c || '#ffffff'; return /^#f{3}(f{3})?$/i.test(c) && THEME.get() === 'light' ? TC().fg : c; };
 const DEFAULT_COLOR = { hline: '#f5a623', vline: '#9aa0ad', text: '#ffffff', arrowUp: '#26a69a', arrowDown: '#ef5350', brush: '#f5a623' };
 
 // ---------------------------------------------------------------- toolbar
@@ -149,7 +151,7 @@ function handles(d) {
 
 // ---------------------------------------------------------------- render
 function renderDrawing(d, sel, W, H) {
-  const col = sel ? '#ffffff' : d.color || DEFAULT_COLOR[d.type] || '#2962ff', sw = sel ? 2.2 : 1.5;
+  const col = sel ? TC().sel : inkColor(d.color || DEFAULT_COLOR[d.type] || '#2962ff'), sw = sel ? 2.2 : 1.5;
   const P = d.pts.map((p) => ({ x: xOfT(p.time), y: yOf(p.price) }));
   const bad = P.some((p) => p.x == null || p.y == null);
   switch (d.type) {
@@ -176,7 +178,7 @@ function renderDrawing(d, sel, W, H) {
       lv.forEach((k, i) => {
         const y = yOf(at(k)); if (y == null) return;
         if (i < lv.length - 1) { const yn = yOf(at(lv[i + 1])); if (yn != null) el('rect', { x: L, y: Math.min(y, yn), width: R - L, height: Math.abs(yn - y), fill: fibColor(lv[i + 1]) + '14' }); }
-        el('line', { x1: L, y1: y, x2: R, y2: y, stroke: sel ? '#fff' : fibColor(k), 'stroke-width': 1 });
+        el('line', { x1: L, y1: y, x2: R, y2: y, stroke: sel ? TC().sel : fibColor(k), 'stroke-width': 1 });
         txt(L + 4, y - 3, `${k} (${fmt(at(k))})`, fibColor(k));
       });
       el('line', { x1: P[0].x, y1: P[0].y, x2: P[1].x, y2: P[1].y, stroke: '#787b86', 'stroke-width': 1, 'stroke-dasharray': '4 4' });
@@ -190,24 +192,24 @@ function renderDrawing(d, sel, W, H) {
       const L = Math.min(P[2].x, P[1].x), R = Math.max(P[2].x + 40, W - 70);
       [...FIBX].sort((x, y) => x - y).forEach((k) => {
         const y = yOf(at(k)); if (y == null) return; const big = k === 1.618 || k === 2.618;
-        el('line', { x1: L, y1: y, x2: R, y2: y, stroke: sel ? '#fff' : fibColor(k), 'stroke-width': big ? 1.6 : 1, 'stroke-dasharray': k === 0 ? '3 3' : '' });
+        el('line', { x1: L, y1: y, x2: R, y2: y, stroke: sel ? TC().sel : fibColor(k), 'stroke-width': big ? 1.6 : 1, 'stroke-dasharray': k === 0 ? '3 3' : '' });
         txt(L + 4, y - 3, `${(k * 100).toFixed(1).replace(/\.0$/, '')}% (${fmt(at(k))})${big ? ' 🎯' : ''}`, fibColor(k), 'start', 11, big ? 700 : 400);
       });
       break;
     }
     case 'brush': { const pts = P.filter((p) => p.x != null && p.y != null).map((p) => `${p.x},${p.y}`).join(' '); if (pts) el('polyline', { points: pts, fill: 'none', stroke: col, 'stroke-width': sel ? 3 : 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }); break; }
-    case 'text': { if (bad) return; const t = d.text || ''; const w = t.length * 7.5 + 10; el('rect', { x: P[0].x - 2, y: P[0].y - 15, width: w, height: 20, rx: 3, fill: '#0f1115cc', stroke: sel ? '#fff' : 'none' }); txt(P[0].x + 3, P[0].y, t, d.color || '#fff', 'start', 13, 500); break; }
+    case 'text': { if (bad) return; const t = d.text || ''; const w = t.length * 7.5 + 10; el('rect', { x: P[0].x - 2, y: P[0].y - 15, width: w, height: 20, rx: 3, fill: TC().box, stroke: sel ? TC().sel : 'none' }); txt(P[0].x + 3, P[0].y, t, inkColor(d.color), 'start', 13, 500); break; }
     case 'arrowUp': case 'arrowDown': {
-      if (bad) return; const up = d.type === 'arrowUp', x = P[0].x, y = P[0].y, c = sel ? '#fff' : d.color || DEFAULT_COLOR[d.type];
+      if (bad) return; const up = d.type === 'arrowUp', x = P[0].x, y = P[0].y, c = sel ? TC().sel : d.color || DEFAULT_COLOR[d.type];
       el('path', { d: up ? `M${x} ${y} l9 12 h-5 v10 h-8 v-10 h-5 z` : `M${x} ${y} l9 -12 h-5 v-10 h-8 v10 h-5 z`, fill: c }); break;
     }
     case 'long': case 'short': {
       if (bad) return;
       const Lv = posLevels(d), x1 = P[0].x; let x2 = P[1].x; if (x2 - x1 < 40) x2 = x1 + 120;
       const ye = yOf(Lv.e), ys = yOf(Lv.sl), yt = yOf(Lv.tp); if ([ye, ys, yt].some((v) => v == null)) return;
-      el('rect', { x: x1, y: Math.min(ye, yt), width: x2 - x1, height: Math.abs(yt - ye), fill: '#26a69a33', stroke: sel ? '#fff' : '#26a69a88' });
-      el('rect', { x: x1, y: Math.min(ye, ys), width: x2 - x1, height: Math.abs(ys - ye), fill: '#ef535033', stroke: sel ? '#fff' : '#ef535088' });
-      el('line', { x1, y1: ye, x2, y2: ye, stroke: '#d6d9e0', 'stroke-width': 1.5 });
+      el('rect', { x: x1, y: Math.min(ye, yt), width: x2 - x1, height: Math.abs(yt - ye), fill: '#26a69a33', stroke: sel ? TC().sel : '#26a69a88' });
+      el('rect', { x: x1, y: Math.min(ye, ys), width: x2 - x1, height: Math.abs(ys - ye), fill: '#ef535033', stroke: sel ? TC().sel : '#ef535088' });
+      el('line', { x1, y1: ye, x2, y2: ye, stroke: TC().fg, 'stroke-width': 1.5 });
       const pct = (p) => (((p - Lv.e) / Lv.e) * 100).toFixed(2) + '%';
       const lot = typeof plannerLot === 'function' ? plannerLot(Lv.e, Lv.sl) : null;
       const cx = (x1 + x2) / 2;
@@ -217,7 +219,7 @@ function renderDrawing(d, sel, W, H) {
       break;
     }
   }
-  if (sel) handles(d).forEach((h) => el('circle', { cx: h.x, cy: h.y, r: 4.5, fill: '#0f1115', stroke: '#fff', 'stroke-width': 2 }));
+  if (sel) handles(d).forEach((h) => el('circle', { cx: h.x, cy: h.y, r: 4.5, fill: TC().handle, stroke: TC().sel, 'stroke-width': 2 }));
 }
 function measureShape(a, b) {
   const x1 = xOfT(a.time), y1 = yOf(a.price), x2 = xOfT(b.time), y2 = yOf(b.price);

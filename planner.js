@@ -191,7 +191,7 @@ function drawPlanner(W) {
   if (isFinite(parseFloat(S.plan.tp1))) line(parseFloat(S.plan.tp1), '#1e7d74', `TP1 ${fmt(parseFloat(S.plan.tp1))}`, '4 3');
   if (isFinite(parseFloat(S.plan.tp2))) line(parseFloat(S.plan.tp2), UP, `TP2 ${fmt(parseFloat(S.plan.tp2))}`);
   r.rows.forEach((x) => line(x.price, '#2962ff', `${x.i ? 'เติม #' + (x.i + 1) : 'Entry'} ${lotFmt(x.lot, step)} lot`, x.i ? '5 4' : ''));
-  if (r.rows.length > 1) line(r.avg, '#d6d9e0', `เฉลี่ย ${fmt(r.avg)}`, '2 3');
+  if (r.rows.length > 1) line(r.avg, TC().fg, `เฉลี่ย ${fmt(r.avg)}`, '2 3');
 }
 
 document.querySelector('#tabs [data-tab="calc"]').addEventListener('click', () => { renderPlanner(); dirty = true; });

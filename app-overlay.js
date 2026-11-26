@@ -64,7 +64,7 @@ function positionBox(s, W, active) {
   el('rect', { x: x1, y: Math.min(ye, yt2), width: x2 - x1, height: Math.abs(yt2 - ye), fill: '#26a69a2e', stroke: '#26a69a88' });
   el('rect', { x: x1, y: Math.min(ye, ys), width: x2 - x1, height: Math.abs(ys - ye), fill: '#ef53502e', stroke: '#ef535088' });
   el('line', { x1, y1: yt1, x2, y2: yt1, stroke: UP, 'stroke-dasharray': '3 3' });
-  el('line', { x1, y1: ye, x2, y2: ye, stroke: '#d6d9e0', 'stroke-width': 1.5 });
+  el('line', { x1, y1: ye, x2, y2: ye, stroke: TC().fg, 'stroke-width': 1.5 });
   if (active) {
     const lx = x2 + 4;
     label(lx, ye + 4, `Entry ${fmt(s.entry)}`, '#434651', '#fff', 'start');
@@ -97,7 +97,7 @@ function drawAnalysis(W, H) {
     const sw = A.swings.filter((s, k) => inView(s.i) || (A.swings[k + 1] && inView(A.swings[k + 1].i)) || (A.swings[k - 1] && inView(A.swings[k - 1].i)));
     if (sw.length > 1) {
       const pts = sw.map((s) => `${xIdx(s.i)},${yOf(s.price)}`).join(' ');
-      el('polyline', { points: pts, fill: 'none', stroke: '#b2b5be', 'stroke-width': 1.2, 'stroke-opacity': 0.75 });
+      el('polyline', { points: pts, fill: 'none', stroke: TC().muted, 'stroke-width': 1.2, 'stroke-opacity': 0.75 });
     }
     sw.forEach((s, k) => {
       const x = xIdx(s.i), y = yOf(s.price); if (x == null || y == null) return;

@@ -39,6 +39,40 @@ const fibColor = (lv) => ({ 1.127: '#4caf50',  '-1.618': '#e91e63', '-1': '#ff98
 const IND_COLORS = ['#f5a623', '#2962ff', '#e040fb', '#00bcd4', '#ff5252', '#8bc34a', '#ffeb3b'];
 let UP = '#26a69a', DOWN = '#ef5350';
 
+// ---------------------------------------------------------------- themes: 'dark' | 'light' | 'contrast' (+ 'auto' = follow the OS)
+// CSS colors live in variables on <html data-theme>; the chart and SVG overlays read CHART_THEME[THEME.get()].
+const CHART_THEME = {
+  dark: { bg: '#0f1115', text: '#9aa0ad', grid: '#1a1d27', border: '#232734', fg: '#d6d9e0', sel: '#ffffff', muted: '#b2b5be', box: '#0f1115cc', handle: '#0f1115', cross: '#758696' },
+  light: { bg: '#ffffff', text: '#4a4f5c', grid: '#eef0f4', border: '#d9dce3', fg: '#1f2330', sel: '#131722', muted: '#7a7f8c', box: '#ffffffd9', handle: '#ffffff', cross: '#9598a1' },
+  contrast: { bg: '#000000', text: '#e6e6e6', grid: '#1c1c1c', border: '#5a5f6e', fg: '#ffffff', sel: '#ffff00', muted: '#d0d3da', box: '#000000d9', handle: '#000000', cross: '#bbbbbb' },
+};
+const THEME = (() => {
+  const NAMES = { auto: 'ตามระบบ', dark: 'มืด', light: 'สว่าง', contrast: 'คอนทราสต์สูง' };
+  const mq = window.matchMedia ? matchMedia('(prefers-color-scheme: light)') : null;
+  let pref = store.get('theme', 'auto');
+  const subs = [];
+  const resolve = () => (pref === 'auto' ? (mq && mq.matches ? 'light' : 'dark') : pref);
+  let cur = null;
+  function apply() {
+    const t = resolve(); if (t === cur) return; cur = t;
+    document.documentElement.dataset.theme = t;
+    document.documentElement.style.colorScheme = t === 'light' ? 'light' : 'dark';
+    subs.forEach((cb) => { try { cb(t); } catch (_) {} });
+  }
+  if (mq && mq.addEventListener) mq.addEventListener('change', apply);
+  apply();
+  return {
+    NAMES,
+    get: () => cur,                       // resolved theme: dark | light | contrast
+    pref: () => pref,                     // user choice incl. 'auto'
+    set(name) { if (!NAMES[name]) return; pref = name; store.set('theme', name); apply(); subs.forEach((cb) => { try { cb(cur, true); } catch (_) {} }); },
+    next() { const order = ['dark', 'light', 'contrast']; this.set(order[(order.indexOf(cur) + 1) % order.length]); },
+    onChange(cb) { subs.push(cb); },
+    colors: () => CHART_THEME[cur] || CHART_THEME.dark,
+  };
+})();
+const TC = () => THEME.colors();
+
 
 
 // Clean chart by default: analysis overlays are opt-in from the 🧠 menu.

@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="lessons-guide.css">
 <link rel="stylesheet" href="mobile.css">
 <link rel="stylesheet" href="setup.css">
+<link rel="stylesheet" href="positions.css">
 </head>
 <body>
 <div id="titlebar">
@@ -16,6 +17,7 @@
   <div id="netbanner" class="hidden"><span id="netbanner-text"></span><button id="netbanner-x" title="ซ่อน">✕</button></div>
   <div id="net" title=""><span class="nd"></span><span id="net-text">—</span></div>
   <div id="conn"><span class="dot"></span><span id="conn-text">กำลังเชื่อมต่อ…</span></div>
+  <button id="theme-btn" class="ib" title="เปลี่ยนธีม (มืด / สว่าง / คอนทราสต์สูง)" aria-label="เปลี่ยนธีม"></button>
   <button id="side-btn" class="ib" title="ซ่อน/แสดงแถบด้านขวา (⌘\\)"></button>
   <button id="settings-btn" class="ib" title="การตั้งค่า (⌘,)"></button>
 </div>
@@ -98,26 +100,32 @@
 
     <div class="tab" id="tab-market">
       <div class="panel">
-        <div class="panel-h">Watchlist</div>
+        <div class="panel-h wl-h"><span>Watchlist</span><i class="wl-tip" title="⭐ = ราคาที่แสดงบนแถบเมนู / ถาดระบบ · คลิกดาวเพื่อเปลี่ยน · คลิกชื่อเพื่อเปิดกราฟ">ⓘ</i>
+          <button id="src-pill" class="src-pill" title="แหล่งราคา — กดเพื่อเปลี่ยนหรือดูวิธีเชื่อมต่อ" aria-haspopup="menu"></button></div>
+        <div id="src-hint"></div>
         <table id="wl"><thead><tr><th>Symbol</th><th>Bid</th><th>Ask</th><th>%</th><th></th></tr></thead><tbody></tbody></table>
         <form id="add-form"><input id="add-input" placeholder="เพิ่ม symbol เช่น GBPUSD" autocomplete="off"><button>+</button></form>
+        <div id="src-sel-home"></div>
       </div>
-      <div class="panel">
-        <div class="panel-h">แจ้งเตือนราคา</div>
+      <div id="positions-panel" class="hidden"></div>
+      <details class="panel fold" data-fold="alerts" open>
+        <summary class="panel-h">แจ้งเตือนราคา <span class="fold-n" id="alerts-n"></span></summary>
         <form id="alert-form"><input id="alert-input" placeholder="ราคา" inputmode="decimal"><button>+ Alert</button></form>
         <ul id="alerts"></ul>
-      </div>
-      <div class="panel">
-        <div class="panel-h">ตั้งค่า</div>
-        <label class="chk"><input type="checkbox" id="csv"> บันทึกทุก tick ลง CSV</label>
+      </details>
+      <details class="panel fold" data-fold="tools">
+        <summary class="panel-h">การเชื่อมต่อ &amp; เครื่องมือ</summary>
         <div class="btns">
-          <button id="open-settings" class="tb-btn"><i data-icon="gear"></i>การตั้งค่าทั้งหมด</button>
-          <button id="open-csv">เปิดโฟลเดอร์ CSV</button>
           <button id="show-trader">เปิด WebTrader / Login</button>
-          <button id="reload-trader">เชื่อมต่อใหม่</button>
+          <button id="reload-trader">↻ เชื่อมต่อใหม่</button>
         </div>
+        <label class="chk"><input type="checkbox" id="csv"> บันทึกทุก tick ลง CSV</label>
+        <div class="btns"><button id="open-csv">เปิดโฟลเดอร์ CSV</button></div>
         <p class="muted" id="api-info"></p>
-        <p class="muted">⭐ = ราคาที่แสดงบนแถบเมนูด้านบนจอ</p>
+      </details>
+      <div class="panel panel-foot">
+        <button id="open-settings" class="tb-btn"><i data-icon="gear"></i>การตั้งค่าทั้งหมด</button>
+        <p class="ro-note">🔒 แอปนี้อ่านและแสดงราคาเท่านั้น ไม่ส่งคำสั่งซื้อขาย · ไม่ใช่คำแนะนำการลงทุน</p>
       </div>
     </div>
 
@@ -189,9 +197,17 @@
         <button data-st="claude">Claude</button>
         <button data-st="api">API / Webhook</button>
         <button data-st="data">ข้อมูล</button>
+        <button data-st="about">เกี่ยวกับ</button>
       </div>
       <div class="st-body">
         <section data-sec="general">
+          <h4>ธีม</h4>
+          <div class="theme-pick" id="st-theme" role="radiogroup" aria-label="ธีม">
+            <button data-theme-v="auto" role="radio"><i class="tp-sw tp-auto"></i>ตามระบบ</button>
+            <button data-theme-v="dark" role="radio"><i class="tp-sw tp-dark"></i>มืด</button>
+            <button data-theme-v="light" role="radio"><i class="tp-sw tp-light"></i>สว่าง</button>
+            <button data-theme-v="contrast" role="radio"><i class="tp-sw tp-contrast"></i>คอนทราสต์สูง</button>
+          </div>
           <h4>กราฟ</h4>
           <div class="row"><label>Timezone</label><select id="st-tz"></select></div>
           <div class="row"><label>โหลดย้อนหลัง</label><input id="st-bars" type="number" min="200" max="5000" step="100"><span class="muted">แท่ง (มาก = วิเคราะห์แม่นขึ้น แต่โหลดช้าลง)</span></div>
@@ -220,7 +236,7 @@
             <div class="src-card" id="st-src-mt5">
               <div class="src-card-h"><b>🔵 MT5 — โบรกเกอร์ของฉัน</b><span id="st-mt5-pill" class="src-pill">—</span></div>
               <div id="st-mt5-info" class="net-now"></div>
-              <p>ใช้ได้ทุกโบรกเกอร์ที่มี MetaTrader 5 (Exness, XM, Brex ฯลฯ) · EA อ่านราคาอย่างเดียว ไม่ส่งออเดอร์ · รหัสผ่านกรอกใน MT5 เท่านั้น</p>
+              <p>ใช้ได้ทุกโบรกเกอร์ที่มี MetaTrader 5 (Exness, XM, Brex ฯลฯ) · <b>EA อ่านอย่างเดียว ส่งออเดอร์ไม่ได้ — ดูออเดอร์/โพซิชันของตัวเองได้</b> · รหัสผ่านกรอกใน MT5 เท่านั้น</p>
               <div class="btns"><button id="st-use-mt5">ใช้ MT5</button><button id="st-mt5-guide">📘 ตัวช่วยเชื่อมต่อ MT5</button></div>
               <details><summary>ขั้นสูง: ติดตั้ง EA เอง / เปลี่ยนพอร์ต</summary>
                 <div class="row"><label>พอร์ต MT5</label><input id="st-mt5-port" type="number" min="1024" max="65535"><button id="st-save-ea">⬇ บันทึกไฟล์ EA</button></div>
@@ -307,6 +323,20 @@
           <div class="row"><button id="st-reset" class="danger">ล้างข้อมูลในแอปทั้งหมด</button><span class="muted" id="st-reset-msg"></span></div>
           <p class="muted" id="st-ver"></p>
         </section>
+        <section data-sec="about" class="hidden">
+          <h4>Price Tracker</h4>
+          <div class="ro-box">
+            <b>🔒 อ่านราคาอย่างเดียว — ไม่ส่งคำสั่งซื้อขาย</b>
+            <ul>
+              <li>แอปนี้ดึงราคาและแท่งเทียนมาแสดง วิเคราะห์ และใช้ฝึกเท่านั้น ไม่มีปุ่มหรือคำสั่งใดที่ส่งออเดอร์ไปที่โบรกเกอร์</li>
+              <li>MT5: EA PriceTrackerBridge อ่านอย่างเดียว ส่งออเดอร์ไม่ได้ — ดูออเดอร์/โพซิชันของตัวเองได้</li>
+              <li>VCG: รหัสผ่านกรอกในหน้าเว็บของ VCG เอง แอปไม่เห็นและไม่เก็บรหัสผ่าน</li>
+              <li>บัญชีฝึกเทรดในแอปใช้เงินสมมติทั้งหมด</li>
+            </ul>
+            <p class="muted">ผลวิเคราะห์ สัญญาณ และบทเรียนมีไว้เพื่อการเรียนรู้ ไม่ใช่คำแนะนำการลงทุน — การเทรดมีความเสี่ยง ตัดสินใจด้วยตัวเองเสมอ</p>
+          </div>
+          <p class="muted" id="st-about-ver"></p>
+        </section>
       </div>
     </div>
     <div class="row end"><span id="st-msg" class="muted"></span><div class="grow"></div><button data-close>ปิด</button><button id="st-save" class="primary">บันทึก</button></div>
@@ -337,6 +367,7 @@
 <script src="learn.js"></script>
 <script src="news.js"></script>
 <script src="setup.js"></script>
+<script src="positions.js"></script>
 <script src="mtf.js"></script>
 <script src="ui.js"></script>
 <script src="mobile.js"></script>
