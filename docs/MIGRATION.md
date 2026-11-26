@@ -74,6 +74,21 @@ Branch: `feat/framework-migration`. The plan has 5 phases: 0 Vite, 1 TypeScript 
   - pixel diff of journal (dark/light/calendar/mobile/empty), dashboard (dark/light/edit/mobile), learn (home/reader/reader-light/mobile list/mobile reader), news page: 10 identical; differences only in the clock (news), a 12 px scroll offset (journal-calendar, content identical) and the live demo candles shifting with time (dashboard dark/light, edit: sub-threshold);
   - page load median 196–213 ms (Phase 2) vs 203–217 ms (Phase 3), 3 interleaved runs of 5 — same within noise.
 
+### Phase 4c: main process + Android bridge → TypeScript (checklist items 7 and 8)
+- **Main process** lives in `src/main/*.ts` (`main`, `mt5`, `mt5-auto`, `api`, `journal-store`, `logger`, `notify`, `ea-update`, `preload`, `trader-preload`); `scripts/build-core.mjs` bundles each one with esbuild to `gen/main/<name>.js` (CJS, node20, `electron` external). `package.json` `"main"` is `gen/main/main.js`.
+- **Typed IPC:** `src/main/ipc.ts` holds `InvokeMap` (invoke/handle), `SendMap` (renderer → main) and `PushMap` (main → renderer). `preload.ts` and `main.ts` both use it, so a channel name or payload typo is a compile error. `VcgDesktopApi` (exported from `preload.ts`) is the type of the desktop `window.vcg`. Settings and status shapes are in `src/main/types.ts`; the EA wire protocol (`EAMessage`, `WireBar`, `Hello`) is in `src/core/mt5-protocol.ts`.
+- **MCP server:** `src/mcp/price-tracker-mcp.ts` → `gen/main/price-tracker-mcp.js` (one file, no dependencies, shebang). Main copies it to `userData/claude/` when the user connects Claude Desktop, so `ELECTRON_RUN_AS_NODE=1 <app> script.js` still works. The `claude/` folder is gone.
+- **Root wrappers removed** (`analysis.js`, `bounce.js`, `mm.js`, `journal.js`, `ea-update.js`, `vcg-inject.js`); unit tests `require('../../gen/...')`. `src/vcg-inject.mjs` → `src/vcg-inject.ts`.
+- **Android bridge:** `bridge.js` → `src/platform/bridge.ts`, with a `VcgWebPlugin` interface for the native plugin and `declare global` for `window.Capacitor`/`vcg`/`APP_VERSION`. `build:www` output is unchanged.
+- **Gotchas:**
+  - Compiled main runs from `gen/main/`, so `main.ts` uses `ROOT = path.join(__dirname, '..', '..')` for app files (`dist-renderer/`, `mt5/`, `assets/`). Use `__dirname` only for siblings in `gen/main/` (preload, MCP script).
+  - The sandboxed preload must stay a single file that requires only `electron` (esbuild bundles `ipc.ts` types away).
+  - **Interim:** `build:core` also copies `gen/main/preload.js` to a gitignored root `preload.js`, because `tests/ui/run.js` loads `ROOT/preload.js`. Once `run.js` points at `gen/main/preload.js`, delete the copy step in `build-core.mjs` and the `.gitignore`/packaging lines.
+  - `notify.js` (webhook/Telegram sender) was main-only, so it moved to `src/main/notify.ts`.
+  - Behaviour fix: the network probe called `net.fetch(url, { partition })`, which has no such option; it now uses `session.fromPartition('persist:vcg').fetch`.
+  - Packaging: `src/`, `claude/` and the root `preload.js` copy are excluded (mac ignore regex + electron-builder `files`); `gen/` is included.
+- **Verified:** `npm run typecheck` clean, unit 41/41, UI 106/106, headless `electron .` boots and `/api/status` answers on 127.0.0.1:8787, MCP `tools/list` over stdio lists 17 tools.
+
 ## Interim items from Phase 2 (partly resolved in Phase 3 — see the Phase 4 checklist)
 - **Late-bound names through PT inside the app:** about 55 names, used about 280 times; run `grep -o "PT\.[A-Za-z_$]*" *.js`. The most used are `setUI`, `MTF`, `LEARN`, `DASH`, `yOf`, `NEWSPAGE`, `__mobileBack` and `drawings`. They exist because files call "forward" into modules loaded later.
   - In Phase 3/4, untangle them by moving each shared piece into a small module that both sides import: app state from `app-core.js` → `src/state.ts`; overlay helpers (`yOf`, `xIdx`, `el`, `ltxt`) → `src/ui/overlay.ts`; page objects registered in `src/pages.ts`.
@@ -118,7 +133,7 @@ Branch: `feat/framework-migration`. The plan has 5 phases: 0 Vite, 1 TypeScript 
   4. **Chart core + drawing tools:** `app-chart.js`, `app-overlay.js`, `draw.js`, `text-tools.js`, `mtf.js`, `indicators.js`, `custom.js` → typed `.ts` modules (canvas drawing stays imperative; Svelte only for toolbars/popovers/layers panel).
   5. **Remaining PT indirections inside the app** (≈55 names, 125 uses in app `.js` now; most used `MTF`, `yOf`, `setUI`, `el`, `drawings`, `xIdx`, `pushHistory`, `ltxt`, `SETUP`): move each shared piece into a module both sides import — overlay helpers → `src/ui/overlay.ts`, drawings store → `src/chart/drawings.ts`, `setUI`/`SRC_UI` → `src/ui/layout.ts`, `SETUP`/`MSHEET` → registry; then delete their `def()` lines except what tests use (switch tests to `window.PT` getters defined in one place).
   6. **Type-check the remaining `.js`:** every root renderer module becomes `.ts` (or `// @ts-check` while moving); extend `tsconfig` `include`; `check-free.mjs` can then be retired.
-  7. **Main process → TypeScript:** `main.js`, `mt5.js`, `mt5-auto.js`, `api.js`, `journal-store.js`, `logger.js`, `preload.js`, `trader-preload.js`, `vcg-inject.js` (main side), `claude/price-tracker-mcp.js` → `src/main/*.ts` compiled by esbuild to CJS; delete the root wrappers (`analysis.js`, `bounce.js`, `mm.js`, `journal.js`, `ea-update.js`).
-  8. **Android bridge** `bridge.js` → `.ts`; Capacitor plugin typings.
+  7. ✅ (Phase 4c) **Main process → TypeScript:** `main.js`, `mt5.js`, `mt5-auto.js`, `api.js`, `journal-store.js`, `logger.js`, `preload.js`, `trader-preload.js`, `vcg-inject.js` (main side), `claude/price-tracker-mcp.js` → `src/main/*.ts` compiled by esbuild to CJS; delete the root wrappers (`analysis.js`, `bounce.js`, `mm.js`, `journal.js`, `ea-update.js`).
+  8. ✅ (Phase 4c) **Android bridge** `bridge.js` → `.ts`; Capacitor plugin typings.
   9. **Finish:** remove `src/legacy-order.mjs`/`vite/legacy-plugin.mjs` if nothing classic is left (only `lib/` vendor), strict TS everywhere, same tests + screenshots + startup checks as every phase.
 - **Before merging:** rebased on `feat/price-tracker-app` 171d074 (v2.16.0). Later app-branch renderer edits must be ported by hand (see above).

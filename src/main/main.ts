@@ -191,7 +191,7 @@ function createMain(): void {
     width: 1440, height: 880, minWidth: 980, minHeight: 600,
     title: 'Price Tracker', backgroundColor: '#0f1115',
     ...(IS_MAC ? { titleBarStyle: 'hiddenInset' } : { titleBarStyle: 'hidden', titleBarOverlay: { color: '#0f1115', symbolColor: '#d6d9e0', height: 38 }, autoHideMenuBar: true, icon: path.join(ROOT, 'assets', 'tray@2x.png') }),
-    webPreferences: { preload: path.join(ROOT, 'preload.js'), contextIsolation: true },
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true },
   });
   mainWin = win;
   win.webContents.setWindowOpenHandler(({ url }) => { if (/^https:\/\//.test(url)) void shell.openExternal(url); return { action: 'deny' }; });
@@ -215,7 +215,7 @@ function createTrader(): void {
     // throttling stays OFF while the page boots (timers in a hidden throttled page run at most 1×/s, which made
     // VCG's own start-up take 10–20 s); switched on once our feed is installed and prices flow (see tick()).
     webPreferences: { partition: 'persist:vcg', backgroundThrottling: false,
-      preload: path.join(ROOT, 'trader-preload.js'), contextIsolation: true },
+      preload: path.join(__dirname, 'trader-preload.js'), contextIsolation: true },
   });
   traderWin = win;
   win.on('close', (e) => { if (!quitting) { e.preventDefault(); win.hide(); } });
