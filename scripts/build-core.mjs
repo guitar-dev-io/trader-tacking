@@ -29,11 +29,34 @@ export async function buildCore({ quiet = false } = {}) {
       format: 'cjs', platform: 'node',
       banner: { js: `// GENERATED from src/core/${name}.ts by scripts/build-core.mjs — do not edit` },
     })),
-    // scripts injected into VCG WebTrader: ES module for the renderer (src/vcg-inject.mjs), CommonJS for Electron main + tests
-    build({ ...common, entryPoints: [path.join(root, 'src/vcg-inject.mjs')], outfile: path.join(out, 'vcg-inject.js'), format: 'cjs', platform: 'node',
-      banner: { js: '// GENERATED from src/vcg-inject.mjs by scripts/build-core.mjs — do not edit' } }),
+    // scripts injected into VCG WebTrader (src/vcg-inject.ts): CommonJS copy for the Node tests (main bundles its own)
+    build({ ...common, entryPoints: [path.join(root, 'src/vcg-inject.ts')], outfile: path.join(out, 'vcg-inject.js'), format: 'cjs', platform: 'node',
+      banner: { js: '// GENERATED from src/vcg-inject.ts by scripts/build-core.mjs — do not edit' } }),
+    buildMain(common),
   ]);
-  if (!quiet) console.log('gen/ built:', [...Object.keys(SHARED), ...NODE_ONLY].join(', '));
+  if (!quiet) console.log('gen/ built:', [...Object.keys(SHARED), ...NODE_ONLY, ...MAIN_ENTRIES.map((n) => 'main/' + n), 'main/price-tracker-mcp'].join(', '));
+}
+
+// Electron main process (src/main/*.ts) → gen/main/*.js, CommonJS, one bundled file per entry:
+//  • main.js           — package.json "main"; finds the app files (dist-renderer, mt5/, assets/) two folders up
+//  • preload.js        — sandboxed preload: must be a single file that only requires 'electron'
+//  • trader-preload.js — preload of the hidden WebTrader window
+//  • price-tracker-mcp.js — the Claude MCP server (standalone, no dependencies; run with ELECTRON_RUN_AS_NODE=1)
+//  • logger, api, mt5, mt5-auto, journal-store, ea-update, notify — the same modules on their own, for the unit tests
+export const MAIN_ENTRIES = ['main', 'preload', 'trader-preload', 'logger', 'api', 'mt5', 'mt5-auto', 'journal-store', 'ea-update', 'notify'];
+async function buildMain(common) {
+  const out = path.join(root, 'gen', 'main');
+  fs.mkdirSync(out, { recursive: true });
+  const node = { ...common, format: 'cjs', platform: 'node', target: 'node20', external: ['electron'] };
+  await Promise.all([
+    ...MAIN_ENTRIES.map((name) => build({ ...node, entryPoints: [path.join(root, 'src/main', name + '.ts')], outfile: path.join(out, name + '.js'),
+      banner: { js: `// GENERATED from src/main/${name}.ts by scripts/build-core.mjs — do not edit` } })),
+    build({ ...node, entryPoints: [path.join(root, 'src/mcp/price-tracker-mcp.ts')], outfile: path.join(out, 'price-tracker-mcp.js'),
+      banner: { js: '#!/usr/bin/env node\n// GENERATED from src/mcp/price-tracker-mcp.ts by scripts/build-core.mjs — do not edit' } }),
+  ]);
+  // interim: tests/ui/run.js (owned by the renderer migration) still loads <root>/preload.js → keep a generated copy
+  // there until it points at gen/main/preload.js (gitignored; see docs/MIGRATION.md)
+  fs.copyFileSync(path.join(out, 'preload.js'), path.join(root, 'preload.js'));
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) buildCore().catch((e) => { console.error(e); process.exit(1); });

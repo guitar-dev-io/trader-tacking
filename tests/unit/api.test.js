@@ -1,7 +1,7 @@
 // Local API: Claude's token works independently of the user's API token; server state is reported.
 const test = require('node:test'), assert = require('node:assert'), http = require('node:http');
 process.env.PT_LOG_DIR = require('node:os').tmpdir();
-const api = require('../../api.js');
+const api = require('../../gen/main/api.js');
 const get = (port, path, token) => new Promise((r) => http.get({ host: '127.0.0.1', port, path, headers: token ? { Authorization: 'Bearer ' + token } : {} }, (res) => { let b = ''; res.on('data', (d) => (b += d)); res.on('end', () => r({ code: res.statusCode, body: b })); }));
 const hooks = { status: () => ({ ok: 1 }), quotes: () => ({}), symbols: () => [], chart: () => ({}), analysis: () => ({}), command: async (n, a) => ({ n, a }), screenshot: async () => ({}) };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

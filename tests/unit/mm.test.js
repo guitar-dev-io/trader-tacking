@@ -1,6 +1,6 @@
 // Money-management math (mm.js): the numbers shown in the MM lessons, plan table and practice problems.
 const test = require('node:test'), assert = require('node:assert');
-const MM = require('../../mm.js');
+const MM = require('../../gen/mm.js');
 const near = (a, b, e = 1e-9) => assert.ok(Math.abs(a - b) <= e, `${a} ≠ ${b}`);
 
 test('basic formulas', () => {

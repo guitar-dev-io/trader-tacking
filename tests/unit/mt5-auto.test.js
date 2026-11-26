@@ -1,5 +1,5 @@
 const test = require('node:test'), assert = require('node:assert');
-const A = require('../../mt5-auto');
+const A = require('../../gen/main/mt5-auto.js');
 const base = { source: 'mt5', enabled: true, connected: false, running: false, launching: false, tries: [], now: 1e7, sinceStart: 10000, eaSeen: true };
 
 test('auto-launch: only when MT5 is the source, enabled, EA not connected and MT5 not running', () => {

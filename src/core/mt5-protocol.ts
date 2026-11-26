@@ -39,18 +39,29 @@ export interface PendingOrder {
   ticket: number; s: string; type: string; vol: number; price: number; sl: number; tp: number; time: number;
 }
 
-export interface Bar { t: number; o: number; h: number; l: number; c: number; v?: number }
+/** One OHLC bar on the wire: [time (UTC s), open, high, low, close] */
+export type WireBar = [number, number, number, number, number];
 
-/** EA → app */
+/** EA hello: who is connected and what the EA can do */
+export interface Hello {
+  t: 'hello'; v: number; build?: number; caps?: string[]; broker: string; server: string; login?: number | string | null;
+  /** broker server time − UTC, seconds */
+  offset: number; symbols: string[];
+}
+
+/** EA → app (exactly what mt5/PriceTrackerBridge.mq5 sends) */
 export type EAMessage =
-  | { t: 'hello'; v: number; build?: number; caps?: string[]; broker: string; server: string; offset: number; symbols: string[]; login?: string }
-  | { t: 'tick'; s: string; bid: number; ask: number; ms: number; open?: number; digits?: number }
-  | { t: 'bars'; id: number | string; s: string; tf: string; bars: Bar[]; digits?: number }
-  | { t: 'bar'; slot?: string; s: string; bar: Bar }
+  | Hello
+  | { t: 'tick'; s: string; bid: number; ask: number; ms: number; dg: number; open?: number }
+  | { t: 'bars'; id: number | string; s: string; tf: string; dg?: number; bars: WireBar[] }
+  | { t: 'bar'; slot?: string; s: string; tf?: string; bars: WireBar[] }
   | { t: 'pos'; acct: Account; positions: Position[]; orders: PendingOrder[] }
   | { t: 'deals'; id: number | string; deals: Deal[] }
-  | { t: 'err'; id?: number | string; msg: string }
+  | { t: 'err'; id?: number | string; retry?: number; msg: string }
+  | { t: 'unknown'; s: string }
   | { t: 'pong' };
+
+export type EAMessageOf<T extends EAMessage['t']> = Extract<EAMessage, { t: T }>;
 
 /** app → EA: the only commands the EA understands (all read-only). */
 export type EACommand = 'WATCH' | 'HIST' | 'SUB' | 'POS' | 'DEALS' | 'PING';
@@ -62,7 +73,7 @@ export function parseEAMessage(line: string): EAMessage | null {
   try { m = JSON.parse(line); } catch { return null; }
   if (!m || typeof m !== 'object') return null;
   const t = (m as { t?: unknown }).t;
-  return typeof t === 'string' && ['hello', 'tick', 'bars', 'bar', 'pos', 'deals', 'err', 'pong'].includes(t) ? (m as EAMessage) : null;
+  return typeof t === 'string' && ['hello', 'tick', 'bars', 'bar', 'pos', 'deals', 'err', 'unknown', 'pong'].includes(t) ? (m as EAMessage) : null;
 }
 
 /** True when a command line sent to the EA is one of the read-only commands. */

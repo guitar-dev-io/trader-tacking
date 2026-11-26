@@ -1,5 +1,5 @@
 const test = require('node:test'), assert = require('node:assert');
-const AN = require('../../analysis.js'), B = require('../../bounce.js');
+const AN = require('../../gen/analysis.js'), B = require('../../gen/bounce.js');
 const { series } = require('./helpers');
 
 test('analyze returns structure for a long series quickly', () => {

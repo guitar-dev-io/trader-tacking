@@ -1,5 +1,5 @@
 const test = require('node:test'), assert = require('node:assert');
-const J = require('../../journal.js');
+const J = require('../../gen/journal.js');
 const D = (ticket, pos, side, entry, vol, price, profit, time, extra = {}) => ({ ticket, pos, s: 'XAUUSD', side, entry, vol, price, profit, commission: 0, swap: 0, time, ...extra });
 
 test('3 trades +10 −5 +20 → net 25, PF 6, win rate 2/3', () => {

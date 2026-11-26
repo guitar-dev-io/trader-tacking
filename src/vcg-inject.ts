@@ -1,11 +1,11 @@
-// ESM source (compiled to gen/vcg-inject.js for Node by scripts/build-core.mjs; the renderer imports it directly).
+// Shared by the desktop main process (bundled into gen/main/main.js), the Android bridge (renderer) and the unit tests (gen/vcg-inject.js).
 // Scripts injected into the VCG WebTrader page + quote parsing. Shared by the desktop app (main.js)
 // and the Android app (bridge-android.js), so both talk to VCG in exactly the same way.
 
   const WEBTRADER_URL = 'https://vcgmarkets.com/webtrader';
   const WS_HOST = 'prod-ws-server.anttix.app';
 
-  const SUB_JS = (symbols) => `(() => {
+  const SUB_JS = (symbols: string[]): string => `(() => {
     const m = globalThis._wsSharedManager; if (!m) return 'none';
     const s = m.socket('/symbol'); if (!s.connected) return 'down';
     s.emit('symbol:subscribe', { symbols: ${JSON.stringify(symbols)} }); return 'ok';
@@ -131,13 +131,18 @@ const CONNECTED_JS = `(() => { const m = globalThis._wsSharedManager;
     api.slots.main = makeSlot('main');
     return 'ok';
   })()`;
-  const CHART_REQ_JS = (o) => `window.__vcgChart && window.__vcgChart.req(${JSON.stringify(o)})`;
+  const CHART_REQ_JS = (o: object): string => `window.__vcgChart && window.__vcgChart.req(${JSON.stringify(o)})`;
   // Forwards window.postMessage({__vcg}) from the page to the Android native bridge (no-op on desktop).
   const ANDROID_RELAY_JS = `(() => { if (window.__vcgRelay || !window.__vcgNative) return; window.__vcgRelay = true;
     window.addEventListener('message', (e) => { if (e.source === window && e.data && typeof e.data.__vcg === 'string') { try { window.__vcgNative.post(JSON.stringify({ type: e.data.__vcg, data: e.data.d, slot: e.data.slot })); } catch (_) {} } }); })()`;
 
-  const dec = (v) => (v && typeof v === 'object' && 'value' in v ? v.value / 10 ** (v.scale || 0) : null);
-  function parseQuote(q) {
+  /** VCG's decimal: { value, scale } → number */
+  interface Dec { value: number; scale?: number }
+  const dec = (v: unknown): number | null => (v && typeof v === 'object' && 'value' in v ? (v as Dec).value / 10 ** ((v as Dec).scale || 0) : null);
+  /** One quote as VCG's /symbol socket sends it */
+  export interface RawQuote { symbol: string; time: string; bid?: Dec; ask?: Dec; priceChange?: Dec; priceChangePercent?: Dec }
+  export interface ParsedQuote { symbol: string; time: string; bid: number | null; ask: number | null; digits: number; spread: number | null; change: number | null; changePct: number | null }
+  function parseQuote(q: RawQuote): ParsedQuote {
     const bid = dec(q.bid), ask = dec(q.ask), pct = dec(q.priceChangePercent);
     const digits = (q.bid && q.bid.scale) || 2;
     return { symbol: q.symbol, time: q.time, bid, ask, digits,

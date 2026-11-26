@@ -1,5 +1,5 @@
 const test = require('node:test'), assert = require('node:assert'), fs = require('node:fs'), os = require('node:os'), path = require('node:path');
-const U = require('../../ea-update.js'), mt5 = require('../../mt5.js');
+const U = require('../../gen/main/ea-update.js'), mt5 = require('../../gen/main/mt5.js');
 const SRC = fs.readFileSync(path.join(__dirname, '../../mt5/PriceTrackerBridge.mq5'), 'utf8');
 
 test('bundled build parsed from #property version and matches the hello build', () => {

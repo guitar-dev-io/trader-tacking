@@ -1,6 +1,6 @@
 // Runs the in-page scripts injected into the hidden VCG WebTrader page against a fake page.
 const test = require('node:test'), assert = require('node:assert'), vm = require('node:vm');
-const V = require('../../vcg-inject.js');
+const V = require('../../gen/vcg-inject.js').default;
 
 const channels = [];
 test.after(() => { for (const m of channels) { m.port1.close(); m.port2.close(); } });

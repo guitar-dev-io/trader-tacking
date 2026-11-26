@@ -10,3 +10,5 @@ dist-win/
 _site/
 dist-renderer/
 gen/
+# generated copy of gen/main/preload.js for tests/ui/run.js (interim, see docs/MIGRATION.md)
+/preload.js

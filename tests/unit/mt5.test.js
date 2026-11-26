@@ -1,7 +1,7 @@
 // MT5 bridge server against a fake EA speaking the PriceTrackerBridge protocol.
 const test = require('node:test'), assert = require('node:assert'), net = require('node:net');
 process.env.PT_LOG_DIR = require('node:os').tmpdir();
-const mt5 = require('../../mt5.js');
+const mt5 = require('../../gen/main/mt5.js');
 
 test('EA hello → watch, ticks become quotes, HIST → candles', async () => {
   const quotes = [], charts = []; const port = 17000 + Math.floor(Math.random() * 2000);
@@ -42,7 +42,7 @@ test('finds MT5 Experts folders in macOS Wine bottles (MetaQuotes app, broker-br
 });
 
 test('resolve maps watchlist names to broker MT5 names', () => {
-  const { resolve } = require('../../mt5');
+  const { resolve } = require('../../gen/main/mt5.js');
   const L = ['XAUUSDbrex.', 'EURUSDbrex.', 'BTCUSD'];
   assert.equal(resolve('XAUUSD', L), 'XAUUSDbrex.');
   assert.equal(resolve('XAUUSDBREX.', L), 'XAUUSDbrex.');

@@ -3,10 +3,10 @@
   "productName": "Price Tracker",
   "version": "2.16.0",
   "description": "Live prices, charts and price-action analysis for VCG Markets",
-  "main": "main.js",
+  "main": "gen/main/main.js",
   "scripts": {
     "start": "electron .",
-    "build:mac": "electron-packager . \"Price Tracker\" --platform=darwin --arch=arm64,x64 --icon=build/icon.icns --out=dist --overwrite --app-bundle-id=local.pricetracker.app --ignore=\"^/(dist|dist-win|build|tools|tests|node_modules|android|www|scripts|src|vite|site|_site|docs|\\.github|capacitor\\.config\\.json|vite\\.config\\.mjs|svelte\\.config\\.mjs|tsconfig[^/]*\\.json|README\\.md|\\.gitignore|package-lock\\.json)(/|$)\"",
+    "build:mac": "electron-packager . \"Price Tracker\" --platform=darwin --arch=arm64,x64 --icon=build/icon.icns --out=dist --overwrite --app-bundle-id=local.pricetracker.app --ignore=\"^/(dist|dist-win|build|tools|tests|node_modules|android|www|scripts|src|vite|site|claude|preload\\.js|_site|docs|\\.github|capacitor\\.config\\.json|vite\\.config\\.mjs|svelte\\.config\\.mjs|tsconfig[^/]*\\.json|README\\.md|\\.gitignore|package-lock\\.json)(/|$)\"",
     "build:win": "electron-builder --win --x64 --publish never",
     "build:www": "node scripts/build-www.js",
     "android:sync": "node scripts/build-www.js && npx cap sync android",
@@ -14,7 +14,7 @@
     "test:ui": "npm run build:renderer && npm run build:www && electron --no-sandbox tests/ui/run.js",
     "build:renderer": "vite build --mode desktop --logLevel warn",
     "dev": "node scripts/dev.js",
-    "prestart": "npm run build:renderer",
+    "prestart": "npm run build:core && npm run build:renderer",
     "prebuild:mac": "npm run build:renderer",
     "prebuild:win": "npm run build:renderer",
     "typecheck": "tsc -p tsconfig.json && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings --output human && node scripts/codemod/check-free.mjs",
@@ -52,14 +52,15 @@
     },
     "files": [
       "**/*",
-      "!{dist,dist-win,tools,tests,android,www,scripts,out,.github,src,vite,site,_site,docs}/**",
+      "!{dist,dist-win,tools,tests,android,www,scripts,out,.github,src,vite,site,_site,docs,claude}/**",
       "!capacitor.config.json",
       "!README.md",
       "!build/icon.icns",
       "!**/*.map",
       "!vite.config.mjs",
       "!tsconfig*.json",
-      "!svelte.config.mjs"
+      "!svelte.config.mjs",
+      "!preload.js"
     ],
     "asar": false,
     "win": {

@@ -1,4 +1,4 @@
-// The Claude MCP server (claude/price-tracker-mcp.js) against a fake Price Tracker local API.
+// The Claude MCP server (src/mcp/price-tracker-mcp.ts → gen/main/price-tracker-mcp.js) against a fake Price Tracker local API.
 const test = require('node:test'), assert = require('node:assert'), http = require('node:http'), { spawn } = require('node:child_process'), path = require('node:path');
 
 function fakeApi() {
@@ -17,7 +17,7 @@ function fakeApi() {
   return new Promise((r) => srv.listen(0, '127.0.0.1', () => r({ srv, seen, port: srv.address().port })));
 }
 function client(env) {
-  const p = spawn(process.execPath, [path.join(__dirname, '..', '..', 'claude', 'price-tracker-mcp.js')], { env: { ...process.env, ...env }, stdio: ['pipe', 'pipe', 'inherit'] });
+  const p = spawn(process.execPath, [path.join(__dirname, '..', '..', 'gen', 'main', 'price-tracker-mcp.js')], { env: { ...process.env, ...env }, stdio: ['pipe', 'pipe', 'inherit'] });
   let buf = ''; const waiting = new Map(); let id = 0;
   p.stdout.on('data', (d) => { buf += d; let i; while ((i = buf.indexOf('\n')) >= 0) { const m = JSON.parse(buf.slice(0, i)); buf = buf.slice(i + 1); const w = waiting.get(m.id); if (w) { waiting.delete(m.id); w(m); } } });
   const rpc = (method, params) => new Promise((r) => { const i = ++id; waiting.set(i, r); p.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: i, method, params }) + '\n'); });

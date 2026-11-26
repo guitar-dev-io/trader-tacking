@@ -49,7 +49,7 @@ for (const f of ORDER) {
       if (p.scope.hasBinding(n, { noGlobals: true })) return;
       const assigned = (p.parentPath.isAssignmentExpression() && p.parent.left === p.node) || p.parentPath.isUpdateExpression();
       if (p.parentPath.isObjectProperty() && p.parent.key === p.node && !p.parent.shorthand && !p.parent.computed) return;
-      if (n === 'VCGI') { add('src/vcg-inject.mjs', 'default as VCGI'); return; }
+      if (n === 'VCGI') { add('src/vcg-inject.ts', 'default as VCGI'); return; }
       if (CORE[n]) { if (assigned) problems.push(`${f}: assigns ${n}`); add('src/legacy/core.ts', n); return; }
       if (WIN.has(n)) { rewrite(p, 'PT.' + n); return; }
       const o = owner.get(n);

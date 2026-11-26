@@ -1,5 +1,5 @@
 const test = require('node:test'), assert = require('node:assert'), fs = require('node:fs'), os = require('node:os'), path = require('node:path');
-const { createJournal } = require('../../journal-store.js');
+const { createJournal } = require('../../gen/main/journal-store.js');
 
 // fake EA history: one closed trade per day over 400 days + a deposit
 function fakeMt5(now) {
