@@ -78,6 +78,24 @@ cd android && ./gradlew assembleRelease
 
 ถ้าต้องการให้เปิดได้เลยโดยไม่มีคำเตือน ต้องเซ็นและ notarize ด้วยบัญชี Apple Developer (ปีละ 99 USD) — ใส่ใน CI ได้ภายหลัง
 
+## ให้ Claude เข้าถึงแอป (Mac · MCP)
+
+แอป Mac มี MCP server ในตัว (`claude/price-tracker-mcp.js`) ให้ Claude Desktop / Claude Code ใช้แอปนี้ได้:
+
+| Tool | ทำอะไร |
+|---|---|
+| `get_status`, `get_quotes` | สถานะการเชื่อมต่อ, ราคาล่าสุด |
+| `open_chart` | เปิดกราฟ symbol / TF ที่ต้องการ |
+| `get_candles` | แท่งเทียน (UTC) |
+| `get_chart_screenshot` | ภาพกราฟตามที่ผู้ใช้เห็น |
+| `get_analysis` | เทรนด์, สวิง, BOS/CHoCH, โซน, สัญญาณ + สถิติ |
+| `get_bounce_zones` | จุดเด้ง Buy/Sell, SL เม่า, การกวาด, สถิติเด้งย้อนหลัง |
+| `draw_on_chart`, `clear_claude_drawings` | วาดเส้น/โซน/Fibo/ข้อความอธิบายบนกราฟ (ลบเฉพาะของ Claude) |
+| `calculate_position` | เครื่องคำนวณ lot / เติมไม้ (ไม่มีการส่งคำสั่งซื้อขายจริง) |
+| `add_symbol`, `get_logs` | เพิ่ม symbol, อ่าน log |
+
+ตั้งค่า: ⚙ ตั้งค่า → **Claude** → "เพิ่มใน Claude Desktop" (เขียน `~/Library/Application Support/Claude/claude_desktop_config.json` พร้อมสำรองไฟล์เดิม) แล้วเปิด Claude Desktop ใหม่ · หรือ "คำสั่งสำหรับ Claude Code" (`claude mcp add …`) — แอปเปิด Local API เฉพาะ 127.0.0.1 พร้อม token ให้เอง และรัน MCP server ด้วยตัวแอปเอง (`ELECTRON_RUN_AS_NODE=1`) จึงไม่ต้องติดตั้ง Node
+
 ## ทดสอบ
 
 ```bash

@@ -25,7 +25,14 @@ function zoneOffsetSec(zone, date = new Date()) {
 let TZ = zoneOffsetSec(store.get('tz', 'local'));
 const FIB_DEF = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1], FIBX_DEF = [0, 0.618, 1, 1.272, 1.618, 2, 2.618];
 let FIB = store.get('fibLevels', FIB_DEF), FIBX = store.get('fibExtLevels', FIBX_DEF);
-const fibColor = (lv) => ({ 0: '#787b86', 0.236: '#f23645', 0.382: '#ff9800', 0.5: '#4caf50', 0.618: '#089981', 0.786: '#00bcd4', 1: '#787b86', 1.272: '#2962ff', 1.414: '#9c27b0', 1.618: '#f23645', 2: '#ff9800', 2.618: '#e91e63', 3.618: '#9c27b0', 4.236: '#00bcd4' })[lv] || '#b2b5be';
+// popular level sets (negative = beyond the end point = targets, as people set them up in TradingView)
+const FIB_PRESETS = {
+  'มาตรฐาน': [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1],
+  'ICT / OTE': [0, 0.5, 0.62, 0.705, 0.79, 1],
+  'Golden pocket': [0, 0.382, 0.5, 0.618, 0.65, 0.786, 1],
+  'มีเป้า TP (ติดลบ)': [-1.618, -1, -0.618, -0.27, 0, 0.382, 0.5, 0.618, 0.786, 1],
+};
+const fibColor = (lv) => ({ '-1.618': '#e91e63', '-1': '#ff9800', '-0.618': '#f23645', '-0.27': '#2962ff', 0.62: '#089981', 0.65: '#089981', 0.705: '#00bcd4', 0.79: '#00bcd4', 0: '#787b86', 0.236: '#f23645', 0.382: '#ff9800', 0.5: '#4caf50', 0.618: '#089981', 0.786: '#00bcd4', 1: '#787b86', 1.272: '#2962ff', 1.414: '#9c27b0', 1.618: '#f23645', 2: '#ff9800', 2.618: '#e91e63', 3.618: '#9c27b0', 4.236: '#00bcd4' })[lv] || '#b2b5be';
 const IND_COLORS = ['#f5a623', '#2962ff', '#e040fb', '#00bcd4', '#ff5252', '#8bc34a', '#ffeb3b'];
 let UP = '#26a69a', DOWN = '#ef5350';
 

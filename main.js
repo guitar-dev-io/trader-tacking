@@ -277,7 +277,67 @@ const apiHooks = {
   addSymbol, removeSymbol,
   chart: () => state.chart,
   analysis: () => state.analysis || { note: 'ยังไม่มีผลวิเคราะห์ (เปิดกราฟในแอปก่อน)' },
+  command: rendererCommand,
+  screenshot: chartScreenshot,
 };
+
+// ---------------- commands for the local API / Claude (MCP): run inside the app window ----------------
+let cmdSeq = 0; const cmdWait = new Map();
+ipcMain.on('api-cmd-result', (_e, r) => { const w = cmdWait.get(r.id); if (w) { cmdWait.delete(r.id); clearTimeout(w.t); r.error ? w.reject(new Error(r.error)) : w.resolve(r.data); } });
+function rendererCommand(name, args = {}, timeoutMs = 20000) {
+  return new Promise((resolve, reject) => {
+    if (!mainWin || mainWin.isDestroyed()) return reject(new Error('หน้าต่างแอปไม่ได้เปิดอยู่'));
+    const id = ++cmdSeq;
+    cmdWait.set(id, { resolve, reject, t: setTimeout(() => { cmdWait.delete(id); reject(new Error('แอปไม่ตอบ (timeout) — ' + name)); }, timeoutMs) });
+    mainWin.webContents.send('api-cmd', { id, name, args });
+  });
+}
+async function chartScreenshot() {
+  const r = await rendererCommand('chart_rect');
+  const img = await mainWin.webContents.capturePage(r && r.width ? { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) } : undefined);
+  const out = img.getSize().width > 1400 ? img.resize({ width: 1400 }) : img;
+  return { mimeType: 'image/png', data: out.toPNG().toString('base64'), view: await rendererCommand('view') };
+}
+
+// ---------------- Claude (MCP) setup: local API on 127.0.0.1 + token, MCP script, Claude Desktop config ----------------
+const claudeConfigFile = () => path.join(app.getPath('home'), 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json');
+function mcpEntry() {
+  const script = path.join(app.getPath('userData'), 'claude', 'price-tracker-mcp.js');
+  fs.mkdirSync(path.dirname(script), { recursive: true });
+  fs.writeFileSync(script, fs.readFileSync(path.join(__dirname, 'claude', 'price-tracker-mcp.js')));
+  return { command: process.execPath, args: [script], env: { ELECTRON_RUN_AS_NODE: '1', PT_API_URL: `http://127.0.0.1:${settings.api.port}`, PT_API_TOKEN: settings.api.token } };
+}
+function ensureClaudeApi() {
+  let changed = false;
+  if (!settings.api.enabled) { settings.api.enabled = true; changed = true; }
+  if (settings.api.lan) { settings.api.lan = false; changed = true; }               // Claude only needs this computer
+  if (!settings.api.token) { settings.api.token = require('crypto').randomBytes(18).toString('base64url'); changed = true; }
+  if (changed) { saveSettings(); restartApi(); }
+}
+ipcMain.handle('claude-setup', (_e, opts = {}) => {
+  ensureClaudeApi();
+  const entry = mcpEntry();
+  const q = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
+  const codeCmd = `claude mcp add price-tracker -s user -e ELECTRON_RUN_AS_NODE=1 -e PT_API_URL=${entry.env.PT_API_URL} -e PT_API_TOKEN=${entry.env.PT_API_TOKEN} -- ${q(entry.command)} ${q(entry.args[0])}`;
+  const res = { ok: true, entry, codeCmd, desktopConfig: claudeConfigFile(), wroteDesktop: false };
+  if (opts.desktop) {
+    const f = claudeConfigFile();
+    let cfg = {};
+    try { if (fs.existsSync(f)) { cfg = JSON.parse(fs.readFileSync(f, 'utf8') || '{}'); fs.copyFileSync(f, f + '.backup-' + Date.now()); } }
+    catch (e) { return { ...res, ok: false, error: 'อ่านไฟล์ตั้งค่า Claude ไม่ได้: ' + e.message }; }
+    cfg.mcpServers = { ...(cfg.mcpServers || {}), 'price-tracker': entry };
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    fs.writeFileSync(f, JSON.stringify(cfg, null, 2));
+    res.wroteDesktop = true;
+    log.info('claude', 'เพิ่ม Price Tracker ใน Claude Desktop แล้ว (' + f + ')');
+  }
+  return res;
+});
+ipcMain.handle('claude-status', () => {
+  let desktop = false;
+  try { desktop = !!JSON.parse(fs.readFileSync(claudeConfigFile(), 'utf8')).mcpServers['price-tracker']; } catch (_) {}
+  return { api: settings.api.enabled, port: settings.api.port, token: !!settings.api.token, desktop, mac: process.platform === 'darwin' };
+});
 function restartApi() { api.start(settings.api, apiHooks); }
 
 // ---------------- IPC ----------------

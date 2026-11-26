@@ -182,6 +182,7 @@
         <button data-st="notif">แจ้งเตือน</button>
         <button data-st="sess">ช่วงเวลาตลาด</button>
         <button data-st="an">การวิเคราะห์</button>
+        <button data-st="claude">Claude</button>
         <button data-st="api">API / Webhook</button>
         <button data-st="data">ข้อมูล</button>
       </div>
@@ -247,6 +248,14 @@
           <div class="row"><label>ตัวอย่างขั้นต่ำ</label><input id="st-minsamp" type="number" min="1"><span class="muted">ไม้ ก่อนโหมดเรียนรู้จะตัดสิน</span></div>
           <div class="row"><label>ถือไม่เกิน</label><input id="st-maxbars" type="number" min="10" step="10"><span class="muted">แท่ง (ทดสอบย้อนหลัง)</span></div>
         </section>
+        <section data-sec="claude" class="hidden">
+          <h4>ให้ Claude เข้าถึงแอปนี้ (MCP)</h4>
+          <p class="muted">Claude Desktop / Claude Code บน Mac เครื่องนี้จะ: อ่านราคา แท่งเทียน ผลวิเคราะห์ จุดเด้ง และ SL เม่า · เปิดกราฟ symbol/TF ที่ต้องการ · ดูภาพกราฟที่คุณเห็น · วาดโซน/เส้น/Fibo อธิบายบนกราฟ · ใช้เครื่องคำนวณ lot — <b>ส่งคำสั่งซื้อขายจริงไม่ได้</b> (แอปไม่มีระบบเทรด)</p>
+          <div id="st-claude-state" class="muted"></div>
+          <div class="btns" style="margin-top:8px"><button id="st-claude-desktop" class="primary">เพิ่มใน Claude Desktop</button><button id="st-claude-code">คำสั่งสำหรับ Claude Code</button></div>
+          <pre id="st-claude-out" class="hidden" style="white-space:pre-wrap;word-break:break-all;font-size:11.5px;margin-top:8px"></pre>
+          <p class="muted" style="margin-top:8px">ขั้นตอน: ① กด "เพิ่มใน Claude Desktop" ② ปิดแล้วเปิด Claude Desktop ใหม่ ③ ลองพิมพ์ใน Claude: <i>"ดูกราฟ XAUUSD H1 ใน Price Tracker แล้ววิเคราะห์จุดเด้ง วาดโซนให้ด้วย"</i> · ใช้ได้ขณะแอปนี้เปิดอยู่ · แอปจะเปิด Local API เฉพาะเครื่องนี้ (127.0.0.1) พร้อม token ให้อัตโนมัติ · ถ้าย้ายแอปไปโฟลเดอร์อื่น ให้กดเพิ่มใหม่</p>
+        </section>
         <section data-sec="api" class="hidden">
           <h4>Local API (ให้โปรแกรมอื่น / เว็บ / มือถือ ดึงข้อมูล)</h4>
           <label class="chk"><input type="checkbox" id="st-api-on"> เปิด API</label>
@@ -306,5 +315,6 @@
 <script src="mtf.js"></script>
 <script src="ui.js"></script>
 <script src="mobile.js"></script>
+<script src="claude-bridge.js"></script>
 </body>
 </html>

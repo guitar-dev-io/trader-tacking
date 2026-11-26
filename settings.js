@@ -108,6 +108,31 @@ async function saveSettingsUI() {
   $('st-msg').textContent = 'บันทึกแล้ว ✓';
 }
 $('st-save').onclick = saveSettingsUI;
+// Claude (MCP)
+async function renderClaude() {
+  const box = $('st-claude-state'); if (!box) return;
+  if (!vcg.claudeStatus) { box.textContent = 'ใช้ได้เฉพาะแอป Mac'; $('st-claude-desktop').disabled = $('st-claude-code').disabled = true; return; }
+  const st = await vcg.claudeStatus();
+  box.innerHTML = `Local API: ${st.api ? '<span class="up">เปิด</span> (port ' + st.port + ')' : 'ปิด'} · Claude Desktop: ${st.desktop ? '<span class="up">เชื่อมแล้ว</span>' : 'ยังไม่ได้เพิ่ม'}`;
+  if (!st.mac) $('st-claude-desktop').disabled = true;
+}
+if ($('st-claude-desktop')) {
+  $('st-claude-desktop').onclick = async () => {
+    const r = await vcg.claudeSetup({ desktop: true });
+    const out = $('st-claude-out'); out.classList.remove('hidden');
+    out.textContent = r.ok ? `เพิ่มแล้วใน ${r.desktopConfig}\n(สำรองไฟล์เดิมไว้ข้างกัน)\n\nปิดแล้วเปิด Claude Desktop ใหม่ จะเห็นเครื่องมือ "price-tracker"` : 'ไม่สำเร็จ: ' + r.error;
+    toast(r.ok ? 'เพิ่ม Price Tracker ใน Claude Desktop แล้ว — เปิด Claude ใหม่' : 'เพิ่มไม่สำเร็จ', r.ok ? 'ok' : 'error', 6000);
+    renderClaude();
+  };
+  $('st-claude-code').onclick = async () => {
+    const r = await vcg.claudeSetup({});
+    const out = $('st-claude-out'); out.classList.remove('hidden');
+    out.textContent = 'วางคำสั่งนี้ใน Terminal (ครั้งเดียว):\n\n' + r.codeCmd;
+    try { await navigator.clipboard.writeText(r.codeCmd); toast('คัดลอกคำสั่งแล้ว', 'ok'); } catch (_) {}
+    renderClaude();
+  };
+  document.querySelector('.st-nav [data-st="claude"]').addEventListener('click', renderClaude);
+}
 $('st-gen').onclick = () => { $('st-api-token').value = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(16).padStart(2, '0')).join(''); };
 $('st-test').onclick = async () => {
   await saveSettingsUI();

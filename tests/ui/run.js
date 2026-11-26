@@ -125,6 +125,38 @@ app.whenReady().then(async () => {
     await A.shot('lessons');
     await js(`(() => { const i = document.querySelector('.lesson-search'); i.value = ''; i.dispatchEvent(new Event('input')); document.querySelector('[data-lc=ds]').click(); const d = document.querySelector('#lessons details:not([hidden])'); d.open = true; return 1; })()`); await sleep(200); await A.shot('lessons-ds');
 
+    // Claude (MCP) commands: main process → renderer 'api-cmd' → 'api-cmd-result'
+    {
+      let seq = 0; const waits = new Map();
+      ipcMain.removeAllListeners('api-cmd-result');
+      ipcMain.on('api-cmd-result', (_e, r) => { const w = waits.get(r.id); if (w) { waits.delete(r.id); w(r); } });
+      const cmd = (name, args) => new Promise((res) => { const id = ++seq; waits.set(id, res); send('api-cmd', { id, name, args }); setTimeout(() => res({ error: 'timeout ' + name }), 20000); });
+      const v = await cmd('view');
+      check('claude: view', v.data && v.data.symbol === 'XAUUSD' && v.data.bars > 1000, v.data && { s: v.data.symbol, tf: v.data.timeframe });
+      const cs = await cmd('candles', { limit: 50 });
+      check('claude: candles in UTC', cs.data && cs.data.candles.length === 50 && Math.abs(cs.data.candles[49].time - Date.now() / 1000) < 7200, cs.error);
+      const an = await cmd('analysis'); check('claude: analysis', an.data && ['up', 'down', 'sideways'].includes(an.data.trend), an.error);
+      const bo = await cmd('bounce'); check('claude: bounce zones + liquidity', bo.data && Array.isArray(bo.data.buy) && bo.data.liquidity, bo.error);
+      const last = cs.data.candles[49];
+      const d1 = await cmd('draw', { type: 'rect', points: [{ time: cs.data.candles[10].time, price: last.close - 5 }, { time: last.time, price: last.close - 2 }], label: 'โซน Demand (Claude)', color: '#26a69a' });
+      const d2 = await cmd('draw', { type: 'hline', points: [{ price: last.close + 4 }] });
+      const bad = await cmd('draw', { type: 'rect', points: [{ price: 1 }] });
+      const drawn = JSON.parse(await js(`JSON.stringify({ n: drawings.filter((d) => d.by === 'claude').length, labels: [...svg.querySelectorAll('text')].some((t) => /Claude/.test(t.textContent)) })`));
+      check('claude: draw rect + label + hline', d1.data && d2.data && drawn.n === 3, drawn);
+      check('claude: draw validates points', !!bad.error, bad.error);
+      const pl = await cmd('plan', { side: 'buy', entry: 3586.31, sl: 3570, balance: 10000, riskPct: 1 });   // $100 risk / 16.31 → 0.06 lot
+      check('claude: lot calculator', pl.data && Math.abs(pl.data.totalLot - 0.06) < 1e-9 && Math.abs(pl.data.maxLossAtSL) <= 100, pl.data && { lot: pl.data.totalLot, loss: pl.data.maxLossAtSL, warn: pl.data.warnings, inp: pl.data.input });
+      const cl = await cmd('clear_drawings'); check('claude: clear only Claude drawings', cl.data && cl.data.removed === 3, cl.data);
+      reqs.length = 0;
+      const oc = cmd('open_chart', { timeframe: '4H' });
+      for (let i = 0; i < 40 && !reqs.find((r) => r.candleType === 4); i++) await sleep(100);
+      send('chart', { type: 'chart', slot: 'main', data: { history: { candles: candles(400, 14400, 21) } } });
+      const ocr = await oc;
+      check('claude: open_chart switches timeframe and waits for candles', ocr.data && ocr.data.timeframe === '4H' && ocr.data.bars > 300, ocr.error || (ocr.data && ocr.data.timeframe));
+      const r = await cmd('chart_rect'); check('claude: chart rect for screenshots', r.data && r.data.width > 300, r.data);
+      const nope = await cmd('rm_rf'); check('claude: unknown command rejected', /ไม่รู้จักคำสั่ง/.test(nope.error || ''), nope.error);
+    }
+
     // layout: narrow window, wide side panel → toolbar buttons stay inside the chart column
     A.w.setSize(1100, 760); await sleep(300);
     await js(`document.documentElement.style.setProperty('--side-w', '530px'); document.querySelector('#tabs [data-tab="calc"]').click(); 'ok'`); await sleep(300);

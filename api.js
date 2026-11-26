@@ -55,6 +55,8 @@ async function handle(req, res, cfg, hooks) {
     if (p.startsWith('/api/symbols/') && req.method === 'DELETE') { hooks.removeSymbol(decodeURIComponent(p.slice(13))); return json(res, 200, hooks.symbols()); }
     if (p === '/api/chart') return json(res, 200, hooks.chart());
     if (p === '/api/analysis') return json(res, 200, hooks.analysis());
+    if (p.startsWith('/api/cmd/') && req.method === 'POST') { const b = await readBody(req); return json(res, 200, await hooks.command(decodeURIComponent(p.slice(9)), b)); }
+    if (p === '/api/screenshot') return json(res, 200, await hooks.screenshot());
     if (p === '/api/logs') return json(res, 200, log.recent(+u.searchParams.get('limit') || 200, u.searchParams.get('level') || undefined));
     if (p === '/api/stream') {
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'Access-Control-Allow-Origin': '*' });
@@ -85,6 +87,8 @@ const ENDPOINTS = [
   ['GET /api/chart', 'แท่งเทียนของกราฟที่เปิดอยู่'],
   ['GET /api/analysis', 'เทรนด์ / โครงสร้าง / สัญญาณล่าสุด / สถิติ'],
   ['GET /api/logs?limit=200&level=error', 'log ของแอป'],
+  ['POST /api/cmd/<name> {...}', 'สั่งงานหน้ากราฟ: view, open_chart, candles, analysis, bounce, draw, clear_drawings, plan'],
+  ['GET /api/screenshot', 'ภาพกราฟปัจจุบัน (PNG base64)'],
   ['GET /api/stream', 'สตรีม real-time (Server-Sent Events): quote, signal, alert (+log ถ้า ?logs=1)'],
 ];
 

@@ -455,7 +455,7 @@ $('cs-btn').onclick = (e) => {
     <div class="group">ระดับ Fibonacci (คั่นด้วย ,)</div>
     <div class="item fibrow"><span>ย่อตัว</span><input id="cs-fib" value="${FIB.join(', ')}"></div>
     <div class="item fibrow"><span>เป้า (Extension)</span><input id="cs-fibx" value="${FIBX.join(', ')}"></div>
-    <div class="item" style="gap:6px;justify-content:flex-start"><button id="cs-fib-tv">+ 1.618 / 2.618 ในย่อตัว</button><button id="cs-fib-reset">ค่าเริ่มต้น</button></div>`;
+    <div class="item fibpre" style="gap:6px;justify-content:flex-start;flex-wrap:wrap">${Object.keys(FIB_PRESETS).map((k) => `<button data-fp="${k}" title="${FIB_PRESETS[k].join(', ')}">${k}</button>`).join('')}<button id="cs-fib-reset">ค่าเริ่มต้น</button></div>`;
   m.classList.remove('hidden');
   const save = () => { store.set('chartCfg', S.chartCfg); applyChartCfg(); buildMain(); buildIndicators(); dirty = true; };
   $('cs-up').oninput = () => { S.chartCfg.up = $('cs-up').value; save(); };
@@ -466,7 +466,7 @@ $('cs-btn').onclick = (e) => {
   const parseLv = (v) => [...new Set(String(v).split(/[,\s]+/).map(Number).filter((x) => isFinite(x) && x >= -5 && x <= 10))];
   $('cs-fib').onchange = () => { const a = parseLv($('cs-fib').value); if (a.length) { FIB = a; store.set('fibLevels', FIB); } $('cs-fib').value = FIB.join(', '); dirty = true; };
   $('cs-fibx').onchange = () => { const a = parseLv($('cs-fibx').value); if (a.length) { FIBX = a; store.set('fibExtLevels', FIBX); } $('cs-fibx').value = FIBX.join(', '); dirty = true; };
-  $('cs-fib-tv').onclick = () => { FIB = [...new Set([...FIB, 1.618, 2.618])]; store.set('fibLevels', FIB); $('cs-fib').value = FIB.join(', '); dirty = true; };
+  $('cs-menu').querySelectorAll('[data-fp]').forEach((b) => (b.onclick = () => { FIB = FIB_PRESETS[b.dataset.fp].slice(); store.set('fibLevels', FIB); $('cs-fib').value = FIB.join(', '); dirty = true; }));
   $('cs-fib-reset').onclick = () => { FIB = FIB_DEF.slice(); FIBX = FIBX_DEF.slice(); store.set('fibLevels', FIB); store.set('fibExtLevels', FIBX); $('cs-fib').value = FIB.join(', '); $('cs-fibx').value = FIBX.join(', '); dirty = true; };
   $('cs-sess').onchange = () => { S.showSessions = $('cs-sess').checked; store.set('sessions', S.showSessions); dirty = true; };
 };
