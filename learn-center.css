@@ -179,3 +179,11 @@ body.mobile .lc.m-full .lc-path { grid-template-columns: 1fr 1fr; }
 .lc-item, .lc-cat-h { justify-content: flex-start; }
 .lc-cat-h .lc-chev { margin-left: 2px; }
 .lc-path button > span:last-child { flex: 1; }
+/* Forex Factory links (news-page.js) */
+.np-ff { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.np-ff button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+.np-ff button:hover { border-color: var(--accent); }
+.np-ev[data-fft] { cursor: pointer; }
+.np-ev[data-fft]:hover { background: var(--hover, rgba(127,127,127,.08)); }
+.np-ev[data-fft]:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+body.mobile .np-ff { width: 100%; margin: 6px 0 0; }

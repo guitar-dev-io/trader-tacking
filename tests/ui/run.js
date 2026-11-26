@@ -44,7 +44,7 @@ async function open(file, { width = 1400, height = 900, preload = true, mock = f
 
 app.whenReady().then(async () => {
   const reqs = [];
-  ipcMain.handle('mt5-positions', () => null); ipcMain.handle('mt5-deals', () => []);
+  ipcMain.handle('mt5-positions', () => null); ipcMain.handle('open-site', (_e, u) => { globalThis.__siteOpened = u; return true; }); ipcMain.handle('mt5-deals', () => []);
   ipcMain.handle('get-settings', () => ({ api: {}, webhook: {}, telegram: {}, net: { slowMs: 800, delayMs: 3000, staleSec: 45, stuckSec: 60, notify: false }, version: 'test', source: 'vcg' }));
   ipcMain.handle('set-settings', () => true); ipcMain.handle('notify', () => 0); ipcMain.handle('sign-out', () => true);
   ipcMain.handle('fetch-json', () => { throw new Error('offline (test)'); });
@@ -401,6 +401,9 @@ app.whenReady().then(async () => {
     await new Promise((r) => setTimeout(r, 200)); await shot('calc-cent');
     await js(`Object.assign(S.plan, window.__planKeep); savePlan(); renderPlanner(); document.querySelector('#tabs [data-tab="market"]').click(); true`);
     check('mm: calculator cent account (10,000 USC, 1%, SL 1000 pts → 0.10 cent lot = 0.0010 lot)', Math.abs(cent.lot - 0.1) < 1e-9 && cent.usc && cent.centLot && cent.std && cent.label, cent);
+    const ff = JSON.parse(await js(`(async () => { NEWSPAGE.open(); await new Promise((r) => setTimeout(r, 200)); const r = { btns: document.querySelectorAll('#news-page [data-ff]').length };
+      const b = document.querySelector('#news-page [data-ff=calendar]'); if (b) b.click(); await new Promise((r) => setTimeout(r, 100)); NEWSPAGE.close(); return JSON.stringify(r); })()`));
+    check('news page: Forex Factory buttons open the site in-app', ff.btns === 2 && globalThis.__siteOpened === 'https://www.forexfactory.com/calendar', { ...ff, opened: globalThis.__siteOpened });
     check('desktop: no console errors', A.errs.length === 0, A.errs.slice(0, 3));
     A.w.destroy();
 

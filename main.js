@@ -476,6 +476,26 @@ ipcMain.handle('mt5-launch', async (_e, opt = {}) => {
   catch (e) { bad('เปิด MT5 ไม่ได้: ' + e.message); return { ok: false, steps }; }
   return { ok: true, steps };
 });
+// External sites shown inside the app (their own pages, nothing copied): currently Forex Factory.
+const SITE_HOSTS = /^(www\.)?forexfactory\.com$/i;
+let siteWin = null;
+ipcMain.handle('open-site', (_e, url) => {
+  let u; try { u = new URL(url); } catch (_) { return false; }
+  if (u.protocol !== 'https:' || !SITE_HOSTS.test(u.hostname)) { shell.openExternal(u.href); return 'external'; }
+  if (siteWin && !siteWin.isDestroyed()) { siteWin.loadURL(u.href); siteWin.show(); siteWin.focus(); return true; }
+  const b = settings.siteBounds || { width: 1280, height: 860 };
+  siteWin = new BrowserWindow({ ...b, minWidth: 700, minHeight: 500, title: 'Forex Factory', backgroundColor: '#ffffff', autoHideMenuBar: true,
+    webPreferences: { partition: 'persist:sites', contextIsolation: true, sandbox: true } });
+  // stay on the allowed site; anything else (ads, other sites) opens in the normal browser
+  const keep = (to) => { try { const h = new URL(to); return h.protocol === 'https:' && SITE_HOSTS.test(h.hostname); } catch (_) { return false; } };
+  siteWin.webContents.setWindowOpenHandler(({ url: to }) => { if (keep(to)) siteWin.loadURL(to); else if (/^https?:/.test(to)) shell.openExternal(to); return { action: 'deny' }; });
+  siteWin.webContents.on('will-navigate', (ev, to) => { if (!keep(to)) { ev.preventDefault(); if (/^https?:/.test(to)) shell.openExternal(to); } });
+  siteWin.on('close', () => { settings.siteBounds = siteWin.getBounds(); saveSettings(); });
+  siteWin.on('closed', () => { siteWin = null; });
+  siteWin.loadURL(u.href);
+  log.info('ui', 'เปิด ' + u.hostname);
+  return true;
+});
 ipcMain.handle('mt5-positions', (_e, on) => mt5.positions(on));
 ipcMain.handle('mt5-deals', (_e, from, to) => mt5.deals(from, to));
 ipcMain.handle('mt5-ea-source', () => fs.readFileSync(path.join(__dirname, 'mt5', 'PriceTrackerBridge.mq5'), 'utf8'));

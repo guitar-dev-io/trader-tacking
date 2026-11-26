@@ -178,6 +178,7 @@
     log: (level, msg, data, source = 'ui') => log(level, source, msg, data),
     notify: async (event, payload, text) => notify(event, payload, text),
     fetchJSON: async (url) => { const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); },
+    openSite: (url) => { window.open(url, '_blank', 'noopener'); return true; },   // phone/web: system browser / new tab
     fetchText: async (url) => { const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); },
     getSettings: async () => ({ api: settings.api, webhook: settings.webhook, telegram: settings.telegram, net: settings.net, openAtLogin: false, version: window.APP_VERSION || '', userData: native ? 'Android' : 'browser', logFile: '' }),
     setSettings: async (s) => {

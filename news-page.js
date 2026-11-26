@@ -10,12 +10,18 @@ const NEWSPAGE = (() => {
   // the old side tab's feed element moves into the page
   const oldTab = $('tab-news'), feed = $('newsfeed') || Object.assign(document.createElement('div'), { id: 'newsfeed' });
   const root = document.createElement('div'); root.id = 'news-page'; root.className = 'np' + (mobile ? ' m-full hidden' : '');
-  root.innerHTML = `<div class="np-top">${mobile ? `<button class="np-close ib" aria-label="ปิด">${ic('arrow-left', 18)}</button>` : ''}<h1>${ic('newspaper', 20)}ข่าวและปฏิทินเศรษฐกิจ</h1></div>
+  root.innerHTML = `<div class="np-top">${mobile ? `<button class="np-close ib" aria-label="ปิด">${ic('arrow-left', 18)}</button>` : ''}<h1>${ic('newspaper', 20)}ข่าวและปฏิทินเศรษฐกิจ</h1>
+      <div class="np-ff"><button data-ff="news">${ic('external-link', 14)}ข่าว Forex Factory</button><button data-ff="calendar">${ic('calendar-days', 14)}ปฏิทิน Forex Factory</button></div></div>
     <div class="np-cols"><section class="np-news"></section><aside class="np-cal"></aside></div>`;
   root.querySelector('.np-news').appendChild(feed);
   if (oldTab) oldTab.remove();
   const cal = root.querySelector('.np-cal');
 
+  // Forex Factory: open its own pages (in-app window on desktop, browser on phone/web) — nothing is copied
+  const FF = 'https://www.forexfactory.com/';
+  const ffDay = (t) => { const d = new Date(t * 1000); return FF + 'calendar?day=' + d.toLocaleString('en-US', { month: 'short', timeZone: 'America/New_York' }).toLowerCase() + d.toLocaleString('en-US', { day: 'numeric', timeZone: 'America/New_York' }) + '.' + d.toLocaleString('en-US', { year: 'numeric', timeZone: 'America/New_York' }); };
+  const openFF = (u) => { if (window.vcg && vcg.openSite) vcg.openSite(u); else window.open(u, '_blank', 'noopener'); };
+  root.querySelectorAll('[data-ff]').forEach((b) => (b.onclick = () => openFF(FF + (b.dataset.ff === 'news' ? 'news' : 'calendar'))));
   const dayName = (t) => new Date(t * 1000).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short' });
   function renderCal() {
     if (typeof NEWS === 'undefined' || !NEWS.week) { cal.innerHTML = ''; return; }
@@ -26,11 +32,12 @@ const NEWSPAGE = (() => {
         <div class="np-seg"><button data-ca="0" class="${calAll ? '' : 'on'}">${esc((NEWS.ccys ? NEWS.ccys() : []).join('/'))} สำคัญ</button><button data-ca="1" class="${calAll ? 'on' : ''}">ทั้งหมด</button></div></div>
       ${next ? `<div class="np-next ${next.impact === 'High' ? 'hi' : ''}"><small>ถัดไป</small><b>${esc(next.ccy)} ${esc(next.title)}</b><span>${esc(next.when)}${next.forecast ? ' · คาด ' + esc(next.forecast) : ''}</span></div>` : ''}
       ${list.length ? [...days.entries()].map(([, es]) => `<div class="np-day"><div class="np-dh">${esc(dayName(es[0].t))}</div>
-        ${es.map((e) => `<div class="np-ev ${e.t < now ? 'past' : ''} ${e.t > now && e.t - now < 3600 ? 'soon' : ''}"><i class="imp ${e.impact === 'High' ? 'hi' : e.impact === 'Medium' ? 'md' : 'lo'}"></i>
+        ${es.map((e) => `<div class="np-ev ${e.t < now ? 'past' : ''} ${e.t > now && e.t - now < 3600 ? 'soon' : ''}" data-fft="${e.t}" title="ดูรายละเอียดบน Forex Factory" role="link" tabindex="0"><i class="imp ${e.impact === 'High' ? 'hi' : e.impact === 'Medium' ? 'md' : 'lo'}"></i>
           <span class="np-time">${esc(e.when.split(' ').pop())}</span><span class="np-ccy">${esc(e.ccy)}</span><span class="np-title">${esc(e.title)}</span>
           <span class="np-fc">${e.forecast ? 'คาด ' + esc(e.forecast) : ''}${e.previous ? `<small>ก่อนหน้า ${esc(e.previous)}</small>` : ''}</span></div>`).join('')}</div>`).join('')
         : '<p class="muted">ยังไม่มีข้อมูลปฏิทิน หรือโหลดไม่ได้</p>'}
-      <p class="muted np-src">ข้อมูลจาก Forex Factory · <i class="imp hi"></i> สูง <i class="imp md"></i> กลาง · เวลาตาม timezone กราฟ</p>`;
+      <p class="muted np-src">ข้อมูลจาก Forex Factory (กดที่รายการเพื่อดูบนเว็บ) · <i class="imp hi"></i> สูง <i class="imp md"></i> กลาง · เวลาตาม timezone กราฟ</p>`;
+    cal.querySelectorAll('[data-fft]').forEach((el) => { el.onclick = () => openFF(ffDay(+el.dataset.fft)); el.onkeydown = (ev) => { if (ev.key === 'Enter') el.click(); }; });
     cal.querySelectorAll('[data-ca]').forEach((b) => (b.onclick = () => { calAll = b.dataset.ca === '1'; store.set('np.calAll', calAll); renderCal(); }));
   }
 
