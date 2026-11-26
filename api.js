@@ -5,7 +5,7 @@ const http = require('http');
 const { URL } = require('url');
 const log = require('./logger');
 
-let server = null;
+let server = null, isListening = false;
 const clients = new Set(); // SSE clients {res, logs}
 
 function start(cfg, hooks) {
@@ -13,13 +13,14 @@ function start(cfg, hooks) {
   if (!cfg || !cfg.enabled) return;
   const host = cfg.lan ? '0.0.0.0' : '127.0.0.1';
   server = http.createServer((req, res) => handle(req, res, cfg, hooks));
-  server.on('error', (e) => log.error('api', `ไม่สามารถเปิด API ที่พอร์ต ${cfg.port}: ${e.message}`));
-  server.listen(cfg.port, host, () => log.info('api', `API เปิดแล้วที่ http://${host === '0.0.0.0' ? '<IP เครื่อง>' : '127.0.0.1'}:${cfg.port}`));
+  server.on('error', (e) => { isListening = false; log.error('api', `ไม่สามารถเปิด API ที่พอร์ต ${cfg.port}: ${e.message}`); });
+  server.listen(cfg.port, host, () => (isListening = true) && log.info('api', `API เปิดแล้วที่ http://${host === '0.0.0.0' ? '<IP เครื่อง>' : '127.0.0.1'}:${cfg.port}`));
 }
 
 function stop() {
   clients.forEach((c) => { try { c.res.end(); } catch (_) {} }); clients.clear();
   if (server) { try { server.close(); } catch (_) {} server = null; }
+  isListening = false;
 }
 
 function json(res, code, obj) {
@@ -40,9 +41,10 @@ async function handle(req, res, cfg, hooks) {
     res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS' });
     return res.end();
   }
-  if (cfg.token) {
+  const tokens = (cfg.tokens || [cfg.token]).filter(Boolean);
+  if (tokens.length && !cfg.openNoToken) {
     const got = (req.headers.authorization || '').replace(/^Bearer\s+/i, '') || u.searchParams.get('token');
-    if (got !== cfg.token && u.pathname !== '/') return json(res, 401, { error: 'unauthorized: ใส่ token ใน header Authorization: Bearer <token> หรือ ?token=' });
+    if (!tokens.includes(got) && u.pathname !== '/') return json(res, 401, { error: 'unauthorized: ใส่ token ใน header Authorization: Bearer <token> หรือ ?token=' });
   }
   const p = u.pathname.replace(/\/+$/, '') || '/';
   try {
@@ -122,4 +124,4 @@ const es=new EventSource('/api/stream${tk}');es.addEventListener('quote',e=>put(
 </script></body></html>`;
 }
 
-module.exports = { start, stop, broadcast, ENDPOINTS };
+module.exports = { listening: () => isListening, start, stop, broadcast, ENDPOINTS };

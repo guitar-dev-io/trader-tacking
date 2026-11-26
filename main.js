@@ -43,6 +43,7 @@ const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
 let settings = {
   symbols: ['XAUUSD', 'EURUSD', 'BTCUSD'], traySymbol: 'XAUUSD', csv: false,
   api: { enabled: false, port: 8787, token: '', lan: false },
+  claude: { enabled: false, token: '' },   // Claude (MCP) access: keeps the local API on for 127.0.0.1 with its own token, independent of the API settings form
   webhook: { url: '', onSignal: true, onAlert: true },
   telegram: { botToken: '', chatId: '', onSignal: true, onAlert: true },
   net: { slowMs: 800, delayMs: 3000, staleSec: 45, stuckSec: 60, notify: true },
@@ -53,7 +54,7 @@ let settings = {
 function loadSettings() {
   try {
     const s = JSON.parse(fs.readFileSync(settingsFile(), 'utf8'));
-    settings = { ...settings, ...s, api: { ...settings.api, ...s.api }, webhook: { ...settings.webhook, ...s.webhook }, telegram: { ...settings.telegram, ...s.telegram }, net: { ...settings.net, ...s.net }, mt5: { ...settings.mt5, ...s.mt5 } };
+    settings = { ...settings, ...s, api: { ...settings.api, ...s.api }, webhook: { ...settings.webhook, ...s.webhook }, telegram: { ...settings.telegram, ...s.telegram }, claude: { ...settings.claude, ...s.claude }, net: { ...settings.net, ...s.net }, mt5: { ...settings.mt5, ...s.mt5 } };
   } catch (_) {}
 }
 function saveSettings() {
@@ -305,14 +306,26 @@ function mcpEntry() {
   const script = path.join(app.getPath('userData'), 'claude', 'price-tracker-mcp.js');
   fs.mkdirSync(path.dirname(script), { recursive: true });
   fs.writeFileSync(script, fs.readFileSync(path.join(__dirname, 'claude', 'price-tracker-mcp.js')));
-  return { command: process.execPath, args: [script], env: { ELECTRON_RUN_AS_NODE: '1', PT_API_URL: `http://127.0.0.1:${settings.api.port}`, PT_API_TOKEN: settings.api.token } };
+  return { command: process.execPath, args: [script], env: { ELECTRON_RUN_AS_NODE: '1', PT_API_URL: `http://127.0.0.1:${settings.api.port}`, PT_API_TOKEN: settings.claude.token } };
 }
 function ensureClaudeApi() {
-  let changed = false;
-  if (!settings.api.enabled) { settings.api.enabled = true; changed = true; }
-  if (settings.api.lan) { settings.api.lan = false; changed = true; }               // Claude only needs this computer
-  if (!settings.api.token) { settings.api.token = require('crypto').randomBytes(18).toString('base64url'); changed = true; }
+  const c = settings.claude; let changed = false;
+  if (!c.enabled) { c.enabled = true; changed = true; }
+  if (!c.token) { c.token = require('crypto').randomBytes(18).toString('base64url'); changed = true; }
   if (changed) { saveSettings(); restartApi(); }
+}
+// v2.7.0 put Claude's token in the API settings (and saving the settings form could switch it off again):
+// adopt the token already written into Claude Desktop's config so the user doesn't have to set it up again
+function adoptClaudeConfig() {
+  if (settings.claude.enabled) return;
+  try {
+    const e = JSON.parse(fs.readFileSync(claudeConfigFile(), 'utf8')).mcpServers['price-tracker'];
+    if (e && e.env && e.env.PT_API_TOKEN) {
+      settings.claude = { enabled: true, token: e.env.PT_API_TOKEN };
+      const port = +((e.env.PT_API_URL || '').split(':').pop()); if (port && port !== settings.api.port && !settings.api.enabled) settings.api.port = port;
+      saveSettings(); mcpEntry(); log.info('claude', 'ใช้การเชื่อมต่อ Claude Desktop เดิม');
+    }
+  } catch (_) {}
 }
 ipcMain.handle('claude-setup', (_e, opts = {}) => {
   ensureClaudeApi();
@@ -333,12 +346,18 @@ ipcMain.handle('claude-setup', (_e, opts = {}) => {
   }
   return res;
 });
+ipcMain.handle('claude-disable', () => { settings.claude.enabled = false; saveSettings(); restartApi(); log.info('claude', 'ปิดการเข้าถึงของ Claude'); return true; });
 ipcMain.handle('claude-status', () => {
   let desktop = false;
   try { desktop = !!JSON.parse(fs.readFileSync(claudeConfigFile(), 'utf8')).mcpServers['price-tracker']; } catch (_) {}
-  return { api: settings.api.enabled, port: settings.api.port, token: !!settings.api.token, desktop, mac: process.platform === 'darwin' };
+  return { api: settings.claude.enabled || settings.api.enabled, claude: settings.claude.enabled, port: settings.api.port, desktop, mac: process.platform === 'darwin', listening: api.listening() };
 });
-function restartApi() { api.start(settings.api, apiHooks); }
+function restartApi() {
+  const a = settings.api, c = settings.claude;
+  // the server runs if the user enabled the API or Claude access; Claude's token is always accepted
+  api.start({ ...a, enabled: !!(a.enabled || c.enabled), lan: !!(a.enabled && a.lan),
+    tokens: [a.enabled ? a.token : null, c.enabled ? c.token : null].filter((t) => t !== null), openNoToken: a.enabled && !a.token }, apiHooks);
+}
 
 // ---------------- IPC ----------------
 ipcMain.on('add-symbol', (_e, s) => addSymbol(s));
@@ -499,6 +518,7 @@ app.whenReady().then(() => {
   updateTray();
   createMain();
   createTrader();
+  adoptClaudeConfig();
   restartApi();
   if (settings.source === 'mt5') startMt5();
   probe();

@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('vcg', {
   apiResult: (r) => ipcRenderer.send('api-cmd-result', r),
   claudeSetup: (o) => ipcRenderer.invoke('claude-setup', o),
   claudeStatus: () => ipcRenderer.invoke('claude-status'),
+  claudeDisable: () => ipcRenderer.invoke('claude-disable'),
   log: (level, msg, data, source = 'ui') => ipcRenderer.send('log', { level, msg, data, source }),
   notify: (event, payload, text) => ipcRenderer.invoke('notify', { event, payload, text }),
   getSettings: () => ipcRenderer.invoke('get-settings'),

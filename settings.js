@@ -113,7 +113,9 @@ async function renderClaude() {
   const box = $('st-claude-state'); if (!box) return;
   if (!vcg.claudeStatus) { box.textContent = 'ใช้ได้เฉพาะแอป Mac'; $('st-claude-desktop').disabled = $('st-claude-code').disabled = true; return; }
   const st = await vcg.claudeStatus();
-  box.innerHTML = `Local API: ${st.api ? '<span class="up">เปิด</span> (port ' + st.port + ')' : 'ปิด'} · Claude Desktop: ${st.desktop ? '<span class="up">เชื่อมแล้ว</span>' : 'ยังไม่ได้เพิ่ม'}`;
+  box.innerHTML = `การเข้าถึงของ Claude: ${st.claude ? '<span class="up">เปิด</span>' : 'ปิด'} · ช่องเชื่อมต่อในเครื่อง: ${st.listening ? '<span class="up">พร้อม (127.0.0.1:' + st.port + ')</span>' : '<span class="down">ไม่ทำงาน</span>'} · Claude Desktop: ${st.desktop ? '<span class="up">เพิ่มแล้ว</span>' : 'ยังไม่ได้เพิ่ม'}`
+    + (st.claude ? ' · <a href="#" id="st-claude-off">ปิดการเข้าถึง</a>' : '');
+  const off = $('st-claude-off'); if (off) off.onclick = async (e) => { e.preventDefault(); await vcg.claudeDisable(); renderClaude(); };
   if (!st.mac) $('st-claude-desktop').disabled = true;
 }
 if ($('st-claude-desktop')) {

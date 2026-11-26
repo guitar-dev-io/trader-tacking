@@ -27,7 +27,7 @@ function call(method, path, body) {
     });
     req.on('timeout', () => req.destroy(new Error('timeout')));
     req.on('error', (e) => reject(new Error(e.code === 'ECONNREFUSED'
-      ? 'ต่อแอป Price Tracker ไม่ได้ — เปิดแอปบน Mac และเปิด Local API (ตั้งค่า → API) ก่อน (' + API + ')' : e.message)));
+      ? 'ต่อแอป Price Tracker ไม่ได้ (' + API + ') — เปิดแอป Price Tracker บน Mac ค้างไว้ ถ้าเปิดอยู่แล้วให้ไปที่ ⚙ ตั้งค่า → Claude ดูว่า "ช่องเชื่อมต่อในเครื่อง: พร้อม" (กด "เพิ่มใน Claude Desktop" ใหม่ได้)' : e.message)));
     if (data) req.write(data);
     req.end();
   });
