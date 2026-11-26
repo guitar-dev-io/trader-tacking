@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { view } from './src/state.ts';
 import { toast } from './src/ui/toast.ts';
 import { ICON } from './icons.js';
 import { $, S, TZ, esc, store, tf } from './app-core.js';
@@ -158,7 +159,7 @@ const NEWS = (() => {
       const soon = e.t - now < 1800 && e.t > now, past = e.t < now;
       return `<tr style="${past ? 'opacity:.45' : soon ? 'background:#5c4a1233' : ''}"><td><i class="imp ${e.impact === 'High' ? 'hi' : 'md'}"></i>${hhmm(e.t)}</td><td style="text-align:left">${esc(e.ccy)} ${esc(e.title)}</td><td class="muted">${esc(e.forecast || '')}</td></tr>`;
     }).join('')}</tbody></table>` : '<p class="muted">ไม่มีข่าวแรงที่เกี่ยวข้อง หรือยังโหลดไม่ได้</p>') + '<p class="muted">ข้อมูลจาก Forex Factory · <i class="imp hi"></i>= ผลกระทบสูง · เวลาตาม timezone กราฟ</p>';
-    PT.dirty = true;
+    view.dirty = true;
   }
   function check() {
     const now = Date.now() / 1000;

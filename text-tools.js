@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { view } from './src/state.ts';
 import { ICON } from './icons.js';
 import { $, S, TC, digits, drawings, esc, fmt, saveDrawings, store } from './app-core.js';
 import { addAlert } from './app-data.js';
@@ -188,9 +189,9 @@ const TXT = (() => {
         drawings.push(nd);
       }
       if (kind !== 'label') { last = { ...last, ...keep }; if (kind === 'callout') last.border = DEF.border; store.set('txtStyle', last); }
-      S.selected = null; saveDrawings(); PT.renderLayers(); PT.dirty = true; PT.setTool('cursor');
+      S.selected = null; saveDrawings(); PT.renderLayers(); view.dirty = true; PT.setTool('cursor');
     };
-    const cancel = () => { close(); PT.setTool('cursor'); PT.dirty = true; };
+    const cancel = () => { close(); PT.setTool('cursor'); view.dirty = true; };
     ta.addEventListener('keydown', (e) => {
       e.stopPropagation();
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); commit(); }
@@ -212,7 +213,7 @@ const TXT = (() => {
     PT.pushHistory(); Object.assign(d, patch);
     if (d.type === 'text' && d.size == null) d.size = 13;   // first restyle of an old text: keep its size
     if (d.type === 'text' || d.type === 'callout') { last = { ...last, ...patch }; store.set('txtStyle', last); }
-    saveDrawings(); PT.dirty = true; barKey = '';
+    saveDrawings(); view.dirty = true; barKey = '';
   }
   function buildBar(d, i) {
     const isText = d.type === 'text' || d.type === 'callout';
@@ -221,7 +222,7 @@ const TXT = (() => {
       : `<button data-b="label" title="ข้อความบนรูปวาด">${ic('type')}<span>${d.label ? 'แก้ข้อความ' : 'เพิ่มข้อความ'}</span></button>${styleBar(s, { noSize: true })}`}
       <button data-b="del" class="txb-del" title="ลบ (Delete)">${ic('trash')}</button>`;
     wireStyle(bar, (patch) => { if (!S.locked) applyTo(d, patch); });
-    bar.querySelector('[data-b=del]').onclick = () => { if (S.locked) return; PT.pushHistory(); drawings.splice(i, 1); S.selected = null; saveDrawings(); PT.renderLayers(); PT.dirty = true; };
+    bar.querySelector('[data-b=del]').onclick = () => { if (S.locked) return; PT.pushHistory(); drawings.splice(i, 1); S.selected = null; saveDrawings(); PT.renderLayers(); view.dirty = true; };
     const e = bar.querySelector('[data-b=edit]'); if (e) e.onclick = () => openEditor(i);
     const l = bar.querySelector('[data-b=label]'); if (l) l.onclick = () => openEditor(i, true);
   }
@@ -278,7 +279,7 @@ const TXT = (() => {
       else if (c === 'callout') edit({ kind: 'callout', pt, x, y });
       else if (c === 'hline') {
         PT.pushHistory(); const d = { id: PT.uid(), type: 'hline', pts: [{ time: 0, price: p.price }], color: '#f5a623' };
-        drawings.push(d); saveDrawings(); PT.renderLayers(); PT.dirty = true;
+        drawings.push(d); saveDrawings(); PT.renderLayers(); view.dirty = true;
         edit({ kind: 'label', target: d, x: Math.max(20, $('chart').clientWidth - 380), y });
       } else if (c === 'alert') addAlert(+p.price.toFixed(digits()));
       else if (c === 'notes') NOTES.open();

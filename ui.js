@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { view } from './src/state.ts';
 import { ICON } from './icons.js';
 import { $, S, store } from './app-core.js';
 import { REPLAY } from './learn.js';
@@ -12,7 +13,7 @@ import { REPLAY } from './learn.js';
     for (const k of Object.keys(DEF)) document.body.classList.toggle('hide-' + k, !S.ui[k]);
     $('side-btn').classList.toggle('on', !!S.ui.side);
     store.set(mobile ? 'ui.m' : 'ui', S.ui);
-    setTimeout(() => { PT.dirty = true; }, 50);
+    setTimeout(() => { view.dirty = true; }, 50);
   }
   PT.setUI = (k, v) => { S.ui[k] = v; apply(); syncSettings(); };
   function syncSettings() { document.querySelectorAll('[data-ui]').forEach((i) => { i.checked = !!S.ui[i.dataset.ui]; }); }
@@ -40,7 +41,7 @@ import { REPLAY } from './learn.js';
   $('side-resizer').addEventListener('pointerdown', (e) => {
     e.preventDefault(); const startX = e.clientX, startW = $('side').getBoundingClientRect().width;
     document.body.classList.add('resizing');
-    const mv = (ev) => { applyW(startW + (startX - ev.clientX)); PT.dirty = true; };
+    const mv = (ev) => { applyW(startW + (startX - ev.clientX)); view.dirty = true; };
     const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); document.body.classList.remove('resizing'); store.set('sideW', $('side').getBoundingClientRect().width); };
     window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
   });

@@ -1,17 +1,17 @@
 import { PT, def } from './src/pt.ts';
+import { view } from './src/state.ts';
 import { AN } from './src/legacy/core.ts';
 import { $, DOWN, S, TC, UP, fmt, tf } from './app-core.js';
 import { chart, customOut, main } from './app-chart.js';
 import { activeSignal } from './app-analysis.js';
 import { drawAutoFib, drawBounce, drawLiquidity } from './app-bounce.js';
-def({ NS: [() => NS], svg: [() => svg], dirty: [() => dirty, (v) => { dirty = v; }], period: [() => period, (v) => { period = v; }], timeToLogical: [() => timeToLogical, (v) => { timeToLogical = v; }], logicalToTime: [() => logicalToTime, (v) => { logicalToTime = v; }], lToX: [() => lToX, (v) => { lToX = v; }], xOf: [() => xOf], xIdx: [() => xIdx], yOf: [() => yOf], el: [() => el, (v) => { el = v; }], txt: [() => txt, (v) => { txt = v; }], _lbls: [() => _lbls, (v) => { _lbls = v; }], resetLabels: [() => resetLabels, (v) => { resetLabels = v; }], ltxt: [() => ltxt, (v) => { ltxt = v; }], label: [() => label, (v) => { label = v; }], positionBox: [() => positionBox, (v) => { positionBox = v; }], drawAnalysis: [() => drawAnalysis, (v) => { drawAnalysis = v; }] });
+def({ NS: [() => NS], svg: [() => svg], period: [() => period, (v) => { period = v; }], timeToLogical: [() => timeToLogical, (v) => { timeToLogical = v; }], logicalToTime: [() => logicalToTime, (v) => { logicalToTime = v; }], lToX: [() => lToX, (v) => { lToX = v; }], xOf: [() => xOf], xIdx: [() => xIdx], yOf: [() => yOf], el: [() => el, (v) => { el = v; }], txt: [() => txt, (v) => { txt = v; }], _lbls: [() => _lbls, (v) => { _lbls = v; }], resetLabels: [() => resetLabels, (v) => { resetLabels = v; }], ltxt: [() => ltxt, (v) => { ltxt = v; }], label: [() => label, (v) => { label = v; }], positionBox: [() => positionBox, (v) => { positionBox = v; }], drawAnalysis: [() => drawAnalysis, (v) => { drawAnalysis = v; }] });
 // Price Tracker renderer · SVG overlay: analysis drawing helpers and coordinate mapping
 // ---------------------------------------------------------------- SVG overlay: drawings + analysis
 const NS = 'http://www.w3.org/2000/svg';
 const svg = document.createElementNS(NS, 'svg');
 svg.style.cssText = 'position:absolute;left:0;top:0;pointer-events:none;z-index:3;overflow:hidden';
 $('chart-wrap').appendChild(svg);
-let dirty = true;
 
 function period() { return tf().sec; }
 function timeToLogical(t) {
@@ -169,4 +169,4 @@ function drawAnalysis(W, H) {
     }
   }
 }
-export { dirty, drawAnalysis, el, lToX, label, logicalToTime, resetLabels, svg, timeToLogical, txt, yOf };
+export { drawAnalysis, el, lToX, label, logicalToTime, resetLabels, svg, timeToLogical, txt, yOf };

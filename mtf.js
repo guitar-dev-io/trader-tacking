@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { view } from './src/state.ts';
 import { ICON } from './icons.js';
 import { AN } from './src/legacy/core.ts';
 import { $, DOWN, S, TC, TFS, THEME, TZ, UP, digits, fmt, store, tf } from './app-core.js';
@@ -114,7 +115,7 @@ const MTF = (() => {
       lastLen = view.length;
       renderBadges();
     } else if (view.length) ms.update(view[view.length - 1]);
-    mdirty = true; PT.dirty = true;
+    mdirty = true; view.dirty = true;
   }
   const replaySync = () => { if (cfg.on) refresh(true); };
 
@@ -214,15 +215,15 @@ const MTF = (() => {
     cfg.on = v; save();
     pane.classList.toggle('hidden', !v); $('mtf-btn').classList.toggle('active', v); document.body.classList.toggle('mtf-on', v);
     if (v) { buildSeries(); load(); } else { candles = []; view = []; A = null; renderBadges(); }
-    PT.dirty = true;
+    view.dirty = true;
     if (S.source === 'demo') DEMO.connect();
   }
   $('mtf-btn').onclick = () => setOn(!cfg.on);
   $('mtf-x').onclick = () => setOn(false);
   $('mtf-tf').value = String(cfg.tf);
   $('mtf-tf').onchange = () => { cfg.tf = $('mtf-tf').value === 'auto' ? 'auto' : +$('mtf-tf').value; save(); load(); };
-  $('mtf-zones').checked = cfg.zones; $('mtf-zones').onchange = () => { cfg.zones = $('mtf-zones').checked; save(); PT.dirty = true; };
-  $('mtf-levels').checked = cfg.levels; $('mtf-levels').onchange = () => { cfg.levels = $('mtf-levels').checked; save(); PT.dirty = true; };
+  $('mtf-zones').checked = cfg.zones; $('mtf-zones').onchange = () => { cfg.zones = $('mtf-zones').checked; save(); view.dirty = true; };
+  $('mtf-levels').checked = cfg.levels; $('mtf-levels').onchange = () => { cfg.levels = $('mtf-levels').checked; save(); view.dirty = true; };
 
   // reload the HTF whenever the main chart reloads (symbol / timeframe / source / timezone change)
   const _load = loadChart;

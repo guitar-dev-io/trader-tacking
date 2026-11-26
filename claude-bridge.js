@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { view } from './src/state.ts';
 import { toast } from './src/ui/toast.ts';
 import { AN, BOUNCE } from './src/legacy/core.ts';
 import { S, TFS, TZ, drawings, fmt, saveDrawings, store, tf } from './app-core.js';
@@ -97,7 +98,7 @@ import { HEADLINES } from './news.js';
     }
     if (type === 'fib' && a.reverse != null) d.reverse = !!a.reverse;
     if ((type === 'text' || type === 'callout') && !d.text) throw new Error(type + ' ต้องมีข้อความ');
-    drawings.push(d); saveDrawings(); PT.dirty = true;
+    drawings.push(d); saveDrawings(); view.dirty = true;
     if (a.label && type !== 'text' && type !== 'callout') { d.label = String(a.label).slice(0, 200); saveDrawings(); }   // caption drawn on the shape
     toast('Claude วาด ' + type + (a.label ? ': ' + a.label : ''), 'info', 2500);
     return { ok: true, id: d.id, claudeDrawings: drawings.filter((x) => x.by === 'claude').length };
@@ -105,7 +106,7 @@ import { HEADLINES } from './news.js';
   function clearDrawings({ all } = {}) {
     const before = drawings.length;
     PT.drawings = all ? [] : drawings.filter((d) => d.by !== 'claude');
-    saveDrawings(); PT.dirty = true;
+    saveDrawings(); view.dirty = true;
     return { removed: before - drawings.length };
   }
   function plan(a) {
@@ -119,7 +120,7 @@ import { HEADLINES } from './news.js';
     p.spacing = a.spacing != null ? fmt(a.spacing) : '';
     if (a.mode) p.mode = a.mode === 'pyramid' ? 'pyramid' : 'avg';
     if (a.account) p.account = a.account === 'cent' ? 'cent' : a.account === 'auto' ? 'auto' : 'std';   // cent: balance in USC, lots in cent lots
-    savePlan(); renderPlanner(); PT.dirty = true;
+    savePlan(); renderPlanner(); view.dirty = true;
     const r = computePlan();
     return { input: { side: p.side, entry: p.entry, sl: p.sl, tp1: p.tp1, tp2: p.tp2, balance: p.balance, risk: p.risk, riskMode: p.riskMode, account: p.account },
       account: isCentAcct() ? { type: 'cent', currency: 'USC', lotUnit: 'cent lot (1.00 = 0.01 standard lot)', usdPerUsc: 0.01 } : { type: 'standard', currency: 'USD', lotUnit: 'lot' },
@@ -135,7 +136,7 @@ import { HEADLINES } from './news.js';
       let A = null;
       out.analyzeMs = time(() => { A = AN.analyze(closed, { swingLen: S.an.swingLen, digits: 2 }); });
       out.bounceMs = time(() => BOUNCE.find(closed, A, {}));
-      out.redrawMs = time(() => { PT.dirty = true; redraw(); }, 5);
+      out.redrawMs = time(() => { view.dirty = true; redraw(); }, 5);
     }
     if (typeof CACHE !== 'undefined') { const a = performance.now(); await CACHE.peek(); out.cacheReadMs = Math.round(performance.now() - a); }
     const fr = await new Promise((res) => { let k = 0; const a = performance.now(); const f = () => (++k < 30 ? requestAnimationFrame(f) : res(Math.round((performance.now() - a) / 30 * 10) / 10)); requestAnimationFrame(f); });

@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { view } from './src/state.ts';
 import { ICON } from './icons.js';
 import { MM } from './src/legacy/core.ts';
 import { $, DOWN, S, TC, UP, digits, esc, fmt, store } from './app-core.js';
@@ -170,26 +171,26 @@ function renderPlanner() {
   const sel = $('planner').querySelector('select[data-k="weight"]'); sel.value = p.weight;
   const trs = $('planner').querySelector('select[data-k="trail"]'); if (trs) trs.value = p.trail || 'none';
   const dirN = () => (p.side === 'buy' ? 1 : -1), entryNow = () => { const e = parseFloat(p.entry); if (isFinite(e)) return e; const qq = S.quotes[S.symbol]; if (!qq) return null; p.entry = fmt(p.side === 'buy' ? qq.ask : qq.bid); return parseFloat(p.entry); };
-  const setSlPts = (n) => { const e = entryNow(); if (e == null || !(n > 0)) return; p.sl = fmt(e - dirN() * n * pointSize()); savePlan(); renderPlanner(); PT.dirty = true; };
+  const setSlPts = (n) => { const e = entryNow(); if (e == null || !(n > 0)) return; p.sl = fmt(e - dirN() * n * pointSize()); savePlan(); renderPlanner(); view.dirty = true; };
   $('pl-slpts').onchange = () => setSlPts(+$('pl-slpts').value);
-  $('pl-tppts').onchange = () => { const e = entryNow(), n = +$('pl-tppts').value; if (e == null || !(n > 0)) return; p.tp1 = fmt(e + dirN() * n * pointSize()); const s = parseFloat(p.sl); if (isFinite(s)) p.tp2 = fmt(e + dirN() * 2 * n * pointSize()); savePlan(); renderPlanner(); PT.dirty = true; };
-  $('pl-sppts').onchange = () => { const n = +$('pl-sppts').value; p.spacing = n > 0 ? fmt(n * pointSize()) : ''; savePlan(); renderPlanner(); PT.dirty = true; };
+  $('pl-tppts').onchange = () => { const e = entryNow(), n = +$('pl-tppts').value; if (e == null || !(n > 0)) return; p.tp1 = fmt(e + dirN() * n * pointSize()); const s = parseFloat(p.sl); if (isFinite(s)) p.tp2 = fmt(e + dirN() * 2 * n * pointSize()); savePlan(); renderPlanner(); view.dirty = true; };
+  $('pl-sppts').onchange = () => { const n = +$('pl-sppts').value; p.spacing = n > 0 ? fmt(n * pointSize()) : ''; savePlan(); renderPlanner(); view.dirty = true; };
   $('planner').querySelectorAll('[data-slpts]').forEach((b) => (b.onclick = () => setSlPts(+b.dataset.slpts)));
-  $('planner').querySelectorAll('input[data-k], select[data-k]').forEach((i) => (i.onchange = () => { p[i.dataset.k] = i.value; savePlan(); renderPlanner(); PT.dirty = true; }));
-  $('planner').querySelectorAll('[data-seg]').forEach((b) => (b.onclick = () => { p[b.dataset.seg] = b.dataset.v; savePlan(); renderPlanner(); PT.dirty = true; }));
-  $('pl-show').onchange = () => { p.show = $('pl-show').checked; savePlan(); PT.dirty = true; };
-  $('pl-now').onclick = () => { const qq = S.quotes[S.symbol]; if (!qq) return; p.entry = fmt(p.side === 'buy' ? qq.ask : qq.bid); savePlan(); renderPlanner(); PT.dirty = true; };
+  $('planner').querySelectorAll('input[data-k], select[data-k]').forEach((i) => (i.onchange = () => { p[i.dataset.k] = i.value; savePlan(); renderPlanner(); view.dirty = true; }));
+  $('planner').querySelectorAll('[data-seg]').forEach((b) => (b.onclick = () => { p[b.dataset.seg] = b.dataset.v; savePlan(); renderPlanner(); view.dirty = true; }));
+  $('pl-show').onchange = () => { p.show = $('pl-show').checked; savePlan(); view.dirty = true; };
+  $('pl-now').onclick = () => { const qq = S.quotes[S.symbol]; if (!qq) return; p.entry = fmt(p.side === 'buy' ? qq.ask : qq.bid); savePlan(); renderPlanner(); view.dirty = true; };
   $('pl-sig').onclick = () => {
     const s = activeSignal() || (S.A && S.A.signals[S.A.signals.length - 1]); if (!s) return;
-    Object.assign(p, { side: s.dir === 1 ? 'buy' : 'sell', entry: fmt(s.entry), sl: fmt(s.sl), tp1: fmt(s.tp1), tp2: fmt(s.tp2) }); savePlan(); renderPlanner(); PT.dirty = true;
+    Object.assign(p, { side: s.dir === 1 ? 'buy' : 'sell', entry: fmt(s.entry), sl: fmt(s.sl), tp1: fmt(s.tp1), tp2: fmt(s.tp2) }); savePlan(); renderPlanner(); view.dirty = true;
   };
   $('pl-atr').onclick = () => {
     const a = S.A && S.A.atr[S.A.n - 1]; const e = parseFloat(p.entry); if (!a || !isFinite(e)) return;
-    p.sl = fmt(e - (p.side === 'buy' ? 1 : -1) * 1.5 * a); savePlan(); renderPlanner(); PT.dirty = true;
+    p.sl = fmt(e - (p.side === 'buy' ? 1 : -1) * 1.5 * a); savePlan(); renderPlanner(); view.dirty = true;
   };
   $('pl-rr').onclick = () => {
     const e = parseFloat(p.entry), s = parseFloat(p.sl); if (!isFinite(e) || !isFinite(s)) return;
-    p.tp1 = fmt(e + (e - s)); p.tp2 = fmt(e + 2 * (e - s)); savePlan(); renderPlanner(); PT.dirty = true;
+    p.tp1 = fmt(e + (e - s)); p.tp2 = fmt(e + 2 * (e - s)); savePlan(); renderPlanner(); view.dirty = true;
   };
 }
 
@@ -197,7 +198,7 @@ function renderPlanner() {
 function plannerFrom(d) {
   const e = d.pts[0].price, sl = d.pts[1].price, rr = d.rr || 2;
   Object.assign(S.plan, { side: d.type === 'long' ? 'buy' : 'sell', entry: fmt(e), sl: fmt(sl), tp1: fmt(e + (e - sl)), tp2: fmt(e + (e - sl) * rr) });
-  savePlan(); renderPlanner(); PT.dirty = true;
+  savePlan(); renderPlanner(); view.dirty = true;
   document.querySelector('#tabs [data-tab="calc"]').click();
 }
 
@@ -213,6 +214,6 @@ function drawPlanner(W) {
   if (r.rows.length > 1) line(r.avg, TC().fg, `เฉลี่ย ${fmt(r.avg)}`, '2 3');
 }
 
-document.querySelector('#tabs [data-tab="calc"]').addEventListener('click', () => { renderPlanner(); PT.dirty = true; });
+document.querySelector('#tabs [data-tab="calc"]').addEventListener('click', () => { renderPlanner(); view.dirty = true; });
 renderPlanner();
 export { autoVpp, computePlan, isCentAcct, plannerLot, renderPlanner, savePlan, vpp };

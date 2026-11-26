@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { view } from './src/state.ts';
 import { toast } from './src/ui/toast.ts';
 import { ICON } from './icons.js';
 import { $, S, TZ, esc, fmt, store, tf } from './app-core.js';
@@ -102,7 +103,7 @@ function pushLast(isNew) {
   else main.update(S.ctype === 'line' || S.ctype === 'area' ? { time: last.time, value: last.close } : last);
   if (isNew) { updateIndicators(); runAnalysis(); pushChartData(); } // a candle just closed
   else updateIndicators(true);
-  PT.dirty = true;
+  view.dirty = true;
 }
 function tickToCandle(q) {
   if (S.replay) return;   // chart is frozen during Bar Replay
@@ -118,7 +119,7 @@ function tickToCandle(q) {
     pushLast(false);
   }
 }
-chart.timeScale().subscribeVisibleLogicalRangeChange((r) => { PT.dirty = true; if (r && r.from < 15) loadMore(); });
+chart.timeScale().subscribeVisibleLogicalRangeChange((r) => { view.dirty = true; if (r && r.from < 15) loadMore(); });
 
 // ---------------------------------------------------------------- quotes / watchlist
 function onQuotesMsg(list) {

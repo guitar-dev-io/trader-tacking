@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { view } from './src/state.ts';
 import { toast } from './src/ui/toast.ts';
 import { ICON } from './icons.js';
 import { $, DOWN, S, TZ, UP, drawings, esc, fmt, saveDrawings, store, tf } from './app-core.js';
@@ -132,7 +133,7 @@ const SIM = (() => {
       toast(`ตั้งคำสั่ง ${ticket.type === 'limit' ? 'Limit' : 'Stop'} ${side === 1 ? 'BUY' : 'SELL'} @ ${fmt(price)}`, 'ok');
     }
     vcg.log('info', `จำลอง: ${ticket.type} ${side === 1 ? 'BUY' : 'SELL'} ${lot} ${sym}`, null, 'sim');
-    saveAcc(); render(); PT.dirty = true; QUIZ.onTrade();
+    saveAcc(); render(); view.dirty = true; QUIZ.onTrade();
   }
   function close(p, exit, reason, t, quiet) {
     const a = acc[p.mode] || A();
@@ -141,7 +142,7 @@ const SIM = (() => {
     a.balance += pnl;
     const h = { ...p, exit, reason, closeTime: t, pnl, r };
     a.history.push(h); if (a.history.length > 2000) a.history.shift();
-    saveAcc(); if (quiet) { QUIZ.onClose(h); return; } render(); PT.dirty = true;
+    saveAcc(); if (quiet) { QUIZ.onClose(h); return; } render(); view.dirty = true;
     const msg = `${reason === 'TP' ? 'ถึง TP' : reason === 'SL' ? 'โดน SL' : 'ปิด'} ${p.side === 1 ? 'BUY' : 'SELL'} ${p.symbol} ${money(pnl)}${r != null ? ` (${r >= 0 ? '+' : ''}${r.toFixed(2)}R)` : ''}`;
     toast(msg, pnl >= 0 ? 'ok' : 'warn');
     QUIZ.onClose(h);
@@ -219,7 +220,7 @@ const SIM = (() => {
     box.querySelectorAll('[data-t=side]').forEach((b) => (b.onclick = () => { ticket.side = +b.dataset.v; store.set('sim.ticket', ticket); render(); }));
     box.querySelectorAll('[data-close]').forEach((b) => (b.onclick = () => { const p = a.positions.find((x) => x.id === +b.dataset.close); const P = p && px(p.symbol); if (P) close(p, p.side === 1 ? P.bid : P.ask, 'manual', P.t); }));
     box.querySelectorAll('[data-bulk]').forEach((b) => (b.onclick = () => bulk(b.dataset.bulk)));
-    box.querySelectorAll('[data-cancel]').forEach((b) => (b.onclick = () => { a.orders = a.orders.filter((x) => x.id !== +b.dataset.cancel); saveAcc(); render(); PT.dirty = true; }));
+    box.querySelectorAll('[data-cancel]').forEach((b) => (b.onclick = () => { a.orders = a.orders.filter((x) => x.id !== +b.dataset.cancel); saveAcc(); render(); view.dirty = true; }));
     $('sim-place').onclick = (e) => {
       const b = e.currentTarget; if (b.disabled) return;
       b.disabled = true; setTimeout(() => { b.disabled = false; }, 800);   // one order per click
@@ -234,7 +235,7 @@ const SIM = (() => {
     };
     $('sim-reset').onclick = (e) => {
       if (e.target.dataset.armed !== '1') { e.target.dataset.armed = '1'; e.target.textContent = 'กดอีกครั้งเพื่อยืนยัน'; return; }
-      acc[m] = blank(); saveAcc(); render(); PT.dirty = true;
+      acc[m] = blank(); saveAcc(); render(); view.dirty = true;
     };
     $('sim-csv').onclick = () => {
       const rows = [['mode', 'symbol', 'side', 'lot', 'entry', 'exit', 'sl', 'tp', 'reason', 'pnl', 'r', 'tag', 'note', 'open', 'close', 'quiz']]
@@ -245,7 +246,7 @@ const SIM = (() => {
   // bulk actions: close all / winners / losers, move SL to entry on winners, cancel pending orders
   function bulk(kind) {
     const a = A();
-    if (kind === 'cancel') { const n = a.orders.length; a.orders = []; saveAcc(); render(); PT.dirty = true; return toast(`ยกเลิกคำสั่งรอ ${n} รายการ`, 'ok'); }
+    if (kind === 'cancel') { const n = a.orders.length; a.orders = []; saveAcc(); render(); view.dirty = true; return toast(`ยกเลิกคำสั่งรอ ${n} รายการ`, 'ok'); }
     let n = 0, total = 0;
     for (const p of [...a.positions]) {
       const P = px(p.symbol); if (!P) continue;
@@ -253,7 +254,7 @@ const SIM = (() => {
       if (kind === 'be') { if (pl > 0 && (!p.sl || (p.sl - p.entry) * p.side < 0)) { p.sl = p.entry; n++; } continue; }
       if (kind === 'all' || (kind === 'win' && pl > 0) || (kind === 'loss' && pl < 0)) { close(p, exit, 'manual', P.t, true); n++; total += pl; }
     }
-    saveAcc(); render(); PT.dirty = true;
+    saveAcc(); render(); view.dirty = true;
     const label = { all: 'ปิดทั้งหมด', win: 'ปิดไม้กำไร', loss: 'ปิดไม้ขาดทุน', be: 'กันทุน' }[kind];
     toast(n ? (kind === 'be' ? `${label}: เลื่อน SL มาที่ทุน ${n} ไม้` : `${label} ${n} ไม้ รวม ${money(total)}`) : `${label}: ไม่มีไม้ที่ตรงเงื่อนไข`, n ? 'ok' : 'info');
   }
@@ -359,7 +360,7 @@ const LESSON = (() => {
     if (p.app !== 'Price Tracker' || p.kind !== 'lesson') return toast('ไม่ใช่ไฟล์บทเรียนของ Price Tracker', 'warn');
     if (S.replay) REPLAY.exit();
     store.set('drawings:' + p.symbol, (p.drawings || []).map(normalize));
-    if (p.symbol !== S.symbol) switchSymbol(p.symbol); else { PT.drawings = (p.drawings || []).map(normalize); saveDrawings(); PT.dirty = true; }
+    if (p.symbol !== S.symbol) switchSymbol(p.symbol); else { PT.drawings = (p.drawings || []).map(normalize); saveDrawings(); view.dirty = true; }
     if (p.tf !== S.tf) { S.tf = p.tf; store.set('tf', p.tf); renderTfs(); loadChart(); }
     if (p.replayAt) { const go = () => { const i = S.candles.findIndex((c) => c.time - TZ >= p.replayAt); if (i > 0) REPLAY.start(i); }; setTimeout(go, 2500); }
     toast(`นำเข้าบทเรียน ${p.symbol}${p.note ? ': ' + p.note : ''}`, 'ok', 10000);

@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { view } from './src/state.ts';
 import { toast } from './src/ui/toast.ts';
 import { ICON } from './icons.js';
 import { AN, BOUNCE } from './src/legacy/core.ts';
@@ -85,22 +86,22 @@ function liqHtml() {
     <p class="muted bn-note">▲ เหนือ Swing High / Equal Highs = SL ของคนที่ Sell กองอยู่ · ▼ ใต้ Swing Low / Equal Lows = SL ของคนที่ Buy · ยิ่ง $ มาก (ยอดเท่ากันหลายจุด, PDH/PDL) ยิ่งมีเงินเยอะ ราคามักวิ่งไปกวาดก่อนกลับตัว — อย่าวาง SL ตรงนั้นพอดี และใช้เป็นเป้า TP ได้</p>`;
 }
 function bindBounce(box) {
-  const sw = $('bn-show'); if (sw) sw.onchange = () => { S.an.bounce = sw.checked; store.set('an', S.an); PT.dirty = true; };
-  const lq = $('lq-show'); if (lq) lq.onchange = () => { S.an.liquidity = lq.checked; store.set('an', S.an); PT.dirty = true; };
-  box.querySelectorAll('[data-bs]').forEach((b) => (b.onclick = () => { S.an.bounceSide = b.dataset.bs; store.set('an', S.an); renderBounce(); PT.dirty = true; }));
+  const sw = $('bn-show'); if (sw) sw.onchange = () => { S.an.bounce = sw.checked; store.set('an', S.an); view.dirty = true; };
+  const lq = $('lq-show'); if (lq) lq.onchange = () => { S.an.liquidity = lq.checked; store.set('an', S.an); view.dirty = true; };
+  box.querySelectorAll('[data-bs]').forEach((b) => (b.onclick = () => { S.an.bounceSide = b.dataset.bs; store.set('an', S.an); renderBounce(); view.dirty = true; }));
   box.querySelectorAll('[data-bz]').forEach((b) => (b.onclick = () => {
     const sd = b.dataset.sd, z = S.B && S.B[sd] && S.B[sd][+b.dataset.k]; if (!z) return;
     if (b.dataset.bz === 'layer' || b.dataset.bz === 'pyr') {
       const lay = b.dataset.bz === 'layer', h = Math.abs(z.hi - z.lo), risk = Math.abs(z.entry - z.sl);
       Object.assign(S.plan, { side: sd, entry: fmt(z.entry), sl: fmt(z.sl), tp1: fmt(z.tp1), tp2: fmt(z.tp2), adds: '2', mode: lay ? 'avg' : 'pyramid',
         spacing: fmt(lay ? Math.max(h / 2, risk * 0.25) : risk), weight: 'equal', trail: lay ? (S.plan.trail || 'none') : 'prev' });
-      PT.savePlan(); PT.renderPlanner(); PT.dirty = true; document.querySelector('#tabs [data-tab="calc"]').click();
+      PT.savePlan(); PT.renderPlanner(); view.dirty = true; document.querySelector('#tabs [data-tab="calc"]').click();
       toast(lay ? 'แบ่ง 3 ไม้ในโซน: ความเสี่ยงรวมทุกไม้ = ที่ตั้งไว้ (ไม่ใช่ไม้ละเท่านั้น)' : 'Pyramid: เข้าต่อทุก 1R ที่ราคาไปทางเรา และเลื่อน SL ไปที่ไม้ก่อนหน้า', 'ok');
       return;
     }
     if (b.dataset.bz === 'calc') {
       Object.assign(S.plan, { side: sd, entry: fmt(z.entry), sl: fmt(z.sl), tp1: fmt(z.tp1), tp2: fmt(z.tp2) });
-      PT.savePlan(); PT.renderPlanner(); PT.dirty = true; document.querySelector('#tabs [data-tab="calc"]').click();
+      PT.savePlan(); PT.renderPlanner(); view.dirty = true; document.querySelector('#tabs [data-tab="calc"]').click();
     } else if (typeof PT.SIM !== 'undefined') PT.SIM.prefill({ side: sd === 'buy' ? 1 : -1, type: 'limit', price: fmt(z.entry), sl: fmt(z.sl), tp: fmt(z.tp1), tag: 'range' });
   }));
 }
@@ -164,7 +165,7 @@ function drawAutoFib(W) {
 let bounceTimer = 0;
 function bounceTick() { // re-evaluate status as the live price moves (throttled)
   if (!S.A || bounceTimer) return;
-  bounceTimer = setTimeout(() => { bounceTimer = 0; if (S.A) { runBounce(); PT.dirty = true; } }, 1500);
+  bounceTimer = setTimeout(() => { bounceTimer = 0; if (S.A) { runBounce(); view.dirty = true; } }, 1500);
 }
 function checkBounce() {
   const B = S.B; if (!B || !S.an.notify) return;

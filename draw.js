@@ -1,9 +1,10 @@
 import { PT, def } from './src/pt.ts';
+import { view } from './src/state.ts';
 import { ICON } from './icons.js';
 import { $, DOWN, FIB, FIBX, FIBX_DEF, FIB_DEF, FIB_PRESETS, FIB_PRESET_REVERSE, FIB_REVERSE, S, TC, THEME, TZ, UP, digits, drawings, drawingsKey, esc, fibColor, fmt, saveDrawings, store, tf, zoneOffsetSec } from './app-core.js';
 import { buildIndicators, buildMain, chart, main } from './app-chart.js';
 import { addAlert, loadChart } from './app-data.js';
-import { dirty, drawAnalysis, el, lToX, label, logicalToTime, resetLabels, svg, timeToLogical, txt, yOf } from './app-overlay.js';
+import { drawAnalysis, el, lToX, label, logicalToTime, resetLabels, svg, timeToLogical, txt, yOf } from './app-overlay.js';
 import { renderTfs } from './app.js';
 import { TXT } from './text-tools.js';
 def({ TOOLS: [() => TOOLS], GROUPS: [() => GROUPS], groupSel: [() => groupSel], hist: [() => hist, (v) => { hist = v; }], redoStack: [() => redoStack, (v) => { redoStack = v; }], _uid: [() => _uid, (v) => { _uid = v; }], uid: [() => uid], normalize: [() => normalize, (v) => { normalize = v; }], loadDrawings: [() => loadDrawings, (v) => { loadDrawings = v; }], pushHistory: [() => pushHistory, (v) => { pushHistory = v; }], undo: [() => undo, (v) => { undo = v; }], redo: [() => redo, (v) => { redo = v; }], inkColor: [() => inkColor], DEFAULT_COLOR: [() => DEFAULT_COLOR], buildToolbar: [() => buildToolbar, (v) => { buildToolbar = v; }], closeFly: [() => closeFly, (v) => { closeFly = v; }], setTool: [() => setTool, (v) => { setTool = v; }], xOfT: [() => xOfT], _cw: [() => _cw, (v) => { _cw = v; }], _ch: [() => _ch, (v) => { _ch = v; }], chartW: [() => chartW], paneH: [() => paneH], mousePos: [() => mousePos, (v) => { mousePos = v; }], pointAt: [() => pointAt, (v) => { pointAt = v; }], distToSeg: [() => distToSeg, (v) => { distToSeg = v; }], fmtTime: [() => fmtTime, (v) => { fmtTime = v; }], posLevels: [() => posLevels, (v) => { posLevels = v; }], rayEnd: [() => rayEnd, (v) => { rayEnd = v; }], channelOffset: [() => channelOffset, (v) => { channelOffset = v; }], handles: [() => handles, (v) => { handles = v; }], renderDrawing: [() => renderDrawing, (v) => { renderDrawing = v; }], measureShape: [() => measureShape, (v) => { measureShape = v; }], fmtDur: [() => fmtDur, (v) => { fmtDur = v; }], redraw: [() => redraw, (v) => { redraw = v; }], hitTest: [() => hitTest, (v) => { hitTest = v; }], drag: [() => drag, (v) => { drag = v; }], toggleLayers: [() => toggleLayers, (v) => { toggleLayers = v; }], renderLayers: [() => renderLayers, (v) => { renderLayers = v; }], applyChartCfg: [() => applyChartCfg, (v) => { applyChartCfg = v; }], ZI: [() => ZI], zoom: [() => zoom, (v) => { zoom = v; }], scrollBars: [() => scrollBars, (v) => { scrollBars = v; }], resetView: [() => resetView, (v) => { resetView = v; }], RANGES: [() => RANGES], pendingSpan: [() => pendingSpan, (v) => { pendingSpan = v; }], applySpan: [() => applySpan, (v) => { applySpan = v; }], setScale: [() => setScale, (v) => { setScale = v; }], ZONES: [() => ZONES], DEFAULT_SESSIONS: [() => DEFAULT_SESSIONS], SESSIONS_ALL: [() => SESSIONS_ALL, (v) => { SESSIONS_ALL = v; }], SESSIONS: [() => SESSIONS, (v) => { SESSIONS = v; }], setSessions: [() => setSessions, (v) => { setSessions = v; }], hmParse: [() => hmParse], curZone: [() => curZone], _sessCache: [() => _sessCache], sessionWindow: [() => sessionWindow, (v) => { sessionWindow = v; }], _sessionWindow: [() => _sessionWindow, (v) => { _sessionWindow = v; }], sessionsAround: [() => sessionsAround, (v) => { sessionsAround = v; }], hm: [() => hm], tickClock: [() => tickClock, (v) => { tickClock = v; }], drawSessions: [() => drawSessions, (v) => { drawSessions = v; }] });
@@ -49,8 +50,8 @@ function normalize(d) {
 function loadDrawings() { hist = []; redoStack = []; return store.get(drawingsKey(), []).map(normalize); }
 PT.drawings = loadDrawings();
 function pushHistory() { hist.push(JSON.stringify(drawings)); if (hist.length > 100) hist.shift(); redoStack = []; }
-function undo() { if (!hist.length) return; redoStack.push(JSON.stringify(drawings)); PT.drawings = JSON.parse(hist.pop()); S.selected = null; saveDrawings(); PT.dirty = true; }
-function redo() { if (!redoStack.length) return; hist.push(JSON.stringify(drawings)); PT.drawings = JSON.parse(redoStack.pop()); S.selected = null; saveDrawings(); PT.dirty = true; }
+function undo() { if (!hist.length) return; redoStack.push(JSON.stringify(drawings)); PT.drawings = JSON.parse(hist.pop()); S.selected = null; saveDrawings(); view.dirty = true; }
+function redo() { if (!redoStack.length) return; hist.push(JSON.stringify(drawings)); PT.drawings = JSON.parse(redoStack.pop()); S.selected = null; saveDrawings(); view.dirty = true; }
 // white/near-white user colors are drawn in the theme's ink color on the light theme
 const inkColor = (c) => { c = c || '#ffffff'; return /^#f{3}(f{3})?$/i.test(c) && THEME.get() === 'light' ? TC().fg : c; };
 const DEFAULT_COLOR = { hline: '#f5a623', vline: '#9aa0ad', text: '#ffffff', arrowUp: '#26a69a', arrowDown: '#ef5350', brush: '#f5a623' };
@@ -87,9 +88,9 @@ function buildToolbar() {
   });
   $('t-magnet').onclick = () => { S.magnet = !S.magnet; store.set('magnet', S.magnet); $('magnet').checked = S.magnet; buildToolbar(); };
   $('t-lock').onclick = () => { S.locked = !S.locked; store.set('locked', S.locked); buildToolbar(); };
-  $('t-hide').onclick = () => { S.hidden = !S.hidden; S.selected = null; buildToolbar(); PT.dirty = true; };
+  $('t-hide').onclick = () => { S.hidden = !S.hidden; S.selected = null; buildToolbar(); view.dirty = true; };
   $('t-layers').onclick = (e) => { e.stopPropagation(); toggleLayers(); };
-  $('t-clear').onclick = () => { if (!drawings.length || S.locked) return; pushHistory(); PT.drawings = []; S.selected = null; saveDrawings(); PT.dirty = true; renderLayers(); };
+  $('t-clear').onclick = () => { if (!drawings.length || S.locked) return; pushHistory(); PT.drawings = []; S.selected = null; saveDrawings(); view.dirty = true; renderLayers(); };
 }
 function closeFly() { document.querySelectorAll('#tools .fly').forEach((f) => f.remove()); }
 document.addEventListener('click', (e) => { if (!e.target.closest('#tools')) closeFly(); if (!e.target.closest('#layers-pop') && !e.target.closest('#t-layers')) $('layers-pop').classList.add('hidden'); });
@@ -109,7 +110,7 @@ function setTool(t) {
     measure: 'คลิก 2 จุดเพื่อวัดระยะ', alert: 'คลิกที่ราคาเพื่อตั้งแจ้งเตือน',
     cursor: S.locked ? 'รูปวาดถูกล็อกอยู่' : 'คลิกรูปวาดเพื่อเลือก · ลากเพื่อย้าย · ลากจุดปลายเพื่อปรับ · Delete = ลบ' };
   $('hint').textContent = hints[t] || '';
-  PT.dirty = true;
+  view.dirty = true;
 }
 
 // ---------------------------------------------------------------- geometry helpers
@@ -243,7 +244,7 @@ function measureShape(a, b) {
 function fmtDur(s) { const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60); return d ? `${d}ว ${h}ชม` : h ? `${h}ชม ${m}น` : `${m}น`; }
 
 function redraw() {
-  if (!dirty) return; PT.dirty = false;
+  if (!view.dirty) return; view.dirty = false;
   const W = chartW(), H = paneH();
   svg.setAttribute('width', Math.max(0, W)); svg.setAttribute('height', Math.max(0, H));
   svg.textContent = ''; resetLabels();
@@ -265,10 +266,10 @@ function redraw() {
   TXT.sync();
 }
 (function loop() { redraw(); requestAnimationFrame(loop); })();
-['wheel', 'mousedown', 'mouseup'].forEach((ev) => $('chart-wrap').addEventListener(ev, () => { PT.dirty = true; }, { passive: true }));
-new ResizeObserver((es) => { const r = es[0].contentRect; _cw = r.width; _ch = r.height; PT.dirty = true; }).observe($('chart'));
+['wheel', 'mousedown', 'mouseup'].forEach((ev) => $('chart-wrap').addEventListener(ev, () => { view.dirty = true; }, { passive: true }));
+new ResizeObserver((es) => { const r = es[0].contentRect; _cw = r.width; _ch = r.height; view.dirty = true; }).observe($('chart'));
 // redraw in the same frame the chart moves, so drawings don't trail behind while panning/zooming
-chart.timeScale().subscribeVisibleLogicalRangeChange(() => { PT.dirty = true; redraw(); });
+chart.timeScale().subscribeVisibleLogicalRangeChange(() => { view.dirty = true; redraw(); });
 
 // ---------------------------------------------------------------- hit test
 function hitTest(x, y) {
@@ -317,8 +318,8 @@ $('chart-wrap').addEventListener('pointerdown', (ev) => {
   }
   if (S.tool !== 'cursor') return;
   const hit = hitTest(x, y);
-  if (hit == null) { if (S.selected != null) { S.selected = null; PT.dirty = true; } return; }
-  S.selected = hit; PT.dirty = true; renderLayers();
+  if (hit == null) { if (S.selected != null) { S.selected = null; view.dirty = true; } return; }
+  S.selected = hit; view.dirty = true; renderLayers();
   if (S.locked) return;
   ev.stopPropagation(); ev.preventDefault();   // stop the chart from panning
   chart.applyOptions({ handleScroll: false, handleScale: false });   // (touch: the chart listens to touch events, so also switch panning off)
@@ -332,13 +333,13 @@ $('chart-wrap').addEventListener('pointerdown', (ev) => {
 window.addEventListener('pointermove', (ev) => {
   const { x, y } = mousePos(ev);
   if (S.brush) {
-    if (Math.hypot(x - S.brush.lastX, y - S.brush.lastY) > 3) { const p = pointAt(x, y, false); if (p) { S.brush.pts.push({ time: logicalToTime(chart.timeScale().coordinateToLogical(x)), price: p.price }); S.brush.lastX = x; S.brush.lastY = y; PT.dirty = true; } }
+    if (Math.hypot(x - S.brush.lastX, y - S.brush.lastY) > 3) { const p = pointAt(x, y, false); if (p) { S.brush.pts.push({ time: logicalToTime(chart.timeScale().coordinateToLogical(x)), price: p.price }); S.brush.lastX = x; S.brush.lastY = y; view.dirty = true; } }
     return;
   }
   if (drag) {
     const d = drawings[drag.i]; if (!d) { drag = null; return; }
     if (!drag.moved) { pushHistory(); drag.moved = true; }
-    if (drag.box) { d.off = { dx: Math.round(drag.box.dx + x - drag.box.x0), dy: Math.round(drag.box.dy + y - drag.box.y0) }; PT.dirty = true; return; }
+    if (drag.box) { d.off = { dx: Math.round(drag.box.dx + x - drag.box.x0), dy: Math.round(drag.box.dy + y - drag.box.y0) }; view.dirty = true; return; }
     if (drag.k === -1) { const p = pointAt(x, y, false); if (p) { const e = d.pts[0].price, sl = d.pts[1].price; d.rr = Math.max(0.1, Math.abs(p.price - e) / Math.abs(e - sl)); } }
     else if (drag.k != null) {
       const p = pointAt(x, y, true); if (!p) return;
@@ -351,13 +352,13 @@ window.addEventListener('pointermove', (ev) => {
       const dl = Math.round(l - drag.l0), dp = pr - drag.p0;
       d.pts = drag.orig.map((q) => ({ time: d.type === 'hline' ? q.time : logicalToTime(timeToLogical(q.time) + dl), price: d.type === 'vline' ? q.price : q.price + dp }));
     }
-    PT.dirty = true; return;
+    view.dirty = true; return;
   }
-  if (S.tool !== 'cursor' && $('chart').contains(ev.target)) { S.mouse = pointAt(x, y, true); if (S.pts.length) PT.dirty = true; }
+  if (S.tool !== 'cursor' && $('chart').contains(ev.target)) { S.mouse = pointAt(x, y, true); if (S.pts.length) view.dirty = true; }
 });
 window.addEventListener('pointerup', () => {
   if (drag || S.brush) chart.applyOptions({ handleScroll: S.tool === 'cursor', handleScale: S.tool === 'cursor' });
-  if (S.brush) { if (S.brush.pts.length > 1) { pushHistory(); const { lastX, lastY, ...b } = S.brush; drawings.push({ ...b, id: uid() }); saveDrawings(); renderLayers(); } S.brush = null; PT.dirty = true; return; }
+  if (S.brush) { if (S.brush.pts.length > 1) { pushHistory(); const { lastX, lastY, ...b } = S.brush; drawings.push({ ...b, id: uid() }); saveDrawings(); renderLayers(); } S.brush = null; view.dirty = true; return; }
   if (drag) { if (drag.moved) saveDrawings(); drag = null; }
 });
 $('chart-wrap').addEventListener('click', (ev) => {
@@ -370,9 +371,9 @@ $('chart-wrap').addEventListener('click', (ev) => {
   if (t === 'text' || t === 'callout') { TXT.edit({ kind: t, pt, x, y }); return; }
   if (t === 'measure' && S.measure) { S.measure = null; }
   S.pts.push(pt);
-  if (S.pts.length < n) { S.mouse = p; PT.dirty = true; return; }
+  if (S.pts.length < n) { S.mouse = p; view.dirty = true; return; }
   const pts = S.pts; S.pts = [];
-  if (t === 'measure') { S.measure = { a: pts[0], b: pts[1] }; PT.dirty = true; return; }
+  if (t === 'measure') { S.measure = { a: pts[0], b: pts[1] }; view.dirty = true; return; }
   pushHistory();
   const d = { id: uid(), type: t, pts, color: DEFAULT_COLOR[t] || '#2962ff' };
   if (t === 'long' || t === 'short') {
@@ -381,7 +382,7 @@ $('chart-wrap').addEventListener('click', (ev) => {
       pts[1] = { ...pts[1], price: pts[0].price - (pts[1].price - pts[0].price) / 2 };
     }
   }
-  drawings.push(d); saveDrawings(); renderLayers(); PT.dirty = true;
+  drawings.push(d); saveDrawings(); renderLayers(); view.dirty = true;
   if (!ev.shiftKey && ['long', 'short', 'text', 'callout', 'arrowUp', 'arrowDown'].includes(t)) setTool('cursor');
 });
 $('chart-wrap').addEventListener('dblclick', (ev) => {
@@ -402,9 +403,9 @@ function renderLayers() {
   p.innerHTML = `<div class="group">รูปวาดบน ${S.symbol} (${drawings.length})</div>` + (drawings.map((d, i) =>
     `<div class="item ${S.selected === i ? 'sel' : ''}" data-i="${i}"><span>${ICON.svg(TOOLS[d.type]?.icon || 'trend', 16)} ${TOOLS[d.type]?.name.split(' (')[0] || d.type} <small>${desc(d)}</small></span>
      <span><input type="color" data-c="${i}" value="${(d.color || '#2962ff').slice(0, 7)}" style="width:22px;height:18px;padding:0;border:none;background:none"> <button data-del="${i}" aria-label="ลบ">${ICON.svg('x', 14)}</button></span></div>`).join('') || '<div class="item muted">ยังไม่มีรูปวาด</div>');
-  p.querySelectorAll('[data-i]').forEach((r) => (r.onclick = (e) => { if (e.target.closest('button, input')) return; S.selected = +r.dataset.i; PT.dirty = true; renderLayers(); }));
-  p.querySelectorAll('[data-del]').forEach((b) => (b.onclick = () => { if (S.locked) return; pushHistory(); drawings.splice(+b.dataset.del, 1); S.selected = null; saveDrawings(); PT.dirty = true; renderLayers(); }));
-  p.querySelectorAll('[data-c]').forEach((c) => (c.oninput = () => { drawings[+c.dataset.c].color = c.value; saveDrawings(); PT.dirty = true; }));
+  p.querySelectorAll('[data-i]').forEach((r) => (r.onclick = (e) => { if (e.target.closest('button, input')) return; S.selected = +r.dataset.i; view.dirty = true; renderLayers(); }));
+  p.querySelectorAll('[data-del]').forEach((b) => (b.onclick = () => { if (S.locked) return; pushHistory(); drawings.splice(+b.dataset.del, 1); S.selected = null; saveDrawings(); view.dirty = true; renderLayers(); }));
+  p.querySelectorAll('[data-c]').forEach((c) => (c.oninput = () => { drawings[+c.dataset.c].color = c.value; saveDrawings(); view.dirty = true; }));
 }
 
 // ---------------------------------------------------------------- keyboard
@@ -414,8 +415,8 @@ document.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if ((e.metaKey || e.ctrlKey) && k === 'z') { e.preventDefault(); return e.shiftKey ? redo() : undo(); }
   if ((e.metaKey || e.ctrlKey) && k === 'y') { e.preventDefault(); return redo(); }
-  if (e.key === 'Escape') { setTool('cursor'); S.selected = null; PT.dirty = true; return; }
-  if ((e.key === 'Delete' || e.key === 'Backspace') && S.selected != null && !S.locked) { pushHistory(); drawings.splice(S.selected, 1); S.selected = null; saveDrawings(); renderLayers(); PT.dirty = true; return; }
+  if (e.key === 'Escape') { setTool('cursor'); S.selected = null; view.dirty = true; return; }
+  if ((e.key === 'Delete' || e.key === 'Backspace') && S.selected != null && !S.locked) { pushHistory(); drawings.splice(S.selected, 1); S.selected = null; saveDrawings(); renderLayers(); view.dirty = true; return; }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const t = Object.keys(TOOLS).find((n) => TOOLS[n].key && TOOLS[n].key.toLowerCase() === k);
   if (t) setTool(t);
@@ -460,20 +461,20 @@ $('cs-btn').onclick = (e) => {
     <div class="item fibrow"><span>เป้า (Extension)</span><input id="cs-fibx" value="${FIBX.join(', ')}"></div>
     <div class="item fibpre" style="gap:6px;justify-content:flex-start;flex-wrap:wrap">${Object.keys(FIB_PRESETS).map((k) => `<button data-fp="${k}" title="${FIB_PRESETS[k].join(', ')}">${k}</button>`).join('')}<button id="cs-fib-reset">ค่าเริ่มต้น</button></div>`;
   m.classList.remove('hidden');
-  const save = () => { store.set('chartCfg', S.chartCfg); applyChartCfg(); buildMain(); buildIndicators(); PT.dirty = true; };
+  const save = () => { store.set('chartCfg', S.chartCfg); applyChartCfg(); buildMain(); buildIndicators(); view.dirty = true; };
   $('cs-up').oninput = () => { S.chartCfg.up = $('cs-up').value; save(); };
   $('cs-down').oninput = () => { S.chartCfg.down = $('cs-down').value; save(); };
   $('cs-vcg').onclick = () => { S.chartCfg.up = '#3b5bdb'; S.chartCfg.down = '#e03131'; $('cs-up').value = S.chartCfg.up; $('cs-down').value = S.chartCfg.down; save(); };
   $('cs-grid').onchange = () => { S.chartCfg.grid = $('cs-grid').checked; save(); };
-  $('cs-news').onchange = () => { S.chartCfg.news = $('cs-news').checked; store.set('chartCfg', S.chartCfg); PT.dirty = true; };
+  $('cs-news').onchange = () => { S.chartCfg.news = $('cs-news').checked; store.set('chartCfg', S.chartCfg); view.dirty = true; };
   const parseLv = (v) => [...new Set(String(v).split(/[,\s]+/).map(Number).filter((x) => isFinite(x) && x >= -5 && x <= 10))];
-  $('cs-fib').onchange = () => { const a = parseLv($('cs-fib').value); if (a.length) { PT.FIB = a; store.set('fibLevels', FIB); } $('cs-fib').value = FIB.join(', '); PT.dirty = true; };
-  $('cs-fibx').onchange = () => { const a = parseLv($('cs-fibx').value); if (a.length) { PT.FIBX = a; store.set('fibExtLevels', FIBX); } $('cs-fibx').value = FIBX.join(', '); PT.dirty = true; };
-  const setRev = (v) => { PT.FIB_REVERSE = !!v; store.set('fibReverse', FIB_REVERSE); $('cs-fibrev').checked = FIB_REVERSE; PT.dirty = true; };
+  $('cs-fib').onchange = () => { const a = parseLv($('cs-fib').value); if (a.length) { PT.FIB = a; store.set('fibLevels', FIB); } $('cs-fib').value = FIB.join(', '); view.dirty = true; };
+  $('cs-fibx').onchange = () => { const a = parseLv($('cs-fibx').value); if (a.length) { PT.FIBX = a; store.set('fibExtLevels', FIBX); } $('cs-fibx').value = FIBX.join(', '); view.dirty = true; };
+  const setRev = (v) => { PT.FIB_REVERSE = !!v; store.set('fibReverse', FIB_REVERSE); $('cs-fibrev').checked = FIB_REVERSE; view.dirty = true; };
   $('cs-fibrev').onchange = (e) => setRev(e.target.checked);
   $('cs-menu').querySelectorAll('[data-fp]').forEach((b) => (b.onclick = () => { PT.FIB = FIB_PRESETS[b.dataset.fp].slice(); store.set('fibLevels', FIB); $('cs-fib').value = FIB.join(', '); setRev(!!FIB_PRESET_REVERSE[b.dataset.fp]); }));
   $('cs-fib-reset').onclick = () => { PT.FIB = FIB_DEF.slice(); PT.FIBX = FIBX_DEF.slice(); store.set('fibLevels', FIB); store.set('fibExtLevels', FIBX); $('cs-fib').value = FIB.join(', '); $('cs-fibx').value = FIBX.join(', '); setRev(false); };
-  $('cs-sess').onchange = () => { S.showSessions = $('cs-sess').checked; store.set('sessions', S.showSessions); PT.dirty = true; };
+  $('cs-sess').onchange = () => { S.showSessions = $('cs-sess').checked; store.set('sessions', S.showSessions); view.dirty = true; };
 };
 document.addEventListener('click', (e) => { if (!e.target.closest('#cs-menu') && !e.target.closest('#cs-btn')) $('cs-menu').classList.add('hidden'); });
 
@@ -515,7 +516,7 @@ function setScale(which) {
     if (cur !== mode) document.querySelector(`#bottombar [data-scale="${which}"]`).classList.add('active');
   }
   if (ps.options().autoScale) document.querySelector('#bottombar [data-scale="auto"]').classList.add('active');
-  PT.dirty = true;
+  view.dirty = true;
 }
 document.querySelectorAll('#bottombar [data-scale]').forEach((b) => (b.onclick = () => setScale(b.dataset.scale)));
 
@@ -530,7 +531,7 @@ const DEFAULT_SESSIONS = [
 ];
 let SESSIONS_ALL = store.get('sessionsCfg', DEFAULT_SESSIONS);
 let SESSIONS = SESSIONS_ALL.filter((x) => x.on);
-function setSessions(list) { SESSIONS_ALL = list; SESSIONS = list.filter((x) => x.on); store.set('sessionsCfg', list); _sessCache.clear(); tickClock(); PT.dirty = true; }
+function setSessions(list) { SESSIONS_ALL = list; SESSIONS = list.filter((x) => x.on); store.set('sessionsCfg', list); _sessCache.clear(); tickClock(); view.dirty = true; }
 const hmParse = (t) => { const [h, m] = String(t || '0:0').split(':').map((x) => parseInt(x, 10) || 0); return [Math.max(0, Math.min(24, h)), Math.max(0, Math.min(59, m))]; };
 const curZone = () => store.get('tz', 'local');
 $('clock').insertAdjacentHTML('beforebegin', `<span id="sess-status" title="คลิกเพื่อดูตารางเวลาตลาด" style="cursor:pointer"></span><span class="sep"></span>

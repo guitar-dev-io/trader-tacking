@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { view } from './src/state.ts';
 import { toast } from './src/ui/toast.ts';
 import { ICON } from './icons.js';
 import { JOURNAL } from './src/legacy/core.ts';
@@ -301,7 +302,7 @@ const JOURNALPAGE = (() => {
       const color = t.side === 'buy' ? '#2962ff' : '#e91e63';
       if (t.open != null && t.openPrice != null) drawings.push({ id: 'jr-in-' + t.pos, type: t.side === 'buy' ? 'arrowUp' : 'arrowDown', pts: [{ time: snap(t.open + tz()), price: t.openPrice }], color, by: 'journal' });
       if (t.close != null && t.closePrice != null) drawings.push({ id: 'jr-out-' + t.pos, type: 'text', pts: [{ time: snap(t.close + tz()), price: t.closePrice }], text: `ปิด ${money(t.net)}`, color: t.net >= 0 ? '#26a69a' : '#ef5350', by: 'journal' });
-      PT.dirty = true;
+      view.dirty = true;
       try { if (c.length && t.close) chart.timeScale().setVisibleRange({ from: (t.open ?? t.close) + tz() - span * 40, to: t.close + tz() + span * 20 }); } catch (_) {}
     })();
   }

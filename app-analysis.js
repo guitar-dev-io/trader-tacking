@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { view } from './src/state.ts';
 import { ICON } from './icons.js';
 import { AN } from './src/legacy/core.ts';
 import { $, AN_VIEW_KEYS, S, TZ, digits, esc, fmt, store, tf } from './app-core.js';
@@ -50,7 +51,7 @@ function runAnalysis() {
   if (performance.now() - t0 > 400) vcg.log('warn', `วิเคราะห์ช้า: ${Math.round(performance.now() - t0)} ms (${closed.length} แท่ง · โครงสร้าง ${PERF.analyze} · จุดเด้ง ${PERF.bounce} · แสดงผล ${PERF.render} ms)`, null, 'perf');
   pushAnalysis();
   PT.checkNewSignal();
-  PT.dirty = true;
+  view.dirty = true;
 }
 function activeSignal() {
   if (!S.A || !S.A.signals.length) return null;

@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { view } from './src/state.ts';
 import { CUSTOM } from './custom.js';
 import { IND } from './indicators.js';
 import { ICON } from './icons.js';
@@ -27,7 +28,7 @@ const chart = createChart($('chart'), {
 function applyChartTheme() {
   chart.applyOptions(chartThemeOptions(11));
   if (typeof PT.applyChartCfg === 'function') PT.applyChartCfg();     // keep the user's grid on/off
-  try { PT.dirty = true; } catch (_) {}                              // redraw SVG overlays with the new colors
+  try { view.dirty = true; } catch (_) {}                              // redraw SVG overlays with the new colors
 }
 THEME.onChange(() => { applyChartTheme(); if (typeof PT.redraw === 'function') try { PT.redraw(); } catch (_) {} });
 let main = null, askLine = null, hlineObjs = [], alertLines = [], indSeries = [];
@@ -145,7 +146,7 @@ function updateIndicators(throttle) {
     if (x.hist) data = histColor(data);
     setSeries(x, data);
   }
-  PT.dirty = true;
+  view.dirty = true;
 }
 // Only the last point changes on a live tick → update() it instead of re-sending the whole series (smoother).
 function setSeries(x, data) {

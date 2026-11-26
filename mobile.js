@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { view } from './src/state.ts';
 import { toast } from './src/ui/toast.ts';
 import { ICON } from './icons.js';
 import { $, S, esc, fmt, store } from './app-core.js';
@@ -86,7 +87,7 @@ import { SETUP } from './setup.js';
     <div id="m-pill" class="hidden"><span class="mp-ic"></span><span class="mp-t"></span><button class="mp-undo" aria-label="ย้อนกลับ">${ICON.svg('undo-2', 18)}</button><button class="mp-x" aria-label="เลิกวาด">${ICON.svg('x', 18)}</button></div>`);
   on($('m-draw'), 'click', openTools);
   on(wrap.querySelector('.mp-x'), 'click', () => setTool('cursor'));
-  on(wrap.querySelector('.mp-undo'), 'click', () => { undo(); PT.dirty = true; });
+  on(wrap.querySelector('.mp-undo'), 'click', () => { undo(); view.dirty = true; });
   const HINT = { trend: 'แตะ 2 จุด', ray: 'แตะ 2 จุด', hline: 'แตะที่ราคา', vline: 'แตะที่เวลา', channel: 'แตะ 3 จุด', fib: 'แตะจุดเริ่ม แล้วจุดจบ', fibext: 'แตะ 3 จุด', rect: 'แตะ 2 มุม', brush: 'ลากเพื่อวาด',
     long: 'แตะ Entry แล้ว SL', short: 'แตะ Entry แล้ว SL', text: 'แตะตำแหน่งข้อความ', arrowUp: 'แตะเพื่อวาง', arrowDown: 'แตะเพื่อวาง', measure: 'แตะ 2 จุด', alert: 'แตะที่ราคา' };
   function syncPill() {
@@ -106,7 +107,7 @@ import { SETUP } from './setup.js';
       <button id="m-layers">รูปวาดทั้งหมด</button><button id="m-undo">${ICON.html('undo-2', 16)}ย้อน</button></div>`);
     body.querySelectorAll('[data-t]').forEach((b) => (b.onclick = () => { setTool(b.dataset.t); closeSheet(); }));
     body.querySelector('#m-magnet').onchange = (e) => { S.magnet = e.target.checked; store.set('magnet', S.magnet); const m = $('magnet'); if (m) m.checked = S.magnet; };
-    body.querySelector('#m-undo').onclick = () => { undo(); PT.dirty = true; };
+    body.querySelector('#m-undo').onclick = () => { undo(); view.dirty = true; };
     body.querySelector('#m-layers').onclick = () => { closeSheet(); const b = $('t-layers'); if (b) b.click(); };
   }
 
@@ -179,7 +180,7 @@ import { SETUP } from './setup.js';
     side.scrollTop = 0; document.querySelectorAll('#side .tab').forEach((x) => { x.scrollTop = 0; });
     syncNav();
   }
-  function goChart() { page = null; if (S.ui.side) PT.setUI('side', false); syncNav(); PT.dirty = true; }
+  function goChart() { page = null; if (S.ui.side) PT.setUI('side', false); syncNav(); view.dirty = true; }
   on(side.querySelector('.mph-back'), 'click', () => showPage('more'));
   side.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => showPage(b.dataset.go)));
   on(side.querySelector('[data-do=settings]'), 'click', () => $('open-settings').click());
