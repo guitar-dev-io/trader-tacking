@@ -21,7 +21,7 @@ function start(p, h) {
       let i;
       while ((i = st.buf.indexOf('\n')) >= 0) { const line = st.buf.slice(0, i); st.buf = st.buf.slice(i + 1); if (line.trim()) handle(line); }
     });
-    sock.on('close', () => { if (st.sock === sock) { st.sock = null; st.connected = false; st.positions = null; if (hooks.positions) hooks.positions(null); log.warn('mt5', 'EA ตัดการเชื่อมต่อ'); hooks.status(); } });
+    sock.on('close', () => { if (st.sock === sock) { st.sock = null; st.connected = false; st.positions = null; if (hooks.positions) hooks.positions(null); log.warn('mt5', 'EA ตัดการเชื่อมต่อ'); hooks.status(); if (hooks.disconnect) hooks.disconnect(); } });
     sock.on('error', (e) => log.warn('mt5', 'socket: ' + e.message));
   });
   st.server.on('error', (e) => log.error('mt5', `เปิดพอร์ต MT5 ${port} ไม่ได้: ${e.message}`));
@@ -37,13 +37,14 @@ function handle(line) {
   let m; try { m = JSON.parse(line); } catch (_) { return log.warn('mt5', 'ข้อความจาก EA อ่านไม่ได้', line.slice(0, 200)); }
   switch (m.t) {
     case 'hello':
-      st.connected = true; st.info = { broker: m.broker, server: m.server, offset: m.offset, symbols: m.symbols || [], v: m.v || 1, caps: m.caps || [] }; st.positions = null;
+      st.connected = true; st.info = { broker: m.broker, server: m.server, login: m.login || null, build: m.build || null, offset: m.offset, symbols: m.symbols || [], v: m.v || 1, caps: m.caps || [] }; st.positions = null;
       log.info('mt5', `EA เชื่อมต่อแล้ว: ${m.broker} (${m.server}) เวลา server = GMT${m.offset >= 0 ? '+' : ''}${m.offset / 3600}`, { symbols: (m.symbols || []).slice(0, 40) });
       watch(hooks.symbols());
       if (st.wantPos && st.info.caps.includes('pos')) send('POS|1');
       if (st.info.v < 2) log.warn('mt5', 'EA ใน MT5 เป็นรุ่นเก่า — ติดตั้ง EA ใหม่เพื่อดูออเดอร์/โพซิชันของคุณ (ตั้งค่า → แหล่งราคา → MT5)');
       Object.values(st.last).forEach(request);   // resend chart requests made before the EA connected
       hooks.status();
+      if (hooks.hello) hooks.hello(st.info);
       break;
     case 'tick': {
       st.lastTick = Date.now();
@@ -165,7 +166,27 @@ function findExpertDirs({ home, appData, platform, env = {} }) {
 // Plan how to start MT5 with the EA already on a chart (MT5 "/config:" startup file).
 //  expertsDir: an MQL5/Experts folder from findExpertDirs. Returns null if no terminal64.exe was found.
 //  macOS: MT5 is a Wine bottle, so we run the bottle's wine with WINEPREFIX; Windows runs the exe directly.
-function planLaunch({ expertsDir, platform, appBundles = [], symbol, period = 'M5' }) {
+// The wine launcher that runs MT5 on a Mac. MetaQuotes' app ships it in Contents/SharedSupport/wine/bin/wine
+// (new WoW64 wine: no wine64). Known places first, then a search inside the app bundle, then system wine.
+function findWine({ appBundles = [], extra } = {}) {
+  const fs = require('fs'), path = require('path');
+  const isFile = (f) => { try { return fs.statSync(f).isFile(); } catch (_) { return false; } };
+  for (const b of appBundles) {
+    for (const rel of ['Contents/SharedSupport/wine/bin', 'Contents/SharedSupport/metatrader5/wine/bin', 'Contents/Resources/wine/bin', 'Contents/SharedSupport/bin']) {
+      for (const n of ['wine64', 'wine']) { const f = path.join(b, rel, n); if (isFile(f)) return f; }
+    }
+  }
+  let found = null;
+  const walk = (d, depth) => { if (found || depth > 6) return; let ents; try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch (_) { return; }
+    if (path.basename(d) === 'bin') for (const n of ['wine64', 'wine']) { const e = ents.find((x) => x.name === n && x.isFile()); if (e) { found = path.join(d, n); return; } }
+    for (const e of ents) if (e.isDirectory() && !/^(lib|lib64|share|include|drive_c|Frameworks)$/.test(e.name)) walk(path.join(d, e.name), depth + 1); };
+  for (const b of appBundles) walk(path.join(b, 'Contents'), 0);
+  if (found) return found;
+  const sys = extra || ['/opt/homebrew/bin/wine64', '/opt/homebrew/bin/wine', '/usr/local/bin/wine64', '/usr/local/bin/wine',
+    ...(() => { try { return fs.readdirSync('/Applications').filter((n) => /^Wine.*\.app$/.test(n)).flatMap((n) => ['wine64', 'wine'].map((w) => `/Applications/${n}/Contents/Resources/wine/bin/${w}`)); } catch (_) { return []; } })()];
+  return sys.find(isFile) || null;
+}
+function planLaunch({ expertsDir, platform, appBundles = [], symbol, period = 'M5', wineCandidates }) {
   const fs = require('fs'), path = require('path');
   const dataDir = path.dirname(path.dirname(expertsDir));            // …/MetaTrader 5 (or Terminal/<id>)
   let installDir = dataDir;
@@ -181,24 +202,23 @@ function planLaunch({ expertsDir, platform, appBundles = [], symbol, period = 'M
   if (platform === 'darwin') {
     const i = expertsDir.indexOf(path.sep + 'drive_c' + path.sep); if (i < 0) return null;
     const prefix = expertsDir.slice(0, i), win = (f) => 'C:' + f.slice(i + 8).split(path.sep).join('\\');
-    let wine = null;
-    const find = (d, depth) => { if (wine || depth > 5) return; let ents; try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch (_) { return; }
-      for (const n of ['wine64', 'wine']) { const e = ents.find((x) => x.name === n && !x.isDirectory()); if (e && path.basename(d) === 'bin') { wine = path.join(d, n); return; } }
-      for (const e of ents) if (e.isDirectory() && !/^(lib|share|include|drive_c)$/.test(e.name)) find(path.join(d, e.name), depth + 1); };
-    for (const b of appBundles) find(path.join(b, 'Contents'), 0);
+    const wine = findWine({ appBundles, extra: wineCandidates });
     if (!terminal || !wine) return { terminal, wine, ini, iniPath, missing: !terminal ? 'terminal64.exe' : 'wine' };
-    return { ini, iniPath, env: { WINEPREFIX: prefix, WINEDEBUG: '-all' },
+    // same WINEPREFIX as the running MT5: wine reuses its wineserver instead of starting a second one
+    return { ini, iniPath, wine, env: { WINEPREFIX: prefix, WINEDEBUG: '-all' },
       compile: editor && { cmd: wine, args: [win(editor), '/compile:' + win(path.join(expertsDir, 'PriceTrackerBridge.mq5')), '/log'] },
+      editor: editor && { cmd: wine, args: [win(editor), win(path.join(expertsDir, 'PriceTrackerBridge.mq5'))] },
       launch: { cmd: wine, args: [win(terminal), ...portable, '/config:' + win(iniPath)] } };
   }
   if (!terminal) return { ini, iniPath, missing: 'terminal64.exe' };
   return { ini, iniPath, env: {},
     compile: editor && { cmd: editor, args: ['/compile:' + path.join(expertsDir, 'PriceTrackerBridge.mq5'), '/log'] },
+    editor: editor && { cmd: editor, args: [path.join(expertsDir, 'PriceTrackerBridge.mq5')] },
     launch: { cmd: terminal, args: [...portable, '/config:' + iniPath] } };
 }
 
-module.exports = { findExpertDirs, resolve, planLaunch,
+module.exports = { findExpertDirs, resolve, planLaunch, findWine,
   start, stop, request, watch, positions, deals, getPositions: () => st.positions,
   status: () => ({ listening: !!st.server, connected: st.connected, broker: st.info && st.info.broker, server: st.info && st.info.server,
-    symbols: st.info ? st.info.symbols : [], eaVersion: st.info ? st.info.v : null, unknown: [...st.unknown], port, lastTick: st.lastTick }),
+    symbols: st.info ? st.info.symbols : [], eaVersion: st.info ? st.info.v : null, eaBuild: st.info ? st.info.build || null : null, unknown: [...st.unknown], port, lastTick: st.lastTick }),
 };

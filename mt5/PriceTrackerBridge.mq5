@@ -14,7 +14,7 @@
 //| (when asked) your own positions, pending orders and deal history. |
 //+------------------------------------------------------------------+
 #property copyright "Price Tracker"
-#property version   "1.02"
+#property version   "1.03"   // keep in sync with "build" in the hello message (1.03 -> 103)
 #property description "Sends ticks and candles to Price Tracker (127.0.0.1). Read-only: it never trades."
 
 input string InpHost    = "127.0.0.1"; // Price Tracker address
@@ -168,8 +168,8 @@ bool EnsureConnected()
    g_offset = ServerOffset();
    ArrayResize(g_subs, 0);
    Print("PriceTrackerBridge: connected to Price Tracker");
-   string hello = StringFormat("{\"t\":\"hello\",\"v\":2,\"caps\":[\"pos\",\"deals\"],\"broker\":\"%s\",\"server\":\"%s\",\"offset\":%I64d,\"symbols\":[%s]}",
-                               Esc(AccountInfoString(ACCOUNT_COMPANY)), Esc(AccountInfoString(ACCOUNT_SERVER)), g_offset, MarketWatchJson());
+   string hello = StringFormat("{\"t\":\"hello\",\"v\":3,\"build\":103,\"caps\":[\"pos\",\"deals\",\"balance\"],\"broker\":\"%s\",\"server\":\"%s\",\"login\":%I64d,\"offset\":%I64d,\"symbols\":[%s]}",
+                               Esc(AccountInfoString(ACCOUNT_COMPANY)), Esc(AccountInfoString(ACCOUNT_SERVER)), (long)AccountInfoInteger(ACCOUNT_LOGIN), g_offset, MarketWatchJson());
    return SendLine(hello);
   }
 //+------------------------------------------------------------------+
@@ -457,8 +457,18 @@ void SendDeals(string id, long fromUnix, long toUnix)
       if(tk == 0)
          continue;
       long ty = HistoryDealGetInteger(tk, DEAL_TYPE);
+      if(ty == DEAL_TYPE_BALANCE)
+        {
+         // deposits / withdrawals: reported so the app can keep them out of the trading result
+         if(!first)
+            s += ",";
+         first = false;
+         s += StringFormat("{\"ticket\":%I64u,\"pos\":0,\"s\":\"\",\"side\":\"balance\",\"entry\":\"in\",\"vol\":0,\"price\":0,\"profit\":%s,\"commission\":0,\"swap\":0,\"time\":%I64d}",
+                           tk, Num(HistoryDealGetDouble(tk, DEAL_PROFIT), 2), (long)HistoryDealGetInteger(tk, DEAL_TIME) - g_offset);
+         continue;
+        }
       if(ty != DEAL_TYPE_BUY && ty != DEAL_TYPE_SELL)
-         continue;                             // skip balance / credit / commission rows
+         continue;                             // skip credit / commission / bonus rows
       string sym = HistoryDealGetString(tk, DEAL_SYMBOL);
       int dg = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
       long en = HistoryDealGetInteger(tk, DEAL_ENTRY);
