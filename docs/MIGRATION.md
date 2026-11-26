@@ -34,6 +34,48 @@ Branch: `feat/framework-migration`. The plan has 5 phases: 0 Vite, 1 TypeScript 
   - Node-only modules become CommonJS.
 - **Compatibility:** the root `analysis.js`, `bounce.js`, `mm.js` and `journal.js` are now one-line Node wrappers (`require('./gen/…')`), so `main.js`, `journal-store.js` and the unit tests did not change. The renderer loads `gen/*.js` directly. `ea-update.js` uses `gen/ea-version.js`.
 
+
+### Phase 2: no shared globals (ES modules)
+- **What changed:** every app file at the repo root is an ES module now, and `src/app.ts` imports them in the old `<script>` order.
+  - The only classic script left is the vendor chart library (`src/legacy-order.mjs` → `VENDOR_SCRIPTS`).
+  - Vite bundles the app into one module chunk.
+- **Rule that keeps behaviour identical:** a module only `import`s from modules **earlier** in that order. ES modules evaluate their imports first, so an import of a later file would reorder evaluation. Two cases go through **`window.PT`** instead (`src/pt.ts`):
+  - a name from a **later** module (late-bound, read at call time), e.g. `PT.MTF`, `PT.DASH`, `PT.LEARN`, `PT.setUI`;
+  - an **assignment** to another module's binding, e.g. `PT.setTool = wrapper` in mobile.js, `PT.loadChart = …` in mtf.js.
+- **How PT works:** every module registers its top-level names with `def()`. Getters are live; `let`/`var`/`function` names also get a setter that writes the owner's binding, so every importer sees the new value.
+- **`window.PT` is also the one bridge for the outside.** The UI tests call `PT.SETUP.open()`, `PT.S.source`, `PT.main.priceLines()`, and devtools can use it the same way.
+  - The tests' renderer code was rewritten by `scripts/codemod/tests-to-pt.mjs`.
+  - A UI test asserts that `window` gains only `PT`, `vcg`, `LightweightCharts` and `Capacitor`.
+- **Moved into real modules:**
+  - `AN`/`BOUNCE`/`MM`/`JOURNAL` are imported straight from `src/core/*.ts` (`src/legacy/core.ts`).
+  - The VCG page scripts are an ES module (`src/vcg-inject.mjs`). It is compiled to `gen/vcg-inject.js` for Electron main and the Node tests; the root `vcg-inject.js` is a 2-line wrapper.
+  - `ICON`, `IND`, `CUSTOM`, `LESSONS*` and `MM_LEARN` are real exports (they were `window.X`).
+  - `toast()` is `src/ui/toast.ts`.
+  - The redraw flag is `view.dirty` in `src/state.ts`.
+- **Guard:** `npm run typecheck` also runs `scripts/codemod/check-free.mjs`, which fails if an app module uses a name that is not its own, imported, `PT`, or a browser/vendor global. This is the Phase 2 version of the old "duplicate global" crash.
+- **How it was done:** codemods with Babel scope analysis, `scripts/codemod/to-modules.mjs` and `tests-to-pt.mjs`. They ran once on classic scripts and will not run again on modules. They are kept to show exactly what was mechanical.
+- **Measured:**
+  - unit 41/41, UI 106/106 (105 + the globals check), `tsc` strict + stray-global guard clean;
+  - screenshots match Phase 1 except time-dependent content and the v2.16.0 settings toggles from the rebase;
+  - **startup got faster**: about 270 ms vs about 450 ms to a drawn chart (one bundled module instead of ~40 scripts).
+
+## Phase 2 — what is still interim (hand-off)
+- **Late-bound names through PT inside the app:** about 55 names, used about 280 times; run `grep -o "PT\.[A-Za-z_$]*" *.js`. The most used are `setUI`, `MTF`, `LEARN`, `DASH`, `yOf`, `NEWSPAGE`, `__mobileBack` and `drawings`. They exist because files call "forward" into modules loaded later.
+  - In Phase 3/4, untangle them by moving each shared piece into a small module that both sides import: app state from `app-core.js` → `src/state.ts`; overlay helpers (`yOf`, `xIdx`, `el`, `ltxt`) → `src/ui/overlay.ts`; page objects registered in `src/pages.ts`.
+  - When a name no longer needs PT, `def()` can stay; it is only for tests and devtools.
+- **App modules are still `.js`:** the root `*.js` modules are not type-checked yet; only `src/**/*.ts` is. Convert them as you rewrite pages (Phase 3) or move them (Phase 4).
+- **`app-core.js` is the state module for now:** it holds `S`, `store`, `TC`/`THEME`, `settings cache` and friends. Splitting it into `src/state.ts` and `src/ui/theme.ts` is part of untangling the late-bound names.
+- **`def()` lines are long and generated.** They are fine to delete per module once nothing outside uses that name.
+
+## Rebasing app-branch changes onto this branch (important)
+- Every renderer file on `feat/price-tracker-app` is a classic script; here it is a module. A change there can no longer be cherry-picked as is.
+- To port a change:
+  1. Apply the edit by hand to the same function here.
+  2. For any NEW cross-file name, `import` it if its owner is earlier in `src/app.ts`; otherwise use `PT.name`.
+  3. A NEW file gets `import { PT, def } from './src/pt.ts'` and a line in `src/app.ts` (plus `scripts/codemod/order.mjs`).
+- `npm run typecheck` tells you if you missed a name.
+- Better: freeze renderer feature work on the app branch, or merge this branch soon.
+
 ## How to run
 | | |
 |---|---|
@@ -47,16 +89,13 @@ Branch: `feat/framework-migration`. The plan has 5 phases: 0 Vite, 1 TypeScript 
 | `npm run build:mac` / `npm run build:win` | packages (build the renderer first automatically) |
 
 ## Verified
-- Unit tests: 37/37 (34 old + 3 for the new TS helpers). UI suite: 104/104. `tsc` strict: clean.
+- (Phase 1) Unit tests: 37/37 (34 old + 3 for the new TS helpers). UI suite: 104/104. `tsc` strict: clean.
 - Screens look the same before and after. Every UI-suite screenshot was pixel-diffed; the only differences are the live clock, a random quiz question and a 14 px scroll offset.
 - Startup is the same: about 480–510 ms to a drawn chart, both before and after (Electron, same machine).
 - The Windows zip packages with `dist-renderer/` and `gen/`. The mac ignore regex was checked path by path.
 
 ## Left
-- **Phase 2 (no globals):** turn the legacy files into ES modules one at a time.
-  - Start with leaf modules (`indicators`, `icons`, `lessons*`) and give the shared state (`S`, `store`, `main`) a small store module.
-  - Expose a `window.PT` bridge while classic and module code coexist.
-  - When a file becomes a module, remove it from `src/legacy-order.mjs`.
+- **Phase 2:** done (see above); interim items are listed under "Phase 2 — what is still interim".
 - **Phase 3 (Svelte):** rewrite the journal, dashboard and learning center as Svelte 5 components mounted from `src/main.ts`. New features are written in Svelte.
 - **Phase 4 (the rest + main process):** side panel, settings, guide and drawing tools; `main.js`/`mt5.js`/`api.js` move to TypeScript; delete the root wrappers and run strict TypeScript everywhere.
-- **Before merging:** rebase on `feat/price-tracker-app`. Expect small conflicts in `index.html` (script tags → `src/legacy-order.mjs`), `main.js` (`loadFile`), `package.json` scripts and `scripts/build-www.js`. Any new legacy file there must be added to `src/legacy-order.mjs`.
+- **Before merging:** rebased on `feat/price-tracker-app` 171d074 (v2.16.0). Later app-branch renderer edits must be ported by hand (see above).
