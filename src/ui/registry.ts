@@ -8,4 +8,5 @@ export const ui: {
   setup?: SetupApi;
   msheet?: { open: (...a: any[]) => void; close: () => void; [k: string]: any };
   setUI?: (k: string, v: boolean) => void;
+  srcPill?: { render: () => void; info: () => { cls: string; t: string; hint: string }; menu: () => void };
 } = {};

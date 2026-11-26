@@ -12,7 +12,6 @@ declare module '*/app-core.js' {
 }
 declare module '*/app-chart.js' { export const chart: any; export const chartThemeOptions: (...a: any[]) => any; export const applyChartTheme: (...a: any[]) => void; }
 declare module '*/app-data.js' { export const switchSymbol: (s: string) => void; export const loadChart: (...a: any[]) => any; export const dedupe: any; export const renderAlerts: any; export const toCandle: any; export const valid: any; export const connStatus: any; }
-declare module '*/setup.js' { export const SETUP: any; }
 declare module '*/positions.js' { export const POSITIONS: any; }
 declare module '*/lessons.js' { export const LESSONS: any; }
 declare module '*/lessons-guide.js' { export const LESSON_CATS: any; export const LESSONS_EXTRA: any; export const LESSON_CAT_OF: any; }

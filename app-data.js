@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { ui } from './src/ui/registry.ts';
 import { connStatus, setConnStatus } from './src/state.ts';
 import { view } from './src/state.ts';
 import { toast } from './src/ui/toast.ts';
@@ -263,10 +264,10 @@ function renderConnect(st = connStatus) {
       if (k === 'login') { const ok = vcg.showTrader(); vcg.log('info', 'ผู้ใช้กดเข้าสู่ระบบ VCG จากหน้าเชื่อมต่อ', null, 'auth'); if (ok === false) toast('เปิดหน้า login ไม่ได้ — ดูแท็บ Log', 'error'); }
       else if (k === 'demo') PT.setSource('demo');
       else if (k === 'retry') { vcg.reloadTrader(); toast('กำลังเชื่อมต่อใหม่…', 'info'); setTimeout(loadChart, 8000); }
-      else if (k === 'guide') PT.SETUP.open();
-      else if (k === 'mt5guide') PT.SETUP.open('mt5', 0);
+      else if (k === 'guide') ui.setup?.open();
+      else if (k === 'mt5guide') ui.setup?.open('mt5', 0);
       else if (k === 'log') { box.classList.add('hidden'); document.querySelector('#tabs [data-tab="log"]').click(); }
-      else if (src === 'vcg' || src === 'mt5') { if (S.source !== src) PT.setSource(src); if (src === 'mt5') PT.SETUP.open('mt5', 0); }
+      else if (src === 'vcg' || src === 'mt5') { if (S.source !== src) PT.setSource(src); if (src === 'mt5') ui.setup?.open('mt5', 0); }
     }));
   }
 }

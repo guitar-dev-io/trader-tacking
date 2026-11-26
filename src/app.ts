@@ -23,7 +23,7 @@ import './ui/settings/index';
 import '../extras.js';
 import '../learn.js';
 import '../news.js';
-import '../setup.js';
+import './ui/setup/index';
 import '../positions.js';
 import '../mtf.js';
 import '../ui.js';

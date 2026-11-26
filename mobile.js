@@ -8,7 +8,7 @@ import { openAnalysisMenu } from './app-analysis.js';
 import { switchSymbol } from './app-data.js';
 import { GROUPS, TOOLS, setTool, undo } from './draw.js';
 import { REPLAY } from './learn.js';
-import { SETUP } from './setup.js';
+import { SETUP } from './src/ui/setup/index.ts';
 import { pages } from './src/pages/registry.ts';
 // Phone layout (Android app / narrow windows). The desktop UI is a TradingView-style workstation; on a phone we
 // re-arrange the same parts into a mobile shell instead of shrinking the desktop:

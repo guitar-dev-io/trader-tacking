@@ -1,6 +1,7 @@
 <script lang="ts">
   // Settings window (Phase 4). Same ids/classes as the old markup (CSS + tests rely on them), state is local and
   // the main-process settings are read on open / written on save with the same set-settings payload as before.
+  import { flushSync } from 'svelte';
   import Icon from '../Icon.svelte';
   import { S, store, THEME, setMainCfg } from '../../state';
   import { toast } from '../toast';
@@ -12,6 +13,7 @@
   import { loadChart } from '../../../app-data.js';
   import { DEFAULT_SESSIONS, SESSIONS_ALL, ZONES, _sessionWindow, setSessions } from '../../../draw.js';
   import { netState, NET_TH } from '../net';
+  import { osKeys } from '../os';
 
   const vcg = (window as any).vcg;
   type Sess = { name: string; zone: string; open: string; close: string; color: string; on: boolean };
@@ -65,7 +67,7 @@
     show(sec || 'general');
     byId('modal-settings')!.classList.remove('hidden');
   }
-  export function show(k: string) { section = k; if (k === 'claude') renderClaude(); }
+  export function show(k: string) { section = k; flushSync(); if (k === 'claude') renderClaude(); }
   export function close() { byId('modal-settings')!.classList.add('hidden'); }
 
   const clampNum = (x: unknown, lo: number, hi: number, d: number) => { const v = parseFloat(String(x)); return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
@@ -154,7 +156,7 @@
   async function copyEA() {
     const code = await vcg.mt5EASource();
     try { await navigator.clipboard.writeText(code); toast('คัดลอกโค้ด EA แล้ว — ไปวางใน MetaEditor', 'ok', 5000); } catch (e: any) { toast('คัดลอกไม่ได้: ' + e.message, 'error'); }
-    eaOut = PT.osKeys('คัดลอกแล้ว: MetaEditor → File → New → Expert Advisor (template) → ชื่อ PriceTrackerBridge → Finish → กด ⌘A ลบโค้ดเดิม → ⌘V วาง → Compile (F7)');
+    eaOut = osKeys('คัดลอกแล้ว: MetaEditor → File → New → Expert Advisor (template) → ชื่อ PriceTrackerBridge → Finish → กด ⌘A ลบโค้ดเดิม → ⌘V วาง → Compile (F7)');
   }
   async function saveEA() { const file = vcg.saveEA && (await vcg.saveEA()); if (file) toast('บันทึก EA แล้ว: ' + file, 'ok'); }
   export async function eaInfo() {
@@ -343,7 +345,7 @@
                 <td><input type="text" class="hm" data-f="close" bind:value={x.close} placeholder="HH:MM" maxlength="5" style:border-color={hmOk(x.close) ? '' : '#ef5350'}></td>
                 <td><select data-f="zone" bind:value={x.zone}>{#each SESS_ZONES as [z, nm] (z)}<option value={z}>{nm}</option>{/each}</select></td>
                 <td class="pv">{sessPreview(x)}</td>
-                <td><button data-del={i} title="ลบ" aria-label="ลบ" onclick={() => sess.splice(i, 1)}><Icon name="x" size={14} /></button></td>
+                <td><button data-del={i} title="ลบ" aria-label="ลบ" onclick={() => sess.splice(i, 1)}><Icon name="x" size={14} bare /></button></td>
               </tr>
             {/each}
           </tbody></table>

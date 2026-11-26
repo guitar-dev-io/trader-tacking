@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { ui } from './src/ui/registry.ts';
 import { view } from './src/state.ts';
 import { toast } from './src/ui/toast.ts';
 import { ICON } from './icons.js';
@@ -97,7 +98,7 @@ function renderSourceSel() {
   $('src-sel').value = S.source;
   $('src-sel').querySelector('[value=vcg]').disabled = !vcg.capabilities?.vcg;
   const o5 = $('src-sel').querySelector('[value=mt5]'); o5.disabled = !vcg.capabilities?.mt5; o5.hidden = !vcg.capabilities?.mt5;
-  if (typeof PT.SRC_UI !== 'undefined') PT.SRC_UI.render();
+  ui.srcPill?.render();
 }
 renderSourceSel();
 if (S.source === 'mt5' && !vcg.capabilities?.mt5) { S.source = vcg.capabilities?.vcg ? 'vcg' : 'demo'; store.set('source', S.source); }

@@ -11,7 +11,7 @@ import { ICON } from '../../../icons.js';
 import { $, TFS, drawings } from '../../../app-core.js';
 import { chart } from '../../../app-chart.js';
 import { switchSymbol } from '../../../app-data.js';
-import { SETUP } from '../../../setup.js';
+import { SETUP } from '../../ui/setup/index';
 import { PAGES } from '../../../pages.js';
 import Journal from './Journal.svelte';
 import { jr, load, compute, setRange, money, tz } from './model.svelte';
