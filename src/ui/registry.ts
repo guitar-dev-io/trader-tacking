@@ -9,4 +9,8 @@ export const ui: {
   msheet?: { open: (...a: any[]) => void; close: () => void; isOpen: () => boolean };
   setUI?: (k: string, v: boolean) => void;
   srcPill?: { render: () => void; info: () => { cls: string; t: string; hint: string }; menu: () => void };
+  /** calculator tab (planner.js) */
+  planner?: { save: () => void; render: () => void };
+  /** practice tab: trade simulator (learn.js) */
+  sim?: { prefill: (t: any) => void; [k: string]: any };
 } = {};

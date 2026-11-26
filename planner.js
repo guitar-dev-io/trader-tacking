@@ -7,6 +7,7 @@ import { el, label, yOf } from './app-overlay.js';
 import { mount, flushSync } from 'svelte';
 import Planner from './src/ui/tabs/Planner.svelte';
 import { plannerTick } from './src/ui/tabs/planner-view.ts';
+import { ui } from './src/ui/registry.ts';
 def({ savePlan: [() => savePlan], pointSize: [() => pointSize], toPts: [() => toPts], contractSize: [() => contractSize, (v) => { contractSize = v; }], quoteToUSD: [() => quoteToUSD, (v) => { quoteToUSD = v; }], autoVpp: [() => autoVpp, (v) => { autoVpp = v; }], vpp: [() => vpp, (v) => { vpp = v; }], isCentAcct: [() => isCentAcct], CUR: [() => CUR], floorStep: [() => floorStep], lotFmt: [() => lotFmt], money: [() => money], riskAmount: [() => riskAmount, (v) => { riskAmount = v; }], plannerLot: [() => plannerLot, (v) => { plannerLot = v; }], computePlan: [() => computePlan, (v) => { computePlan = v; }], renderPlanner: [() => renderPlanner, (v) => { renderPlanner = v; }], plannerFrom: [() => plannerFrom, (v) => { plannerFrom = v; }], drawPlanner: [() => drawPlanner, (v) => { drawPlanner = v; }] });
 // Position & scale-in calculator ("คำนวณ" tab): lot size from risk, add-on (เติมไม้) levels, average price,
 // loss at SL, profit at TP, and the plan drawn on the chart.
@@ -129,6 +130,7 @@ function drawPlanner(W) {
   if (r.rows.length > 1) line(r.avg, TC().fg, `เฉลี่ย ${fmt(r.avg)}`, '2 3');
 }
 
+ui.planner = { save: savePlan, render: renderPlanner };
 mount(Planner, { target: $('planner'), props: { api: { computePlan, autoVpp, contractSize, isCentAcct, CUR, money, lotFmt, pointSize, toPts, savePlan, activeSignal,
   changed: () => { renderPlanner(); view.dirty = true; } } } });
 document.querySelector('#tabs [data-tab="calc"]').addEventListener('click', () => { renderPlanner(); view.dirty = true; });

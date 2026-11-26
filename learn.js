@@ -9,6 +9,7 @@ import { el, label, yOf } from './app-overlay.js';
 import { renderTfs } from './app.js';
 import { normalize } from './draw.js';
 import { autoVpp, plannerLot, vpp } from './planner.js';
+import { ui } from './src/ui/registry.ts';
 
 def({ REPLAY: [() => REPLAY], SIM: [() => SIM], _onQuotesMsg: [() => _onQuotesMsg], QUIZ: [() => QUIZ], downloadText: [() => downloadText, (v) => { downloadText = v; }], LESSON: [() => LESSON] });
 // Learning tools: Bar Replay, paper trading (simulated orders on live or replay data), practice exercises, journal & stats, lesson packs.
@@ -381,4 +382,5 @@ const LESSON = (() => {
 // ================================================================ tab + hooks
 document.querySelector('#tabs [data-tab="practice"]').addEventListener('click', () => { QUIZ.render(); SIM.render(); LESSON.render(); });
 QUIZ.render(); LESSON.render();
+ui.sim = SIM;
 export { QUIZ, REPLAY };

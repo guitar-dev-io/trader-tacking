@@ -370,7 +370,7 @@ app.whenReady().then(async () => {
       await js(`document.querySelector('[data-nf=rel]').click(); 1`); await sleep(200); await A.shot('news-page');
       const nt = JSON.parse(await js(`(() => { PT.NEWSPAGE.close(); document.querySelector('#tabs [data-tab="market"]').click(); window.dispatchEvent(new Event('focus')); return JSON.stringify({ teaser: !!document.getElementById('news-teaser') }); })()`));
       check('news: latest-headlines teaser stays in the ราคา tab', nt.teaser, nt);
-      check('news: Investing.com time parsed', /30 นาที/.test(nw.invTime || ''), nw.invTime);
+      check('news: Investing.com time parsed', /(29|30|31) นาที/.test(nw.invTime || ''), nw.invTime);   // fixture is 30 min old; allow a slow run
     }
 
     // layout: narrow window, wide side panel → toolbar buttons stay inside the chart column

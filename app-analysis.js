@@ -1,6 +1,5 @@
 import { PT, def } from './src/pt.ts';
 import { view } from './src/state.ts';
-import { ICON } from './icons.js';
 import { AN } from './src/legacy/core.ts';
 import { $, AN_VIEW_KEYS, S, TZ, digits, fmt, store, tf } from './app-core.js';
 import { closeMenus } from './app-chart.js';
