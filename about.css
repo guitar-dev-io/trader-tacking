@@ -1,0 +1,18 @@
+/* Developer credit + support (about.js) */
+.about-dev { margin: 12px 0; display: flex; flex-direction: column; gap: 10px; }
+.about-dev svg { vertical-align: -3px; margin-right: 6px; flex: none; }
+.about-dev .ad-row { display: flex; align-items: center; color: var(--muted); }
+.about-dev .ad-row b { color: var(--text); }
+.about-dev .ad-sup { padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface, var(--panel)); }
+.about-dev .ad-sup > b { display: flex; align-items: center; color: var(--down); }
+.about-dev .ad-sup p { margin: 6px 0; font-size: 12px; }
+.about-dev .ad-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.about-dev .ad-btn { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--text); text-decoration: none; }
+.about-dev .ad-btn:hover { border-color: var(--accent); }
+.about-dev .ad-btn img { width: 64px; height: 64px; border-radius: 6px; background: #fff; }
+.about-dev .ad-btn small { display: block; color: var(--muted); font-size: 11px; }
+.about-dev .ad-link { display: inline-flex; align-items: center; color: var(--link, var(--accent)); text-decoration: none; font-size: 13px; }
+.about-dev .ad-link:hover { text-decoration: underline; }
+#tab-more .about-dev { margin: 12px 4px; }
+.about-dev .ad-ex { display: inline-block; margin: 4px 0; padding: 2px 8px; border-radius: 6px; font-size: 11px; background: var(--warn-bg, #3a2f12); color: var(--warn-fg, var(--warn)); }
+.about-dev .ad-btn.ex { cursor: default; border-style: dashed; }

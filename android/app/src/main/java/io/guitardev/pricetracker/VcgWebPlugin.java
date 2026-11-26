@@ -1,0 +1,328 @@
+package io.guitardev.pricetracker;
+
+import android.annotation.SuppressLint;
+import android.graphics.Color;
+import android.graphics.Bitmap;
+import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
+import android.webkit.CookieManager;
+import android.webkit.JavascriptInterface;
+import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebSettings;
+import android.webkit.WebStorage;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.os.Message;
+import android.app.AlertDialog;
+import androidx.webkit.WebSettingsCompat;
+import androidx.webkit.WebViewFeature;
+import java.util.Collections;
+import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+import androidx.activity.OnBackPressedCallback;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+
+import com.getcapacitor.JSObject;
+import com.getcapacitor.Plugin;
+import com.getcapacitor.PluginCall;
+import com.getcapacitor.PluginMethod;
+import com.getcapacitor.annotation.CapacitorPlugin;
+
+/**
+ * Hosts VCG WebTrader in a second, normally hidden WebView (same idea as the desktop app's hidden window).
+ * The user logs in there once; the JS side (bridge.js) injects small listeners and receives prices via __vcgNative.post().
+ */
+@CapacitorPlugin(name = "VcgWeb")
+public class VcgWebPlugin extends Plugin {
+    // Desktop Chrome UA: VCG serves the same WebTrader (and sockets) as on the desktop.
+    private static final String UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+    private static final String RELAY_JS = "(() => { if (window.__vcgRelay || !window.__vcgNative) return; window.__vcgRelay = true;"
+            + " window.addEventListener('message', (e) => { if (e.source === window && e.data && typeof e.data.__vcg === 'string') {"
+            + " try { window.__vcgNative.post(JSON.stringify({ type: e.data.__vcg, data: e.data.d, slot: e.data.slot })); } catch (_) {} } }); })()";
+
+    private WebView web;
+
+    @Override
+    public void load() {
+        // Back button: close the WebTrader overlay first, otherwise let the app UI decide (close popups / minimise).
+        getActivity().getOnBackPressedDispatcher().addCallback(getActivity(), new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (!handleBack()) notifyListeners("back", new JSObject());
+            }
+        });
+    }
+
+    @PluginMethod
+    public void minimize(PluginCall call) {
+        getActivity().runOnUiThread(() -> { getActivity().moveTaskToBack(true); call.resolve(); });
+    }
+    private LinearLayout overlay;
+    private volatile String currentUrl = "";
+
+    private class NativeBridge {
+        @JavascriptInterface
+        public void post(String json) {
+            JSObject o = new JSObject();
+            o.put("data", json);
+            notifyListeners("message", o);
+        }
+    }
+
+    private FrameLayout content;          // holds the WebTrader page and any sign-in popups on top of it
+    private WebView popup;
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private void configure(WebView w) {
+        WebSettings s = w.getSettings();
+        s.setJavaScriptEnabled(true);
+        s.setDomStorageEnabled(true);
+        s.setDatabaseEnabled(true);
+        s.setUserAgentString(UA);
+        s.setUseWideViewPort(true);
+        s.setLoadWithOverviewMode(true);
+        // "Sign in with Google" etc. open a popup window and talk back to the page through window.opener
+        s.setSupportMultipleWindows(true);
+        s.setJavaScriptCanOpenWindowsAutomatically(true);
+        s.setMediaPlaybackRequiresUserGesture(true);
+        // don't announce the app package in X-Requested-With (identity providers use it to refuse embedded browsers)
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.REQUESTED_WITH_HEADER_ALLOW_LIST)) {
+            WebSettingsCompat.setRequestedWithHeaderOriginAllowList(s, Collections.emptySet());
+        }
+        CookieManager.getInstance().setAcceptCookie(true);
+        CookieManager.getInstance().setAcceptThirdPartyCookies(w, true);
+    }
+
+    private final WebChromeClient chrome = new WebChromeClient() {
+        @Override
+        public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, Message resultMsg) {
+            closePopup();
+            popup = new WebView(getContext());
+            configure(popup);
+            popup.setWebChromeClient(this);
+            popup.setWebViewClient(new WebViewClient() {
+                @Override
+                public void onPageStarted(WebView v, String url, Bitmap favicon) { checkGoogleBlock(url); }
+                @Override
+                public void onPageFinished(WebView v, String url) { checkGoogleBlock(url); }
+            });
+            popup.setBackgroundColor(Color.WHITE);
+            content.addView(popup, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            WebView.WebViewTransport t = (WebView.WebViewTransport) resultMsg.obj;
+            t.setWebView(popup);
+            resultMsg.sendToTarget();
+            return true;
+        }
+
+        @Override
+        public void onCloseWindow(WebView window) { if (window == popup) closePopup(); }
+    };
+
+    // Google refuses sign-in inside embedded web views ("ลงชื่อเข้าใช้ให้คุณไม่ได้ / เบราว์เซอร์หรือแอปนี้อาจไม่ปลอดภัย").
+    // We don't try to get around that: close the page and explain how to log in with e-mail + password instead.
+    private boolean googleNoticeShown = false;
+    private void checkGoogleBlock(String url) {
+        if (url == null || !url.contains("accounts.google.com")) return;
+        if (!(url.contains("/rejected") || url.contains("disallowed_useragent") || url.contains("signin/oauth/error"))) return;
+        getActivity().runOnUiThread(() -> {
+            closePopup();
+            notifyListeners("googleBlocked", new JSObject());
+            if (googleNoticeShown) return;
+            googleNoticeShown = true;
+            new AlertDialog.Builder(getActivity())
+                .setTitle("Google ไม่อนุญาตให้ login ในแอป")
+                .setMessage("Google บล็อกการ login ด้วยบัญชี Google ในหน้าเว็บที่อยู่ในแอป (เป็นนโยบายของ Google ทุกแอปเจอเหมือนกัน)\n\n"
+                    + "ให้ login VCG ด้วย อีเมล + รหัสผ่าน แทน\n\n"
+                    + "ถ้าบัญชีสมัครด้วย Google และยังไม่มีรหัสผ่าน: เปิดหน้า login ของ VCG ใน Chrome แล้วกด \"ลืมรหัสผ่าน\" ด้วยอีเมลเดียวกัน เพื่อตั้งรหัสผ่าน แล้วกลับมา login ในแอป")
+                .setPositiveButton("เข้าใจแล้ว", (d, w) -> { googleNoticeShown = false; })
+                .setNeutralButton("เปิดหน้า VCG ใน Chrome", (d, w) -> {
+                    googleNoticeShown = false;
+                    try { getActivity().startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://vcgmarkets.com/webtrader"))); } catch (Exception ignored) {}
+                })
+                .setOnCancelListener((d) -> { googleNoticeShown = false; })
+                .show();
+        });
+    }
+
+    private void closePopup() {
+        if (popup == null) return;
+        content.removeView(popup);
+        popup.destroy();
+        popup = null;
+    }
+
+    private void create() {
+        if (web != null) return;
+        web = new WebView(getContext());
+        configure(web);
+        web.addJavascriptInterface(new NativeBridge(), "__vcgNative");
+        web.setWebChromeClient(chrome);
+        web.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageStarted(WebView view, String url, Bitmap favicon) { currentUrl = url; }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                currentUrl = url;
+                view.evaluateJavascript(RELAY_JS, null);
+                JSObject o = new JSObject();
+                o.put("url", url);
+                notifyListeners("page", o);
+            }
+
+            @Override
+            public void onReceivedError(WebView view, WebResourceRequest req, WebResourceError err) {
+                if (!req.isForMainFrame()) return;
+                JSObject o = new JSObject();
+                o.put("code", err.getErrorCode());
+                o.put("description", String.valueOf(err.getDescription()));
+                notifyListeners("pageError", o);
+            }
+        });
+
+        // full-screen overlay: a top bar + the WebTrader page. INVISIBLE keeps the page (and its sockets) running.
+        overlay = new LinearLayout(getContext());
+        overlay.setOrientation(LinearLayout.VERTICAL);
+        overlay.setBackgroundColor(Color.parseColor("#0f1115"));
+        LinearLayout bar = new LinearLayout(getContext());
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setPadding(24, 12, 12, 12);
+        TextView title = new TextView(getContext());
+        title.setText("VCG WebTrader — login แล้วกด \"กลับไปที่แอป\"");
+        title.setTextColor(Color.parseColor("#d6d9e0"));
+        bar.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        Button back = new Button(getContext());
+        back.setText("กลับไปที่แอป");
+        back.setOnClickListener(v -> hideOverlay());
+        bar.addView(back);
+        overlay.addView(bar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        content = new FrameLayout(getContext());
+        content.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        overlay.addView(content, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        overlay.setVisibility(View.INVISIBLE);
+        // keep the login page clear of the status bar, gesture bar and on-screen keyboard
+        ViewCompat.setOnApplyWindowInsetsListener(overlay, (v, insets) -> {
+            Insets b = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+            int ime = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom;
+            // If the activity window already shrank for the keyboard (adjustResize), the overlay ends above the
+            // keyboard and adding the IME inset again squeezed the login page to a thin strip. Only pad by the part
+            // of the keyboard that still covers the overlay.
+            int[] loc = new int[2];
+            v.getLocationOnScreen(loc);
+            int screenH = v.getRootView().getHeight();
+            int gapBelow = Math.max(0, screenH - (loc[1] + v.getHeight()));
+            int bottom = Math.max(b.bottom, ime - gapBelow);
+            v.setPadding(b.left, b.top, b.right, Math.max(0, bottom));
+            return WindowInsetsCompat.CONSUMED;
+        });
+        // window resized (keyboard opened/closed with adjustResize) → recompute the padding above
+        overlay.addOnLayoutChangeListener((v, l, t, r, bt, ol, ot, or, ob) -> { if (bt - t != ob - ot) ViewCompat.requestApplyInsets(v); });
+        ViewGroup root = getActivity().findViewById(android.R.id.content);
+        root.addView(overlay, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+    }
+
+    private void hideOverlay() {
+        if (overlay == null) return;
+        overlay.setVisibility(View.INVISIBLE);
+        notifyListeners("hidden", new JSObject());
+    }
+
+    @PluginMethod
+    public void start(PluginCall call) {
+        String url = call.getString("url");
+        getActivity().runOnUiThread(() -> {
+            create();
+            if (url != null && (web.getUrl() == null || web.getUrl().isEmpty())) web.loadUrl(url);
+            call.resolve();
+        });
+    }
+
+    @PluginMethod
+    public void navigate(PluginCall call) {
+        String url = call.getString("url");
+        getActivity().runOnUiThread(() -> { create(); web.loadUrl(url); call.resolve(); });
+    }
+
+    @PluginMethod
+    public void eval(PluginCall call) {
+        String js = call.getString("js", "");
+        getActivity().runOnUiThread(() -> {
+            if (web == null) { call.reject("not started"); return; }
+            web.evaluateJavascript(js, value -> {
+                JSObject o = new JSObject();
+                o.put("value", value == null ? "null" : value);
+                call.resolve(o);
+            });
+        });
+    }
+
+    @PluginMethod
+    public void getUrl(PluginCall call) {
+        JSObject o = new JSObject();
+        o.put("url", currentUrl == null ? "" : currentUrl);
+        call.resolve(o);
+    }
+
+    @PluginMethod
+    public void show(PluginCall call) {
+        getActivity().runOnUiThread(() -> {
+            create();
+            // make sure the overlay is attached and drawn above the Capacitor WebView
+            if (overlay.getParent() == null) {
+                ViewGroup root = getActivity().findViewById(android.R.id.content);
+                root.addView(overlay, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            }
+            overlay.setElevation(1000f);
+            overlay.setTranslationZ(1000f);
+            overlay.setVisibility(View.VISIBLE);
+            web.setVisibility(View.VISIBLE);
+            overlay.bringToFront();
+            ViewCompat.requestApplyInsets(overlay);
+            overlay.post(() -> {
+                JSObject o = new JSObject();
+                o.put("visible", overlay.isShown());
+                o.put("w", overlay.getWidth());
+                o.put("h", overlay.getHeight());
+                o.put("url", currentUrl == null ? "" : currentUrl);
+                call.resolve(o);
+            });
+        });
+    }
+
+    @PluginMethod
+    public void hide(PluginCall call) {
+        getActivity().runOnUiThread(() -> { hideOverlay(); call.resolve(); });
+    }
+
+    @PluginMethod
+    public void reload(PluginCall call) {
+        getActivity().runOnUiThread(() -> { if (web != null) web.reload(); call.resolve(); });
+    }
+
+    @PluginMethod
+    public void clearData(PluginCall call) {
+        getActivity().runOnUiThread(() -> {
+            CookieManager.getInstance().removeAllCookies(null);
+            CookieManager.getInstance().flush();
+            WebStorage.getInstance().deleteAllData();
+            if (web != null) web.clearCache(true);
+            call.resolve();
+        });
+    }
+
+    /** Android back button: close the WebTrader overlay first. */
+    public boolean handleBack() {
+        if (popup != null) { if (popup.canGoBack()) popup.goBack(); else closePopup(); return true; }
+        if (overlay != null && overlay.getVisibility() == View.VISIBLE) { hideOverlay(); return true; }
+        return false;
+    }
+}

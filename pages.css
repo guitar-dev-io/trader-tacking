@@ -1,0 +1,25 @@
+/* Page tabs (pages.js) */
+#pagebar { display: flex; align-items: flex-end; gap: 2px; padding: 4px 8px 0; border-bottom: 1px solid var(--line); background: var(--bg); overflow-x: auto; scrollbar-width: none; flex: none; }
+#pagebar.hidden { display: none; }
+#pagebar .pg { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 1px solid transparent; border-bottom: none; border-radius: 8px 8px 0 0; background: transparent; color: var(--muted); cursor: pointer; white-space: nowrap; font-size: 13px; }
+#pagebar .pg:hover { color: var(--text); background: var(--hover, rgba(127,127,127,.08)); }
+#pagebar .pg.active { color: var(--text); background: var(--panel); border-color: var(--line); position: relative; top: 1px; }
+#pagebar .pg-x { display: inline-flex; padding: 2px; border-radius: 4px; opacity: .55; }
+#pagebar .pg-x:hover { opacity: 1; background: var(--hover, rgba(127,127,127,.15)); }
+#center.paged > :not(#pagebar):not(#pages) { display: none !important; }
+#pages { flex: 1; min-height: 0; overflow: auto; background: var(--panel); }
+#pages.hidden { display: none; }
+#pages .page { max-width: 1040px; margin: 0 auto; padding: 18px 24px 40px; }
+#pages .page.hidden { display: none; }
+#pages .page-body { display: block !important; height: auto !important; overflow: visible !important; font-size: 14px; }
+#tabs button.popped { opacity: .55; }
+#tabs button.popped::after { content: ''; display: inline-block; width: 5px; height: 5px; margin-left: 4px; border-radius: 50%; background: var(--accent); vertical-align: middle; }
+
+body.mobile #pagebar, body.mobile #side-pop { display: none !important; }
+#tabs button.ib#side-pop { flex: 0 0 30px; border-bottom: none; padding: 0; display: flex; align-items: center; justify-content: center; }
+/* the pop-out button takes room in the side tab bar: let tabs keep their natural width and scroll instead of overlapping */
+#tabs { overflow-x: auto; scrollbar-width: none; }
+#tabs::-webkit-scrollbar { display: none; }
+#tabs button[data-tab] { flex: 1 0 auto; padding-left: 6px; padding-right: 6px; }
+#tabs button.ib#side-pop, #tabs button.ib#side-collapse { flex: 0 0 28px; position: sticky; right: 0; background: var(--panel); }
+#tabs button.ib#side-pop { right: 28px; margin-left: 0; }

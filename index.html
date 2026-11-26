@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:">
+<title>Price Tracker</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="lessons-guide.css">
+<link rel="stylesheet" href="mm.css">
+<link rel="stylesheet" href="mobile.css">
+<link rel="stylesheet" href="setup.css">
+<link rel="stylesheet" href="positions.css">
+<link rel="stylesheet" href="pages.css">
+<link rel="stylesheet" href="about.css">
+<link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+<div id="titlebar">
+  <div class="drag"></div>
+  <div id="sym-title"><span id="cur-sym">XAUUSD</span> <span id="cur-bid">—</span> <span id="cur-chg"></span> <span id="trend-badge"></span></div>
+  <div id="netbanner" class="hidden"><i data-icon="wifi-off"></i><span id="netbanner-text"></span><button id="netbanner-x" title="ซ่อน" aria-label="ซ่อน"><i data-icon="x"></i></button></div>
+  <div id="net" title=""><span class="nd"></span><span id="net-text">—</span></div>
+  <div id="conn"><span class="dot"></span><span id="conn-text">กำลังเชื่อมต่อ…</span></div>
+  <button id="theme-btn" class="ib" title="เปลี่ยนธีม (มืด / สว่าง / คอนทราสต์สูง)" aria-label="เปลี่ยนธีม"></button>
+  <button id="side-btn" class="ib" title="ซ่อน/แสดงแถบด้านขวา (⌘\\)"></button>
+  <button id="settings-btn" class="ib" title="การตั้งค่า (⌘,)"></button>
+</div>
+
+<div id="toasts"></div>
+<div id="app">
+  <!-- left: drawing tools -->
+  <div id="tools"></div>
+
+  <!-- center: chart -->
+  <div id="center">
+    <div id="toolbar">
+     <div id="tb-scroll">
+      <div id="tfs"></div>
+      <div class="sep"></div>
+      <select id="ctype" title="Chart type">
+        <option value="candles">แท่งเทียน</option>
+        <option value="ha">Heikin Ashi</option>
+        <option value="bars">OHLC Bars</option>
+        <option value="line">เส้น</option>
+        <option value="area">Area</option>
+      </select>
+      <div class="sep"></div>
+      <div class="dropdown">
+        <button id="ind-btn" class="tb-btn"><i data-icon="fx"></i>อินดิเคเตอร์</button>
+        <div id="ind-menu" class="menu hidden"></div>
+      </div>
+      <div class="dropdown">
+        <button id="an-btn" class="tb-btn"><i data-icon="brain"></i>วิเคราะห์</button>
+        <div id="an-menu" class="menu hidden"></div>
+      </div>
+      <div class="sep"></div>
+      <label class="chk"><input type="checkbox" id="show-ask" checked> Ask</label>
+      <label class="chk"><input type="checkbox" id="magnet" checked> Magnet</label>
+      <div class="sep"></div>
+      <button id="undo" class="ib" title="Undo (⌘Z)"></button>
+      <button id="redo" class="ib" title="Redo (⇧⌘Z)"></button>
+      <span id="hint"></span>
+     </div>
+     <div id="tb-end">
+      <div class="dropdown">
+        <button id="cs-btn" class="ib" title="ตั้งค่ากราฟ"></button>
+        <div id="cs-menu" class="menu right hidden"></div>
+      </div>
+      <button id="full" class="ib" title="เต็มจอ"></button>
+      <button id="shot" class="ib" title="บันทึกภาพกราฟ"></button>
+     </div>
+    </div>
+    <div id="chart-wrap">
+      <div id="chart"></div>
+      <div id="legend"></div>
+      <div id="loading" class="hidden">กำลังโหลดกราฟ…</div>
+      <div id="connect" class="hidden"></div>
+      <div id="zoombar"><button data-z="out"></button><button data-z="in"></button><span></span><button data-z="left"></button><button data-z="right"></button><span></span><button data-z="reset"></button></div>
+      <div id="layers-pop" class="menu hidden"></div>
+    </div>
+    <div id="bottombar">
+      <div id="ranges"></div>
+      <div class="grow"></div>
+      <span id="clock"></span>
+      <div class="sep"></div>
+      <button data-scale="pct">%</button><button data-scale="log">log</button><button data-scale="auto" class="active">auto</button>
+    </div>
+  </div>
+
+  <div id="side-rail"></div>
+  <!-- right: tabs -->
+  <div id="side">
+    <div id="tabs">
+      <button data-tab="market" class="active">ราคา</button>
+      <button data-tab="analysis">วิเคราะห์</button>
+      <button data-tab="practice">ฝึก</button>
+      <button data-tab="calc">คำนวณ</button>
+      <button data-tab="news">ข่าว <span id="news-badge"></span></button>
+      <button data-tab="learn">บทเรียน</button>
+      <button data-tab="log">Log <span id="log-badge"></span></button>
+      <button id="side-collapse" class="ib" title="ย่อแถบด้านขวา (⌘\\)"></button>
+    </div>
+    <div id="side-resizer" title="ลากเพื่อปรับความกว้าง"></div>
+
+    <div class="tab" id="tab-market">
+      <div class="panel">
+        <div class="panel-h wl-h"><span>Watchlist</span><i class="wl-tip" title="ดาว = ราคาที่แสดงบนแถบเมนู / ถาดระบบ · คลิกดาวเพื่อเปลี่ยน · คลิกชื่อเพื่อเปิดกราฟ"><i data-icon="info"></i></i>
+          <button id="src-pill" class="src-pill" title="แหล่งราคา — กดเพื่อเปลี่ยนหรือดูวิธีเชื่อมต่อ" aria-haspopup="menu"></button></div>
+        <div id="src-hint"></div>
+        <table id="wl"><thead><tr><th>Symbol</th><th>Bid</th><th>Ask</th><th>%</th><th></th></tr></thead><tbody></tbody></table>
+        <form id="add-form"><input id="add-input" placeholder="เพิ่ม symbol เช่น GBPUSD" autocomplete="off"><button>+</button></form>
+        <div id="src-sel-home"></div>
+      </div>
+      <div id="positions-panel" class="hidden"></div>
+      <details class="panel fold" data-fold="alerts" open>
+        <summary class="panel-h">แจ้งเตือนราคา <span class="fold-n" id="alerts-n"></span></summary>
+        <form id="alert-form"><input id="alert-input" placeholder="ราคา" inputmode="decimal"><button>+ Alert</button></form>
+        <ul id="alerts"></ul>
+      </details>
+      <details class="panel fold" data-fold="tools">
+        <summary class="panel-h">การเชื่อมต่อ &amp; เครื่องมือ</summary>
+        <div class="btns">
+          <button id="show-trader">เปิด WebTrader / Login</button>
+          <button id="reload-trader"><i data-icon="refresh-cw"></i>เชื่อมต่อใหม่</button>
+        </div>
+        <label class="chk"><input type="checkbox" id="csv"> บันทึกทุก tick ลง CSV</label>
+        <div class="btns"><button id="open-csv">เปิดโฟลเดอร์ CSV</button></div>
+        <p class="muted" id="api-info"></p>
+      </details>
+      <div class="panel panel-foot">
+        <button id="open-settings" class="tb-btn"><i data-icon="gear"></i>การตั้งค่าทั้งหมด</button>
+        <p class="ro-note"><i data-icon="shield-check"></i>แอปนี้อ่านและแสดงราคาเท่านั้น ไม่ส่งคำสั่งซื้อขาย · ไม่ใช่คำแนะนำการลงทุน</p>
+      </div>
+    </div>
+
+    <div class="tab hidden" id="tab-analysis">
+      <div class="panel" id="an-trend"></div>
+      <div class="panel" id="an-bounce"></div>
+      <div class="panel" id="an-signal"></div>
+      <div class="panel" id="an-stats"></div>
+      <div class="panel"><p class="disclaimer"><i data-icon="triangle-alert"></i>สัญญาณมาจากกฎทางเทคนิคและสถิติย้อนหลังเพื่อการเรียนรู้ ไม่ใช่คำแนะนำการลงทุน ผลในอดีตไม่รับประกันอนาคต ควรทดลองกับบัญชี Demo ก่อนเสมอ</p></div>
+    </div>
+
+    <div class="tab hidden" id="tab-practice">
+      <div class="panel" id="quiz"></div>
+      <div class="panel" id="sim"></div>
+      <div class="panel" id="lesson-pack"></div>
+      <div class="panel"><p class="disclaimer">บัญชีจำลองใช้เงินสมมติ ไม่ได้ส่งคำสั่งจริงไปที่ VCG · ผลการจำลองไม่รวมสเปรด/slippage จริง</p></div>
+    </div>
+
+    <div class="tab hidden" id="tab-calc"><div id="planner"></div></div>
+
+    <div class="tab hidden" id="tab-learn"><div class="panel" id="lessons"></div></div>
+
+    <div class="tab hidden" id="tab-news"><div id="newsfeed"></div></div>
+    <div class="tab hidden" id="tab-log">
+      <div class="panel log-tools">
+        <select id="log-level"><option value="">ทุกระดับ</option><option value="error">error</option><option value="warn">warn+</option><option value="info">info+</option></select>
+        <input id="log-search" placeholder="ค้นหา…">
+        <button id="log-file" title="เปิดไฟล์ log" aria-label="เปิดไฟล์ log"><i data-icon="file-text"></i></button>
+        <button id="log-folder" title="เปิดโฟลเดอร์ log" aria-label="เปิดโฟลเดอร์ log"><i data-icon="folder-open"></i></button>
+        <button id="log-copy" title="คัดลอก log" aria-label="คัดลอก log"><i data-icon="clipboard-copy"></i></button>
+      </div>
+      <div id="log-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- modal: script editor -->
+<div id="modal-script" class="modal hidden">
+  <div class="modal-box wide">
+    <div class="modal-h"><i data-icon="pencil"></i>เขียน Indicator <button class="x" data-close aria-label="ปิด"><i data-icon="x"></i></button></div>
+    <div class="row">
+      <input id="sc-name" placeholder="ชื่อ indicator">
+      <select id="sc-example"><option value="">— โหลดตัวอย่าง —</option></select>
+    </div>
+    <textarea id="sc-code" spellcheck="false"></textarea>
+    <div id="sc-msg" class="muted"></div>
+    <div class="row end">
+      <button id="sc-delete" class="danger">ลบสคริปต์</button>
+      <div class="grow"></div>
+      <button id="sc-test">ทดสอบ</button>
+      <button id="sc-save">บันทึก</button>
+      <button id="sc-add" class="primary">บันทึก + ใส่กราฟ</button>
+    </div>
+  </div>
+</div>
+
+<!-- modal: settings -->
+<div id="modal-settings" class="modal hidden">
+  <div class="modal-box wide settings">
+    <div class="modal-h">การตั้งค่า <button class="x" data-close aria-label="ปิด"><i data-icon="x"></i></button></div>
+    <div class="st-wrap">
+      <div class="st-nav">
+        <button data-st="general" class="active">ทั่วไป</button>
+        <button data-st="source">แหล่งราคา / บัญชี</button>
+        <button data-st="conn">เน็ต / ความเสถียร</button>
+        <button data-st="notif">แจ้งเตือน</button>
+        <button data-st="sess">ช่วงเวลาตลาด</button>
+        <button data-st="an">การวิเคราะห์</button>
+        <button data-st="claude">Claude</button>
+        <button data-st="api">API / Webhook</button>
+        <button data-st="data">ข้อมูล</button>
+        <button data-st="about">เกี่ยวกับ</button>
+      </div>
+      <div class="st-body">
+        <section data-sec="general">
+          <h4>ธีม</h4>
+          <div class="theme-pick" id="st-theme" role="radiogroup" aria-label="ธีม">
+            <button data-theme-v="auto" role="radio"><i class="tp-sw tp-auto"></i>ตามระบบ</button>
+            <button data-theme-v="dark" role="radio"><i class="tp-sw tp-dark"></i>มืด</button>
+            <button data-theme-v="light" role="radio"><i class="tp-sw tp-light"></i>สว่าง</button>
+            <button data-theme-v="contrast" role="radio"><i class="tp-sw tp-contrast"></i>คอนทราสต์สูง</button>
+          </div>
+          <h4>กราฟ</h4>
+          <div class="row"><label>Timezone</label><select id="st-tz"></select></div>
+          <div class="row"><label>โหลดย้อนหลัง</label><input id="st-bars" type="number" min="200" max="5000" step="100"><span class="muted">แท่ง (มาก = วิเคราะห์แม่นขึ้น แต่โหลดช้าลง)</span></div>
+          <h4>การแสดงผล (ปิดส่วนที่ไม่ใช้ได้)</h4>
+          <div class="ui-toggles">
+            <label class="chk"><input type="checkbox" data-ui="side"> แถบด้านขวา (ราคา/วิเคราะห์/ฝึก…)</label>
+            <label class="chk"><input type="checkbox" data-ui="tools"> แถบเครื่องมือวาด</label>
+            <label class="chk"><input type="checkbox" data-ui="toolbar"> แถบเครื่องมือด้านบนกราฟ</label>
+            <label class="chk"><input type="checkbox" data-ui="bottom"> แถบล่าง (ช่วงเวลา/session/นาฬิกา)</label>
+            <label class="chk"><input type="checkbox" data-ui="zoom"> ปุ่มซูมใต้กราฟ</label>
+            <label class="chk"><input type="checkbox" data-ui="legend"> ข้อความ OHLC และอินดิเคเตอร์มุมซ้ายบน</label>
+            <label class="chk"><input type="checkbox" data-ui="netbanner"> แถบเตือนเน็ตช้าด้านบน</label>
+          </div>
+          <h4>โปรแกรม</h4>
+          <label class="chk"><input type="checkbox" id="st-login"> เปิด Price Tracker อัตโนมัติเมื่อเปิดเครื่อง</label>
+          <label class="chk"><input type="checkbox" id="st-autoupd"> ตรวจหาเวอร์ชันใหม่อัตโนมัติ</label>
+          <div class="row"><button id="st-checkupd">ตรวจหาเวอร์ชันใหม่ตอนนี้</button></div>
+        </section>
+        <section data-sec="source" class="hidden">
+          <div class="src-cards">
+            <div class="src-card" id="st-src-vcg">
+              <div class="src-card-h"><b><i data-icon="globe"></i>VCG Markets</b><span id="st-vcg-pill" class="src-pill">—</span></div>
+              <p>login ด้วยอีเมล + รหัสผ่านของ VCG ในหน้าเว็บของ VCG เอง · แอปไม่เห็นและไม่เก็บรหัสผ่าน · ใช้ได้ทั้ง Mac / Windows / Android</p>
+              <div class="btns"><button id="st-use-vcg">ใช้ VCG</button><button id="st-trader">เปิด WebTrader / Login</button><button id="st-reconnect"><i data-icon="refresh-cw"></i>เชื่อมต่อใหม่</button><button id="st-signout" class="danger">ออกจากระบบ VCG</button></div>
+            </div>
+            <div class="src-card" id="st-src-mt5">
+              <div class="src-card-h"><b><i data-icon="monitor"></i>MT5 — โบรกเกอร์ของฉัน</b><span id="st-mt5-pill" class="src-pill">—</span></div>
+              <div id="st-mt5-info" class="net-now"></div>
+              <p>ใช้ได้ทุกโบรกเกอร์ที่มี MetaTrader 5 (Exness, XM, Brex ฯลฯ) · <b>EA อ่านอย่างเดียว ส่งออเดอร์ไม่ได้ — ดูออเดอร์/โพซิชันของตัวเองได้</b> · รหัสผ่านกรอกใน MT5 เท่านั้น</p>
+              <div class="btns"><button id="st-use-mt5">ใช้ MT5</button><button id="st-mt5-guide"><i data-icon="book-open"></i>ตัวช่วยเชื่อมต่อ MT5</button></div>
+              <details><summary>ขั้นสูง: ติดตั้ง EA เอง / เปลี่ยนพอร์ต</summary>
+                <div class="row"><label>พอร์ต MT5</label><input id="st-mt5-port" type="number" min="1024" max="65535"><button id="st-save-ea"><i data-icon="download"></i>บันทึกไฟล์ EA</button></div>
+                <div class="btns" style="margin:6px 0"><button id="st-install-ea">ติดตั้ง EA ลง MT5</button><button id="st-copy-ea">คัดลอกโค้ด EA</button></div>
+                <pre id="st-ea-out" class="hidden" style="white-space:pre-wrap;word-break:break-all;font-size:11.5px"></pre>
+                <ol class="mt5-steps">
+                  <li>กด "บันทึกไฟล์ EA" แล้วใน MT5 เปิด <b>File › Open Data Folder › MQL5 › Experts</b> วางไฟล์ <code>PriceTrackerBridge.mq5</code></li>
+                  <li>ใน MT5: <b>Tools › Options › Expert Advisors</b> ติ๊ก <i>Allow WebRequest for listed URL</i> แล้วเพิ่ม <code>http://127.0.0.1</code></li>
+                  <li>Navigator › Expert Advisors › คลิกขวา Refresh › ลาก <b>PriceTrackerBridge</b> ลงกราฟใดก็ได้ (พอร์ตต้องตรงกับช่องด้านบน)</li>
+                </ol>
+              </details>
+            </div>
+            <div class="src-card" id="st-src-demo">
+              <div class="src-card-h"><b><i data-icon="graduation-cap"></i>Demo</b><span class="src-pill ok">ไม่ต้อง login</span></div>
+              <p>ราคาจาก Binance สำหรับฝึก · XAUUSD ใช้ PAXG แทนทองคำ ราคาใกล้เคียงแต่ไม่เท่ากับโบรกเกอร์</p>
+              <div class="btns"><button id="st-use-demo">ใช้ Demo</button><button id="st-open-guide"><i data-icon="book-open"></i>คู่มือเริ่มต้น</button></div>
+            </div>
+          </div>
+        </section>
+        <section data-sec="conn" class="hidden">
+          <div id="st-net-now" class="net-now"></div>
+          <h4>เกณฑ์แจ้งเตือนเน็ตช้า</h4>
+          <div class="row"><label>Ping ช้าเกิน</label><input id="st-slow" type="number" min="100" step="100"><span class="muted">ms</span></div>
+          <div class="row"><label>ราคาหน่วงเกิน</label><input id="st-delay" type="number" min="500" step="500"><span class="muted">ms (เทียบเวลาราคากับนาฬิกาเครื่อง)</span></div>
+          <div class="row"><label>ไม่มีราคาเกิน</label><input id="st-stale" type="number" min="10" step="5"><span class="muted">วินาที → เตือน "ราคาค้าง"</span></div>
+          <div class="row"><label>หลุดนานเกิน</label><input id="st-stuck" type="number" min="20" step="10"><span class="muted">วินาที → โหลด WebTrader ใหม่อัตโนมัติ</span></div>
+          <label class="chk"><input type="checkbox" id="st-netnotify"> แจ้งเตือนบน macOS เมื่อการเชื่อมต่อแย่ลง</label>
+        </section>
+        <section data-sec="notif" class="hidden">
+          <label class="chk"><input type="checkbox" id="st-sound"> เสียงแจ้งเตือน</label>
+          <label class="chk"><input type="checkbox" id="st-desktop"> แจ้งเตือนบน macOS (Notification Center)</label>
+          <label class="chk"><input type="checkbox" id="st-toast"> ป้ายแจ้งเตือนในแอป</label>
+          <label class="chk"><input type="checkbox" id="st-signotify"> แจ้งเตือนเมื่อมีสัญญาณใหม่</label>
+          <label class="chk"><input type="checkbox" id="st-learnonly"> เฉพาะสัญญาณที่ผ่านโหมดเรียนรู้</label>
+          <p class="muted">ส่งต่อไป Telegram / Webhook ตั้งได้ที่แท็บ "API / Webhook"</p>
+        </section>
+        <section data-sec="sess" class="hidden">
+          <p class="muted">ตั้งเวลาเปิด–ปิดตาม "เขตเวลา" ที่เลือก · ถ้าเลือกเขตเวลาของตลาดนั้น (เช่น London) เวลาฤดูร้อน (DST) จะปรับให้อัตโนมัติ · ถ้าอยากล็อกเป็นเวลาไทยตายตัว เลือก Bangkok</p>
+          <div class="row"><label>ชุดสำเร็จรูป</label><select id="sess-preset"><option value="">— เลือก —</option><option value="fx">Forex มาตรฐาน</option><option value="fx7">Forex (London 07:00 GMT)</option><option value="stock">เวลาตลาดหุ้น</option><option value="ict">ICT Killzones</option></select></div>
+          <table class="sess-tbl"><thead><tr><th></th><th>ชื่อ</th><th>สี</th><th>เปิด</th><th>ปิด</th><th>เขตเวลา</th><th>= เวลาไทยวันนี้</th><th></th></tr></thead><tbody id="sess-rows"></tbody></table>
+          <div class="row"><button id="sess-add">+ เพิ่มช่วงเวลา</button></div>
+        </section>
+        <section data-sec="an" class="hidden">
+          <div class="row"><label>Swing length</label><input id="st-swing" type="number" min="2" max="30"><span class="muted">แท่งซ้าย/ขวา สำหรับหาสวิง</span></div>
+          <div class="row"><label>TP1 (R)</label><input id="st-rr1" type="number" min="0.5" step="0.5"></div>
+          <div class="row"><label>TP2 (R)</label><input id="st-rr2" type="number" min="0.5" step="0.5"></div>
+          <div class="row"><label>SL เผื่อ</label><input id="st-slbuf" type="number" min="0" step="0.05"><span class="muted">× ATR เลยไส้/สวิง</span></div>
+          <div class="row"><label>ตัวอย่างขั้นต่ำ</label><input id="st-minsamp" type="number" min="1"><span class="muted">ไม้ ก่อนโหมดเรียนรู้จะตัดสิน</span></div>
+          <div class="row"><label>ถือไม่เกิน</label><input id="st-maxbars" type="number" min="10" step="10"><span class="muted">แท่ง (ทดสอบย้อนหลัง)</span></div>
+        </section>
+        <section data-sec="claude" class="hidden">
+          <h4>ให้ Claude เข้าถึงแอปนี้ (MCP)</h4>
+          <p class="muted">Claude Desktop / Claude Code บน Mac เครื่องนี้จะ: อ่านราคา แท่งเทียน ผลวิเคราะห์ จุดเด้ง และ SL เม่า · เปิดกราฟ symbol/TF ที่ต้องการ · ดูภาพกราฟที่คุณเห็น · วาดโซน/เส้น/Fibo อธิบายบนกราฟ · ใช้เครื่องคำนวณ lot — <b>ส่งคำสั่งซื้อขายจริงไม่ได้</b> (แอปไม่มีระบบเทรด)</p>
+          <div id="st-claude-state" class="muted"></div>
+          <div class="btns" style="margin-top:8px"><button id="st-claude-desktop" class="primary">เพิ่มใน Claude Desktop</button><button id="st-claude-code">คำสั่งสำหรับ Claude Code</button></div>
+          <pre id="st-claude-out" class="hidden" style="white-space:pre-wrap;word-break:break-all;font-size:11.5px;margin-top:8px"></pre>
+          <p class="muted" style="margin-top:8px">ขั้นตอน: ① กด "เพิ่มใน Claude Desktop" ② ปิดแล้วเปิด Claude Desktop ใหม่ ③ ลองพิมพ์ใน Claude: <i>"ดูกราฟ XAUUSD H1 ใน Price Tracker แล้ววิเคราะห์จุดเด้ง วาดโซนให้ด้วย"</i> · ใช้ได้ขณะแอปนี้เปิดอยู่ · แอปจะเปิด Local API เฉพาะเครื่องนี้ (127.0.0.1) พร้อม token ให้อัตโนมัติ · ถ้าย้ายแอปไปโฟลเดอร์อื่น ให้กดเพิ่มใหม่</p>
+        </section>
+        <section data-sec="api" class="hidden">
+          <h4>Local API (ให้โปรแกรมอื่น / เว็บ / มือถือ ดึงข้อมูล)</h4>
+          <label class="chk"><input type="checkbox" id="st-api-on"> เปิด API</label>
+          <div class="row"><label>Port</label><input id="st-api-port" type="number" min="1024" max="65535"></div>
+          <div class="row"><label>Token</label><input id="st-api-token" placeholder="ว่าง = ไม่ใช้ token"><button id="st-gen">สุ่ม</button></div>
+          <label class="chk"><input type="checkbox" id="st-api-lan"> ให้เครื่องอื่นในวง Wi-Fi เดียวกันเข้าได้ (ควรตั้ง token)</label>
+          <p class="muted" id="st-api-url"></p>
+          <h4>Webhook (Discord / Slack / n8n / Make / Zapier / เซิร์ฟเวอร์ของคุณ)</h4>
+          <div class="row"><label>URL</label><input id="st-wh-url" placeholder="https://…"></div>
+          <label class="chk"><input type="checkbox" id="st-wh-sig"> ส่งเมื่อมีสัญญาณใหม่</label>
+          <label class="chk"><input type="checkbox" id="st-wh-alert"> ส่งเมื่อราคาถึง Alert</label>
+          <h4>Telegram</h4>
+          <div class="row"><label>Bot token</label><input id="st-tg-token" placeholder="123456:ABC… จาก @BotFather"></div>
+          <div class="row"><label>Chat ID</label><input id="st-tg-chat" placeholder="เช่น 123456789"></div>
+          <label class="chk"><input type="checkbox" id="st-tg-sig"> ส่งเมื่อมีสัญญาณใหม่</label>
+          <label class="chk"><input type="checkbox" id="st-tg-alert"> ส่งเมื่อราคาถึง Alert</label>
+          <div class="row end"><button id="st-test">ส่งข้อความทดสอบ</button></div>
+        </section>
+        <section data-sec="data" class="hidden">
+          <label class="chk"><input type="checkbox" id="st-csv"> บันทึกทุก tick ลง CSV (โฟลเดอร์ Documents/Price Tracker)</label>
+          <div class="row"><button id="st-open-csv">เปิดโฟลเดอร์ CSV</button><button id="st-open-log">เปิดโฟลเดอร์ Log</button></div>
+          <h4>สำรอง / กู้คืน</h4>
+          <p class="muted">รวม watchlist, รูปวาด, indicator, สคริปต์, alert, การตั้งค่าทั้งหมด (ไม่รวมรหัสผ่าน VCG)</p>
+          <div class="row"><button id="st-backup"><i data-icon="save"></i>สำรองเป็นไฟล์</button><button id="st-restore"><i data-icon="folder-open"></i>กู้คืนจากไฟล์</button><input type="file" id="st-file" accept=".json" class="hidden"></div>
+          <h4>รีเซ็ต</h4>
+          <div class="row"><button id="st-reset" class="danger">ล้างข้อมูลในแอปทั้งหมด</button><span class="muted" id="st-reset-msg"></span></div>
+          <p class="muted" id="st-ver"></p>
+        </section>
+        <section data-sec="about" class="hidden">
+          <h4>Price Tracker</h4>
+          <div class="ro-box">
+            <b><i data-icon="shield-check"></i>อ่านราคาอย่างเดียว — ไม่ส่งคำสั่งซื้อขาย</b>
+            <ul>
+              <li>แอปนี้ดึงราคาและแท่งเทียนมาแสดง วิเคราะห์ และใช้ฝึกเท่านั้น ไม่มีปุ่มหรือคำสั่งใดที่ส่งออเดอร์ไปที่โบรกเกอร์</li>
+              <li>MT5: EA PriceTrackerBridge อ่านอย่างเดียว ส่งออเดอร์ไม่ได้ — ดูออเดอร์/โพซิชันของตัวเองได้</li>
+              <li>VCG: รหัสผ่านกรอกในหน้าเว็บของ VCG เอง แอปไม่เห็นและไม่เก็บรหัสผ่าน</li>
+              <li>บัญชีฝึกเทรดในแอปใช้เงินสมมติทั้งหมด</li>
+            </ul>
+            <p class="muted">ผลวิเคราะห์ สัญญาณ และบทเรียนมีไว้เพื่อการเรียนรู้ ไม่ใช่คำแนะนำการลงทุน — การเทรดมีความเสี่ยง ตัดสินใจด้วยตัวเองเสมอ</p>
+          </div>
+          <p class="muted" id="st-about-ver"></p>
+        </section>
+      </div>
+    </div>
+    <div class="row end"><span id="st-msg" class="muted"></span><div class="grow"></div><button data-close>ปิด</button><button id="st-save" class="primary">บันทึก</button></div>
+  </div>
+</div>
+
+<script src="vcg-inject.js"></script>
+<script src="bridge.js"></script>
+<script src="lib/lightweight-charts.standalone.production.js"></script>
+<script src="indicators.js"></script>
+<script src="analysis.js"></script>
+<script src="bounce.js"></script>
+<script src="custom.js"></script>
+<script src="lessons.js"></script>
+<script src="lessons-guide.js"></script>
+<script src="icons.js"></script>
+<script src="app-core.js"></script>
+<script src="app-chart.js"></script>
+<script src="app-analysis.js"></script>
+<script src="app-bounce.js"></script>
+<script src="app-data.js"></script>
+<script src="app-overlay.js"></script>
+<script src="mm.js"></script>
+<script src="mm-learn.js"></script>
+<script src="app.js"></script>
+<script src="draw.js"></script>
+<script src="planner.js"></script>
+<script src="settings.js"></script>
+<script src="extras.js"></script>
+<script src="learn.js"></script>
+<script src="news.js"></script>
+<script src="setup.js"></script>
+<script src="positions.js"></script>
+<script src="mtf.js"></script>
+<script src="ui.js"></script>
+<script src="mobile.js"></script>
+<script src="pages.js"></script>
+<script src="about.js"></script>
+<script src="dashboard.js"></script>
+<script src="claude-bridge.js"></script>
+</body>
+</html>

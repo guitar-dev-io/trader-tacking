@@ -1,0 +1,57 @@
+/* Money management lessons, plan table and practice (mm-learn.js) */
+.lg-fig svg.mm-fig { background: var(--surface-2, var(--panel)); }
+.lg-fig:has(svg.mm-fig) { max-width: 340px; }
+.mm-formula { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; background: var(--surface-2, var(--panel)); border: 1px dashed var(--line); border-radius: 6px; padding: 6px 9px; color: var(--text); }
+.mm-go { display: inline-flex; align-items: center; gap: 6px; margin: 6px 0; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--accent); color: var(--accent); background: transparent; cursor: pointer; font-size: 12.5px; }
+.mm-go:hover { background: var(--accent); color: #fff; }
+.mm-go svg, .mm-quiz svg { vertical-align: -2px; }
+.mm-cent-fig { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0; }
+.mm-cent-fig > div { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2, var(--panel)); font-size: 12px; color: var(--muted); }
+.mm-cent-fig > div > b { color: var(--text); font-size: 13px; }
+.mm-cent-fig > div:last-child { border-color: var(--accent); }
+.mm-check li { margin: 4px 0; }
+
+.mm-seg { display: flex; flex-wrap: nowrap; gap: 0; }
+.mm-seg button { flex: 1 1 auto; border-radius: 0; padding: 4px 8px; font-size: 12px; min-width: 0; }
+.mm-seg button:first-child { border-radius: 6px 0 0 6px; } .mm-seg button:last-child { border-radius: 0 6px 6px 0; }
+.mm-seg button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.mm-ctl { display: flex; flex-direction: column; gap: 3px; margin: 6px 0; }
+.mm-ctl label { font-size: 11px; color: var(--muted); }
+.mm-ctl2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 4px 12px; align-items: end; }
+.mm-ctl2 > * { min-width: 0; }
+.mm-ctl > .mm-seg button { white-space: nowrap; }
+.mm-plan > .mm-ctl:first-child .mm-seg { flex-wrap: wrap; }
+.mm-ctl2 select { padding: 4px 6px; font-size: 12px; }
+
+.mm-plan { margin-top: 4px; }
+.mm-sum { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; margin: 8px 0; }
+.mm-sum > div { display: flex; flex-direction: column; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2, var(--panel)); }
+.mm-sum span, .mm-sum small, .mm-t small { font-size: 11px; color: var(--muted); }
+.mm-sum b { font-size: 14px; color: var(--text); font-variant-numeric: tabular-nums; }
+.mm-t { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 12px; font-variant-numeric: tabular-nums; }
+.mm-t th { text-align: left; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--line); padding: 4px; }
+.mm-t td { border-bottom: 1px solid var(--line); padding: 4px; vertical-align: top; }
+.mm-t td small { display: block; }
+.mm-t td b { color: var(--text); }
+.mm-why { margin: 6px 0; padding-left: 18px; font-size: 12.5px; }
+.mm-why li { margin: 3px 0; }
+.mm-plan .down, .mm-quiz .down { color: var(--down); }
+
+.mm-quiz .mm-qh { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.mm-quiz .mm-qh b { display: inline-flex; align-items: center; gap: 6px; margin-right: auto; }
+.mm-score { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mm-q { margin: 8px 0; padding: 10px 12px; border-radius: 8px; background: var(--surface-2, var(--panel)); border: 1px solid var(--line); line-height: 1.6; }
+.mm-tag { display: inline-block; font-size: 10.5px; padding: 1px 7px; margin-right: 6px; border-radius: 10px; border: 1px solid var(--accent); color: var(--accent); }
+.mm-ans { display: flex; gap: 6px; }
+.mm-ans input { flex: 1; min-width: 0; font-size: 14px; padding: 6px 9px; }
+.mm-ans button.primary { background: var(--accent); border-color: var(--accent); color: #fff; padding: 6px 14px; }
+.mm-ok, .mm-bad { display: flex; align-items: center; gap: 6px; margin: 8px 0 4px; font-weight: 600; }
+.mm-ok { color: var(--up); } .mm-bad { color: var(--down); }
+.mm-steps { margin: 4px 0; padding-left: 20px; font-size: 12.5px; color: var(--text); }
+.mm-steps li { margin: 2px 0; }
+.mm-quiz .btns { display: flex; gap: 6px; margin-top: 8px; }
+.mm-quiz .btns button { flex: 1; }
+
+/* calculator: account type */
+#planner .pl-acct-hint { font-size: 11px; color: var(--muted); margin-top: 3px; }
+#planner .pl-cent { color: var(--accent); }

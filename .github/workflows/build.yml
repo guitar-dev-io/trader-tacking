@@ -1,0 +1,149 @@
+name: Build apps
+
+# Builds the macOS app (arm64 + x64) and the Android APK.
+#  • push a tag like v2.1.0  → full GitHub Release (used by the in-app update checker)
+#  • push to a feat/* branch or run manually → pre-release "build-<run>" for testing
+on:
+  push:
+    tags: ['v*']
+    branches: ['feat/**']
+    paths-ignore: ['README.md']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Unit tests (analysis, bounce finder, injected scripts, MT5 bridge)
+        run: npm test
+      - name: UI tests (Electron, headless)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq xvfb libnss3 libgbm1 libasound2t64 > /dev/null
+          xvfb-run -a npm run test:ui
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: ui-test-screens, path: tests/ui/out/, if-no-files-found: ignore }
+
+  android:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21, cache: gradle }
+      - run: npm ci
+      - name: Build web assets + sync Capacitor
+        run: |
+          node scripts/build-www.js
+          npx cap sync android
+      # Keep the fallback debug key stable between runs so updates install over the previous APK
+      - uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: android-debug-keystore-v1
+      - name: Signing key (optional, from secrets)
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KS_PW: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KS_B64" ]; then echo "No ANDROID_KEYSTORE_B64 secret — using the cached debug key"; exit 0; fi
+          echo "$KS_B64" | tr -d ' \r\n' | base64 -d > "$RUNNER_TEMP/release.jks"
+          PW=$(printf '%s' "$KS_PW" | tr -d '\r\n')
+          echo "::add-mask::$PW"
+          if keytool -list -keystore "$RUNNER_TEMP/release.jks" -storepass "$PW" > "$RUNNER_TEMP/ks.txt" 2>&1; then
+            ALIAS=$(grep -m1 -oE '^[^,]+, ' "$RUNNER_TEMP/ks.txt" | sed 's/, $//' || true)
+            echo "KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> $GITHUB_ENV
+            echo "KEYSTORE_PASSWORD=$PW" >> $GITHUB_ENV
+            echo "KEY_ALIAS=${ALIAS:-pricetracker}" >> $GITHUB_ENV
+            echo "Using release key (alias: ${ALIAS:-pricetracker})"
+          else
+            echo "::warning title=Android signing::Cannot open the keystore with ANDROID_KEYSTORE_PASSWORD ($(head -1 $RUNNER_TEMP/ks.txt)). Building with the debug key instead — fix the secret to sign with your key."
+          fi
+      - name: Gradle assembleRelease
+        working-directory: android
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+        run: |
+          export VERSION_NAME=$(node -p "require('../package.json').version")
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+          mkdir -p ../out && cp app/build/outputs/apk/release/app-release.apk "../out/Price-Tracker-android-$VERSION_NAME.apk"
+      - uses: actions/upload-artifact@v4
+        with: { name: android, path: out/*.apk }
+
+  mac:
+    needs: test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run build:mac
+      - name: Ad-hoc sign + zip
+        run: |
+          mkdir -p out
+          for a in arm64 x64; do
+            APP="dist/Price Tracker-darwin-$a/Price Tracker.app"
+            codesign --force --deep -s - "$APP"
+            ditto -c -k --keepParent "$APP" "out/Price-Tracker-mac-$a.zip"
+          done
+      - uses: actions/upload-artifact@v4
+        with: { name: mac, path: out/*.zip }
+
+  windows:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Build installer + portable + zip (electron-builder)
+        env: { CSC_IDENTITY_AUTO_DISCOVERY: 'false' }
+        run: npm run build:win
+      - name: Collect
+        shell: bash
+        run: |
+          mkdir -p out
+          cp dist-win/*.exe out/ && cp dist-win/*.zip out/
+          rm -f out/*uninstall* out/__*
+          ls -la out
+      - uses: actions/upload-artifact@v4
+        with: { name: windows, path: out/* }
+
+  release:
+    needs: [android, mac, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { path: out, merge-multiple: true, pattern: '{android,mac,windows}*' }
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VER=$(node -p "require('./package.json').version")
+          NOTES="Price Tracker $VER
+          • Android: ติดตั้งไฟล์ .apk (อนุญาตติดตั้งจากแหล่งที่ไม่รู้จัก)
+          • Mac: แตก zip แล้วลากไป Applications — เปิดครั้งแรกด้วยคลิกขวา > Open (หรือ: xattr -cr \"/Applications/Price Tracker.app\")
+          • Windows: Price-Tracker-Setup-*.exe (ติดตั้ง) หรือ Price-Tracker-portable-*.exe (ไม่ต้องติดตั้ง เก็บข้อมูลไว้ข้างไฟล์) — ถ้าขึ้น Windows protected your PC กด More info > Run anyway"
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            gh release create "$GITHUB_REF_NAME" out/*.apk out/*.zip out/*.exe --title "Price Tracker $GITHUB_REF_NAME" --notes "$NOTES"
+          else
+            TAG="build-${GITHUB_RUN_NUMBER}"
+            gh release create "$TAG" out/*.apk out/*.zip out/*.exe --prerelease --target "$GITHUB_SHA" --title "Test build #${GITHUB_RUN_NUMBER} (v$VER, ${GITHUB_REF_NAME})" --notes "$NOTES"
+          fi
