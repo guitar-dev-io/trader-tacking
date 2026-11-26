@@ -2,7 +2,7 @@
 // and reach later ones through PT (src/pt.ts). Add a new module here (not as a <script> tag).
 import './pt';
 import './legacy/core';
-import '../bridge.js';
+import './platform/bridge';
 import '../indicators.js';
 import '../custom.js';
 import '../lessons.js';
