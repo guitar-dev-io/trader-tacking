@@ -3,7 +3,7 @@
 // loss at SL, profit at TP, and the plan drawn on the chart.
 
 S.plan = { balance: 1000, riskMode: 'pct', risk: 1, side: 'buy', entry: '', sl: '', tp1: '', tp2: '', vpp: '', lotStep: 0.01, minLot: 0.01,
-  adds: 0, spacing: '', mode: 'avg', weight: 'equal', mult: 1.5, show: true, trail: 'none', ...store.get('plan', {}) };
+  adds: 0, spacing: '', mode: 'avg', weight: 'equal', mult: 1.5, show: true, trail: 'none', account: 'auto', ...store.get('plan', {}) };
 const savePlan = () => store.set('plan', S.plan);
 // broker "point" = smallest price step (XAUUSD 2 digits → 0.01, so 1000 points = 10.00)
 const pointSize = () => 10 ** -digits();
@@ -11,6 +11,7 @@ const toPts = (d) => Math.round(Math.abs(d) / pointSize());
 
 // Contract size per 1.0 lot (typical; check your broker's contract specification)
 function contractSize(sym) {
+  sym = String(sym || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 6);   // broker suffixes: XAUUSDc, EURUSD.m, XAUUSDbrex.
   if (/^XAU/.test(sym)) return 100;
   if (/^XAG/.test(sym)) return 5000;
   if (/^(XPT|XPD)/.test(sym)) return 100;
@@ -33,9 +34,19 @@ function quoteToUSD(sym) {
 // USD value of a 1.0 price move for 1.0 lot
 function autoVpp(sym) { const c = quoteToUSD(sym); return c == null ? null : contractSize(sym) * c; }
 function vpp() { const v = parseFloat(S.plan.vpp); return isFinite(v) && v > 0 ? v : autoVpp(S.symbol); }
+// Account type: standard (USD) or cent (USC). Cent: balance and risk in USC, lots in cent lots (1.00 cent lot = 0.01 lot).
+// The formulas stay the same when money is counted in USC: gold 1.00 cent lot = 1 USC per point, like 1.00 lot = $1.
+// 'auto' guesses from the symbol suffix (XAUUSDc, EURUSD.c, …cent).
+const isCentAcct = () => S.plan.account === 'cent' || (S.plan.account !== 'std' && typeof MM !== 'undefined' && MM.isCentSymbol(S.symbol));
+const CUR = () => (isCentAcct() ? 'USC' : 'USD');
+const usdOf = (v) => (isCentAcct() && v != null && isFinite(v) ? ` <small class="pl-cent">≈ $${(Math.abs(v) / 100).toLocaleString('en-US', { maximumFractionDigits: 2 })}</small>` : '');
 const floorStep = (x, step) => Math.floor(x / step + 1e-9) * step;
 const lotFmt = (x, step) => x.toFixed(Math.max(0, -Math.floor(Math.log10(step))));
-const money = (v) => (v == null || !isFinite(v) ? '—' : (v < 0 ? '-' : '') + '$' + Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 2 }));
+const money = (v) => {
+  if (v == null || !isFinite(v)) return '—';
+  const a = Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+  return (v < 0 ? '-' : '') + (isCentAcct() ? a + ' USC' : '$' + a);
+};
 function riskAmount() { const p = S.plan; return p.riskMode === 'pct' ? (+p.balance * +p.risk) / 100 : +p.risk; }
 
 // lot for a single entry (used by the Long/Short drawing tool)
@@ -95,8 +106,10 @@ function renderPlanner() {
   $('planner').innerHTML = `
     <div class="panel-h">เครื่องคำนวณขนาดไม้ / จุดเติม · ${S.symbol}</div>
     ${seg('side', [['buy', '▲ Buy', 'buy'], ['sell', '▼ Sell', 'sell']])}
+    <div style="margin-top:8px">${seg('account', [['auto', 'บัญชี: อัตโนมัติ'], ['std', 'มาตรฐาน (USD)'], ['cent', 'เซ็นต์ (USC)']])}
+      <div class="pl-acct-hint">${p.account === 'auto' ? `ตรวจจากชื่อ ${esc(S.symbol)}: <b>${isCentAcct() ? 'บัญชีเซ็นต์' : 'บัญชีมาตรฐาน'}</b> · ` : ''}${isCentAcct() ? 'ใส่ทุนเป็น USC (10,000 USC = $100) · lot เป็น cent lot (1.00 = 0.01 lot มาตรฐาน)' : 'ทุนเป็น USD · lot มาตรฐาน'}</div></div>
     <div class="grid" style="margin-top:8px">
-      ${inp('balance', 'ทุน (USD)')}
+      ${inp('balance', `ทุน (${CUR()})`)}
       <label>ความเสี่ยงต่อแผน<div class="seg"><input data-k="risk" type="number" step="any" value="${esc(p.risk)}" style="border-radius:6px 0 0 6px;min-width:0">
         <button data-seg="riskMode" data-v="pct" class="${p.riskMode === 'pct' ? 'on' : ''}">%</button><button data-seg="riskMode" data-v="amt" class="${p.riskMode === 'amt' ? 'on' : ''}">$</button></div></label>
       ${inp('entry', 'ราคาเข้า (ไม้แรก)', q ? fmt(p.side === 'buy' ? q.ask : q.bid) : '')}
@@ -124,17 +137,17 @@ function renderPlanner() {
     </div>
     <h4>สเปกสัญญา</h4>
     <div class="grid">
-      ${inp('vpp', 'มูลค่า 1.0 ราคา ต่อ 1 lot (USD)', av ? String(av) : 'ใส่เอง')}
+      ${inp('vpp', `มูลค่า 1.0 ราคา ต่อ 1 lot (${CUR()})`, av ? String(av) : 'ใส่เอง')}
       ${inp('lotStep', 'lot step')}
     </div>
-    <p class="muted">อัตโนมัติ: ${S.symbol} 1 lot = ${contractSize(S.symbol).toLocaleString()} หน่วย${av ? ` → ราคาขยับ 1.0 = $${av.toLocaleString()} ต่อ lot` : ''} · ตรวจกับสเปกโบรกเกอร์อีกครั้ง</p>
+    <p class="muted">อัตโนมัติ: ${S.symbol} 1 lot = ${contractSize(S.symbol).toLocaleString()} หน่วย${av ? ` → ราคาขยับ 1.0 = ${isCentAcct() ? av.toLocaleString() + ' USC ต่อ cent lot' : '$' + av.toLocaleString() + ' ต่อ lot'}` : ''}${isCentAcct() ? ' (บัญชีเซ็นต์: 1 cent lot = 1/100 ของ lot มาตรฐาน)' : ''} · ตรวจกับสเปกโบรกเกอร์อีกครั้ง</p>
     ${r.warn.map((w) => `<div class="warn">⚠️ ${esc(w)}</div>`).join('')}
     ${r.rows.length ? `
     <div class="sum">
-      <span>ความเสี่ยงที่ตั้ง</span><b>${money(r.risk)}</b>
-      <span>lot รวม (ทุกไม้)</span><b>${lotFmt(r.totalLot, step)}</b>
+      <span>ความเสี่ยงที่ตั้ง</span><b>${money(r.risk)}${usdOf(r.risk)}</b>
+      <span>lot รวม (ทุกไม้)</span><b>${lotFmt(r.totalLot, step)}${isCentAcct() ? ` cent lot <small class="pl-cent">= ${(r.totalLot / 100).toFixed(4)} lot มาตรฐาน</small>` : ''}</b>
       <span>ต้นทุนเฉลี่ย / จุดคุ้มทุน</span><b>${fmt(r.avg)}</b>
-      <span class="down">ขาดทุนถ้าโดน SL (ครบทุกไม้)</span><b class="down">${money(r.maxLoss)} (${((r.maxLoss / p.balance) * 100).toFixed(2)}%)</b>
+      <span class="down">ขาดทุนถ้าโดน SL (ครบทุกไม้)</span><b class="down">${money(r.maxLoss)}${usdOf(r.maxLoss)} (${((r.maxLoss / p.balance) * 100).toFixed(2)}%)</b>
       ${r.rows[r.rows.length - 1].tp1 != null ? `<span class="up">กำไรที่ TP1 (ครบทุกไม้)</span><b class="up">${money(r.rows[r.rows.length - 1].tp1)}</b>` : ''}
       ${r.rows[r.rows.length - 1].tp2 != null ? `<span class="up">กำไรที่ TP2 (ครบทุกไม้)</span><b class="up">${money(r.rows[r.rows.length - 1].tp2)}</b>` : ''}
       ${r.firstOnly.tp2 != null ? `<span>ถ้าได้แค่ไม้แรก → TP2</span><b>${money(r.firstOnly.tp2)} · RR ${(r.firstOnly.tp2 / -r.firstOnly.slLoss).toFixed(2)}</b>` : ''}

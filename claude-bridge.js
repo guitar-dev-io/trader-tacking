@@ -105,9 +105,11 @@
     p.adds = String(a.adds || 0);            // each call is a fresh calculation: no scale-in unless asked
     p.spacing = a.spacing != null ? fmt(a.spacing) : '';
     if (a.mode) p.mode = a.mode === 'pyramid' ? 'pyramid' : 'avg';
+    if (a.account) p.account = a.account === 'cent' ? 'cent' : a.account === 'auto' ? 'auto' : 'std';   // cent: balance in USC, lots in cent lots
     savePlan(); renderPlanner(); dirty = true;
     const r = computePlan();
-    return { input: { side: p.side, entry: p.entry, sl: p.sl, tp1: p.tp1, tp2: p.tp2, balance: p.balance, risk: p.risk, riskMode: p.riskMode },
+    return { input: { side: p.side, entry: p.entry, sl: p.sl, tp1: p.tp1, tp2: p.tp2, balance: p.balance, risk: p.risk, riskMode: p.riskMode, account: p.account },
+      account: isCentAcct() ? { type: 'cent', currency: 'USC', lotUnit: 'cent lot (1.00 = 0.01 standard lot)', usdPerUsc: 0.01 } : { type: 'standard', currency: 'USD', lotUnit: 'lot' },
       valuePerPricePer1Lot: r.v, pointSize: 10 ** -((S.quotes[S.symbol] || {}).digits || 2), totalLot: r.totalLot, avgEntry: r.avg, riskBudget: r.risk, maxLossAtSL: r.maxLoss,
       rows: (r.rows || []).map((x) => ({ price: x.price, lot: x.lot, cumLot: x.cumLot, avg: x.avg, lossAtSL: x.slLoss, profitTP1: x.tp1, profitTP2: x.tp2 })),
       warnings: r.warn, error: r.error || r.err || null };

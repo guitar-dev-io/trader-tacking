@@ -272,6 +272,41 @@ app.whenReady().then(async () => {
     check('mt5 positions: read-only panel with position + pending order', pp.shown && pp.rows === 2 && pp.ro && pp.eq, pp);
     check('mt5 positions: entry/SL/TP + order lines on the chart', pp.lines === -1 || pp.lines >= 4, pp.lines);
     await js(`S.source = 'vcg'; true`); send('positions', null);
+    // ---- money management: lessons, plan table, practice problems, cent accounts (mm.js / mm-learn.js / planner.js)
+    await js(`document.querySelector('#tabs [data-tab="learn"]').click(); true`);
+    const mmL = JSON.parse(await js(`(() => { const g = document.querySelector('#lessons .lesson-cat[data-cat="mm"]'); const b = document.querySelector('.lesson-cats [data-lc="mm"]'); if (b) b.click();
+      const ds = g ? [...g.querySelectorAll('details')] : []; const plan = ds.find((d) => d.querySelector('.mm-widget[data-w="plan"]')); if (plan) { plan.open = true; }
+      return JSON.stringify({ cat: !!g, n: ds.length, plan: !!plan }); })()`));
+    await new Promise((r) => setTimeout(r, 200));
+    const mmP = JSON.parse(await js(`(() => { const w = document.querySelector('#lessons .mm-widget[data-w="plan"]'); if (!w || !w.dataset.on) return JSON.stringify({ mounted: false });
+      const click = (k, v) => w.querySelector('[data-p="' + k + '"][data-v="' + v + '"]').click();
+      click('risk', 1); click('type', 'auto'); click('size', 100); const s100 = w.querySelector('.mm-sum').textContent, l100 = w.querySelector('.mm-t tbody tr:last-child td:nth-child(2) b').textContent;
+      click('size', 10000); const s10k = w.querySelector('.mm-sum').textContent, l10k = w.querySelector('.mm-t tbody tr:first-child td:nth-child(2) b').textContent;
+      click('size', 1000); w.scrollIntoView({ block: 'start' }); return JSON.stringify({ mounted: true, cent100: /เซ็นต์/.test(s100) && /10,000 USC/.test(s100), l100, std10k: /มาตรฐาน/.test(s10k), l10k }); })()`));
+    await new Promise((r) => setTimeout(r, 200)); await shot('mm-plan');
+    await js(`(() => { const d = [...document.querySelectorAll('#lessons .lesson-cat[data-cat="mm"] details')].find((x) => /บัญชีเซ็นต์/.test(x.querySelector('summary').textContent)); if (d) { d.open = true; d.scrollIntoView(); } })(); true`);
+    await new Promise((r) => setTimeout(r, 150)); await shot('mm-lesson');
+    check('mm: lessons category with 10+ lessons', mmL.cat && mmL.n >= 10 && mmL.plan, mmL);
+    check('mm: plan table switches account size ($100 → cent 0.10 cent lot, $10k → 0.33 lot)', mmP.mounted && mmP.cent100 && mmP.l100 === '0.10' && mmP.std10k && mmP.l10k === '0.33', mmP);
+    const mmQ = JSON.parse(await js(`(async () => { const w8 = (ms) => new Promise((r) => setTimeout(r, ms));
+      document.querySelector('#tabs [data-tab="practice"]').click(); await w8(50);
+      const w = document.querySelector('#mm-quiz-panel .mm-widget'); if (!w || !w._mm) return JSON.stringify({ ok: false });
+      w._mm.next(); const p = w._mm.get(); const put = (v) => { w.querySelector('.mm-ans input').value = v; w.querySelector('.mm-ans button').click(); };
+      put(String(p.answer * 1.5 + 1)); await w8(30); const bad = !!w.querySelector('.mm-bad');
+      put(String(p.answer)); await w8(30); const good = !!w.querySelector('.mm-ok'), steps = w.querySelectorAll('.mm-steps li').length;
+      document.getElementById('mm-quiz-panel').scrollIntoView();
+      return JSON.stringify({ ok: true, kind: p.kind, bad, good, steps }); })()`));
+    await shot('mm-quiz');
+    check('mm: random exercise — wrong answer flagged, right answer accepted with worked steps', mmQ.ok && mmQ.bad && mmQ.good && mmQ.steps >= 2, mmQ);
+    const cent = JSON.parse(await js(`(() => { const keep = { ...S.plan }; document.querySelector('#tabs [data-tab="calc"]').click();
+      Object.assign(S.plan, { account: 'cent', balance: '10000', riskMode: 'pct', risk: '1', side: 'buy', entry: '3500.00', sl: '3490.00', tp1: '', tp2: '', adds: '0', vpp: '', lotStep: 0.01, minLot: 0.01 });
+      renderPlanner(); const r = computePlan(); const t = document.getElementById('planner').textContent;
+      const out = { lot: r.totalLot, usc: /USC/.test(t), centLot: /cent lot/.test(t), std: /0\\.0010 lot มาตรฐาน/.test(t), label: /ทุน \\(USC\\)/.test(t), tab: !document.getElementById('tab-calc').classList.contains('hidden') };
+      document.getElementById('planner').scrollIntoView({ block: 'start' });
+      window.__planKeep = keep; return JSON.stringify(out); })()`));
+    await new Promise((r) => setTimeout(r, 200)); await shot('calc-cent');
+    await js(`Object.assign(S.plan, window.__planKeep); savePlan(); renderPlanner(); document.querySelector('#tabs [data-tab="market"]').click(); true`);
+    check('mm: calculator cent account (10,000 USC, 1%, SL 1000 pts → 0.10 cent lot = 0.0010 lot)', Math.abs(cent.lot - 0.1) < 1e-9 && cent.usc && cent.centLot && cent.std && cent.label, cent);
     check('desktop: no console errors', A.errs.length === 0, A.errs.slice(0, 3));
     A.w.destroy();
 
