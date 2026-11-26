@@ -1,4 +1,4 @@
-/* Dashboard (dashboard.js) — theme via CSS variables */
+/* Dashboard (src/pages/dashboard) — theme via CSS variables */
 #pages .page[data-page="dashboard"] { max-width: none; padding: 0; height: 100%; }
 .dash { display: flex; flex-direction: column; height: 100%; min-height: 0; background: var(--bg); color: var(--text); position: relative; }
 .dash .grow { flex: 1; }

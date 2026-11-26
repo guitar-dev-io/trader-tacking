@@ -4,5 +4,5 @@ export const ORDER = [
   'app-core.js', 'app-chart.js', 'app-analysis.js', 'app-bounce.js', 'app-data.js', 'app-overlay.js',
   'mm-learn.js', 'app.js', 'text-tools.js', 'draw.js', 'planner.js', 'settings.js', 'extras.js',
   'learn.js', 'news.js', 'setup.js', 'positions.js', 'mtf.js', 'ui.js', 'mobile.js', 'pages.js', 'about.js',
-  'dashboard.js', 'claude-bridge.js', 'pwa.js',
+  'claude-bridge.js', 'pwa.js',
 ];

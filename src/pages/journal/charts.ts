@@ -3,7 +3,6 @@ import { TC } from '../../state';
 import { chartThemeOptions } from '../../../app-chart.js';
 import { tz, type Computed } from './model.svelte';
 
-declare const LightweightCharts: any;
 
 export function drawCharts(d: Computed, eqEl: HTMLElement | undefined, dEl: HTMLElement | undefined): { remove(): void }[] {
   const LW = LightweightCharts, c = TC() as any, charts: { remove(): void }[] = [];

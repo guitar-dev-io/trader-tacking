@@ -31,7 +31,7 @@ import '../mobile.js';
 import '../pages.js';
 import '../about.js';
 import './pages/journal/index';
-import '../dashboard.js';
+import './pages/dashboard/index';
 import './pages/learn/index';
 import './pages/news/index';
 import '../claude-bridge.js';
