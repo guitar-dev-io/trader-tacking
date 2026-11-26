@@ -57,6 +57,7 @@ async function handle(req, res, cfg, hooks) {
     if (p.startsWith('/api/symbols/') && req.method === 'DELETE') { hooks.removeSymbol(decodeURIComponent(p.slice(13))); return json(res, 200, hooks.symbols()); }
     if (p === '/api/chart') return json(res, 200, hooks.chart());
     if (p === '/api/analysis') return json(res, 200, hooks.analysis());
+    if (p === '/api/journal' && hooks.journal) return json(res, 200, hooks.journal());
     if (p === '/api/positions' && hooks.positions) return json(res, 200, await hooks.positions());
     if (p === '/api/deals' && hooks.deals) { const q = new URL(req.url, 'http://x').searchParams; const days = Math.min(365, +q.get('days') || 7);
       try { return json(res, 200, await hooks.deals(Date.now() / 1000 - days * 86400, 0)); } catch (e) { return json(res, 503, { error: e.message }); } }

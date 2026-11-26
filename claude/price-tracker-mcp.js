@@ -79,6 +79,8 @@ const TOOLS = [
     run: () => call('GET', '/api/positions') },
   { name: 'get_my_trade_history', description: 'READ-ONLY. The user\'s closed/opened deals from MT5 history (entry in/out, side, volume, price, profit, commission, swap, UTC time, position id) for the last N days.', inputSchema: { type: 'object', properties: { days: { type: 'number', description: '1-365, default 7' } } },
     run: (a) => call('GET', '/api/deals?days=' + (a.days || 7)) },
+  { name: 'get_my_trading_stats', description: 'READ-ONLY. The user\'s trading journal built from their MT5 history (stored on their computer): net profit, win rate, profit factor, expectancy, lots traded, max drawdown, consecutive wins/losses, best/worst day, and breakdowns by month, week, day (last 60), symbol, buy/sell, weekday and session. Deposits/withdrawals are excluded from results.', inputSchema: { type: 'object', properties: {} },
+    run: () => call('GET', '/api/journal') },
   { name: 'add_symbol', description: 'Add a symbol to the watchlist (e.g. EURUSD, BTCUSD).', inputSchema: { type: 'object', properties: { symbol: { type: 'string' } }, required: ['symbol'] },
     run: (a) => call('POST', '/api/symbols', { symbol: a.symbol }) },
   { name: 'get_logs', description: 'Recent app log lines (connection problems etc.).', inputSchema: { type: 'object', properties: { limit: { type: 'number' }, level: { type: 'string', enum: ['info', 'warn', 'error'] } } },

@@ -65,7 +65,7 @@ let settings = {
   net: { slowMs: 800, delayMs: 3000, staleSec: 45, stuckSec: 60, notify: true },
   openAtLogin: false,
   source: 'vcg',            // 'vcg' | 'mt5' (Demo is handled in the window)
-  mt5: { port: 7788 },
+  mt5: { port: 7788, autoUpdateEA: true, eaAttempted: {} },
 };
 function loadSettings() {
   try {
@@ -315,6 +315,13 @@ const apiHooks = {
     return mt5.getPositions() || { note: settings.source === 'mt5' ? 'ยังไม่มีข้อมูล — เปิดแท็บราคาในแอป หรือ EA ใน MT5 เป็นรุ่นเก่า' : 'ใช้ได้เมื่อเลือก MT5 เป็นแหล่งราคา' };
   },
   deals: (from, to) => mt5.deals(from, to),
+  journal: () => {
+    const J = require('./journal.js'), g = mt5.status().connected ? journal().get() : journal().openLast();
+    const s = J.stats(J.trades(g.deals), { balanceOps: J.balanceOps(g.deals) });
+    const { curve, byHour, ...rest } = s;
+    return { account: g.account, syncedAt: g.syncedAt, status: g.status, deals: g.deals.length, stats: { ...rest, byDay: s.byDay.slice(-60) },
+      lastSnapshot: g.snapshots[g.snapshots.length - 1] || null };
+  },
   analysis: () => state.analysis || { note: 'ยังไม่มีผลวิเคราะห์ (เปิดกราฟในแอปก่อน)' },
   command: rendererCommand,
   screenshot: chartScreenshot,
@@ -505,9 +512,72 @@ function startMt5() {
     quote: (q) => { if (settings.source === 'mt5') acceptQuote(q); },
     chart: (m) => { if (settings.source === 'mt5') send('chart', m); },
     status: () => sendStatus(),
-    positions: (p) => { send('positions', p); api.broadcast('positions', p); },
+    positions: (p) => { send('positions', p); api.broadcast('positions', p); journal().onPositions(p); },
+    hello: (info) => { eaHello(info); journal().onConnect(info); if ((info.caps || []).includes('pos')) mt5.positions(true); send('journal-changed', null); },
+    disconnect: () => journal().onDisconnect(),
   });
 }
+// ---------------- EA auto-update: copy + compile the bundled EA when MT5 runs an older one ----------------
+const eaUpd = require('./ea-update');
+let eaUpdating = false, eaWaiter = null;
+const eaSource = () => fs.readFileSync(path.join(__dirname, 'mt5', 'PriceTrackerBridge.mq5'));
+const EA_BUNDLED = eaUpd.bundledBuild(fs.readFileSync(path.join(__dirname, 'mt5', 'PriceTrackerBridge.mq5'), 'utf8'));
+const mt5Bundles = () => ['/Applications/MetaTrader 5.app', path.join(app.getPath('home'), 'Applications', 'MetaTrader 5.app')].filter((b) => fs.existsSync(b));
+const fmtBuild = (b) => (b / 100).toFixed(2);
+function eaHello(info) {
+  if (eaWaiter && eaUpd.helloBuild(info) >= EA_BUNDLED) { eaWaiter(info); eaWaiter = null; }
+  const account = String(info.server || '') + '|' + (info.login || '');
+  const d = eaUpd.shouldUpdate({ info, bundled: EA_BUNDLED, enabled: settings.mt5.autoUpdateEA !== false, attempted: settings.mt5.eaAttempted || {}, account, running: eaUpdating });
+  if (d.ok) updateEA({ account, from: d.have }).catch((e) => log.warn('mt5', 'อัปเดต EA ล้มเหลว: ' + e.message));
+}
+async function updateEA({ account = '', from = null, force = false } = {}) {
+  if (eaUpdating) return { ok: false, steps: [{ ok: false, t: 'กำลังอัปเดตอยู่' }] };
+  eaUpdating = true;
+  try {
+    log.info('mt5', `อัปเดต EA: ${from ? fmtBuild(from) : '?'} → ${fmtBuild(EA_BUNDLED)}${force ? ' (สั่งเอง)' : ''}`);
+    send('ea-update', { state: 'start', msg: `กำลังอัปเดต EA ใน MT5 เป็น ${fmtBuild(EA_BUNDLED)}…` });
+    settings.mt5.eaAttempted = { ...(settings.mt5.eaAttempted || {}), [account]: EA_BUNDLED }; saveSettings();
+    const dirs = findMt5ExpertDirs();
+    const plan = dirs[0] ? mt5.planLaunch({ expertsDir: dirs[0], platform: process.platform, appBundles: mt5Bundles() }) : null;
+    if (plan && plan.wine) log.info('mt5', 'อัปเดต EA: ใช้ wine ' + plan.wine);
+    const r = await eaUpd.install({ dirs, source: eaSource(), plan, deps: { spawn: require('child_process').spawn, log } });
+    if (!r.ok) { send('ea-update', { state: 'fail', msg: 'อัปเดต EA อัตโนมัติไม่สำเร็จ — ' + r.steps.filter((x) => !x.ok).map((x) => x.t).join(' · '), steps: r.steps, manual: true }); return r; }
+    // MT5 reloads the running EA when its .ex5 changes → wait for its hello with the new build
+    const got = await new Promise((res) => { eaWaiter = res; setTimeout(() => { if (eaWaiter === res) { eaWaiter = null; res(null); } }, 60000); });
+    if (got) { log.info('mt5', 'อัปเดต EA สำเร็จ: ' + fmtBuild(EA_BUNDLED)); send('ea-update', { state: 'ok', msg: `อัปเดต EA เป็น ${fmtBuild(EA_BUNDLED)} แล้ว` }); return { ...r, ok: true }; }
+    send('ea-update', { state: 'fail', msg: 'compile แล้ว แต่ EA บนกราฟยังเป็นรุ่นเดิม — ลาก PriceTrackerBridge ลงกราฟใหม่ใน MT5', steps: r.steps });
+    return { ...r, ok: false, reattach: true };
+  } finally { eaUpdating = false; }
+}
+ipcMain.handle('mt5-update-ea', () => updateEA({ account: String(mt5.status().server || ''), from: mt5.status().eaBuild, force: true }));
+ipcMain.handle('mt5-ea-info', () => ({ bundled: EA_BUNDLED, running: mt5.status().connected ? eaUpd.helloBuild({ build: mt5.status().eaBuild, v: mt5.status().eaVersion }) : null, auto: settings.mt5.autoUpdateEA !== false }));
+ipcMain.handle('mt5-open-editor', () => {
+  const dirs = findMt5ExpertDirs(); if (!dirs[0]) return false;
+  try { fs.writeFileSync(path.join(dirs[0], 'PriceTrackerBridge.mq5'), eaSource()); } catch (_) {}
+  const plan = mt5.planLaunch({ expertsDir: dirs[0], platform: process.platform, appBundles: mt5Bundles() });
+  if (!plan || !plan.editor) { shell.showItemInFolder(path.join(dirs[0], 'PriceTrackerBridge.mq5')); return 'folder'; }
+  const p = require('child_process').spawn(plan.editor.cmd, plan.editor.args, { env: { ...process.env, ...(plan.env || {}) }, detached: true, stdio: 'ignore' }); p.unref();
+  log.info('mt5', 'เปิด MetaEditor', plan.editor);
+  return true;
+});
+
+// ---------------- trading journal (my MT5 history, stored on this computer only) ----------------
+const { createJournal } = require('./journal-store');
+let _journal = null;
+function journal() {
+  if (!_journal) _journal = createJournal({ dir: path.join(app.getPath('userData'), 'journal'), mt5: { connected: () => mt5.status().connected, deals: (a, b) => mt5.deals(a, b) }, log });
+  return _journal;
+}
+ipcMain.handle('journal-get', () => (mt5.status().connected ? journal().get() : journal().openLast()));
+ipcMain.handle('journal-sync', async () => { const r = await journal().sync(); send('journal-changed', null); return { ...r, ...journal().get().status }; });
+ipcMain.handle('journal-export', async (_e, csvText) => {
+  const { dialog } = require('electron');
+  const r = await dialog.showSaveDialog(mainWin, { title: 'ส่งออกประวัติการเทรด (CSV)', defaultPath: path.join(app.getPath('downloads'), `trades-${new Date().toISOString().slice(0, 10)}.csv`), filters: [{ name: 'CSV', extensions: ['csv'] }] });
+  if (r.canceled || !r.filePath) return null;
+  fs.writeFileSync(r.filePath, '\ufeff' + String(csvText || ''));     // BOM: Excel opens Thai/UTF-8 correctly
+  shell.showItemInFolder(r.filePath);
+  return r.filePath;
+});
 ipcMain.on('chart-data', (_e, d) => { state.chart = d; });
 ipcMain.on('analysis', (_e, a) => { state.analysis = a; });
 ipcMain.on('log', (_e, e) => log.write(e.level || 'info', e.source || 'ui', e.msg, e.data));
@@ -520,6 +590,7 @@ ipcMain.handle('set-settings', (_e, s) => {
   settings.webhook = { ...settings.webhook, ...s.webhook };
   settings.telegram = { ...settings.telegram, ...s.telegram };
   if (s.net) settings.net = { ...settings.net, ...s.net };
+  if (s.mt5 && typeof s.mt5.autoUpdateEA === 'boolean') settings.mt5.autoUpdateEA = s.mt5.autoUpdateEA;
   if (s.mt5 && +s.mt5.port && +s.mt5.port !== settings.mt5.port) { settings.mt5.port = Math.max(1024, Math.min(65535, +s.mt5.port)); if (settings.source === 'mt5') startMt5(); }
   if (typeof s.openAtLogin === 'boolean' && s.openAtLogin !== settings.openAtLogin) {
     settings.openAtLogin = s.openAtLogin;
@@ -649,5 +720,5 @@ app.whenReady().then(() => {
 process.on('uncaughtException', (e) => log.error('app', 'uncaughtException: ' + e.stack));
 process.on('unhandledRejection', (e) => log.error('app', 'unhandledRejection: ' + (e && e.stack || e)));
 app.on('activate', showMain);
-app.on('before-quit', () => { quitting = true; api.stop(); mt5.stop(); log.info('app', 'ปิดโปรแกรม'); });
+app.on('before-quit', () => { quitting = true; if (_journal) _journal.flush(); api.stop(); mt5.stop(); log.info('app', 'ปิดโปรแกรม'); });
 app.on('window-all-closed', () => {});
