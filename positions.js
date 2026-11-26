@@ -1,9 +1,11 @@
 import { PT, def } from './src/pt.ts';
 import { toast } from './src/ui/toast.ts';
-import { ICON } from './icons.js';
-import { $, S, TZ, esc, store } from './app-core.js';
+import { $, S, TZ, store } from './app-core.js';
 import { main } from './app-chart.js';
 import { connStatus, switchSymbol } from './app-data.js';
+import { mount, flushSync } from 'svelte';
+import Positions from './src/ui/tabs/Positions.svelte';
+import { posView } from './src/ui/tabs/positions-view.ts';
 
 def({ POSITIONS: [() => POSITIONS] });
 // "My orders" (MT5, READ-ONLY): the EA reports the user's own open positions, pending orders and deal history.
@@ -15,7 +17,6 @@ const POSITIONS = (() => {
   const base = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
   const same = (a, b) => a && b && (a === b || a.toUpperCase() === b.toUpperCase() || base(a) === base(b));
   const money = (v, cur) => (v >= 0 ? '+' : '') + Number(v).toFixed(2) + (cur ? ' ' + cur : '');
-  const cls = (v) => (v > 0 ? 'up' : v < 0 ? 'down' : '');
   const ORD = { buy_limit: 'Buy Limit', sell_limit: 'Sell Limit', buy_stop: 'Buy Stop', sell_stop: 'Sell Stop', buy_stop_limit: 'Buy Stop Limit', sell_stop_limit: 'Sell Stop Limit' };
 
   function panel() {
@@ -29,48 +30,20 @@ const POSITIONS = (() => {
     return el;
   }
 
-  // ------------------------------------------------------------ panel
+  // ------------------------------------------------------------ panel (src/ui/tabs/Positions.svelte)
+  let mounted = false;
+  function setOpt(k, v) {
+    opt[k] = v; store.set('pos' + k[0].toUpperCase() + k.slice(1), opt[k]);
+    if (k !== 'onChart') { deals = null; if (opt.hist) loadDeals(); }
+    lastKey = ''; render(); drawChart();
+  }
   function render() {
     const el = panel(); if (!el) return;
     const show = S.source === 'mt5';
     el.classList.toggle('hidden', !show);
     if (!show) return;
-    const d = data, a = (d && d.acct) || {}, cur = a.currency || '';
-    const head = `<div class="pos-h"><b>ออเดอร์ของฉัน (MT5)</b><span class="pos-ro" title="แอปนี้อ่านอย่างเดียว ส่ง/แก้/ปิดออเดอร์ไม่ได้">${ICON.html('lock', 11)}อ่านอย่างเดียว</span>${d ? `<span class="pos-acc ${a.demo ? 'demo' : 'real'}">${a.demo ? 'DEMO' : 'REAL'}</span>` : ''}</div>`;
-    let body;
-    if (!d) {
-      const m = ((typeof connStatus !== 'undefined' && connStatus) || {}).mt5 || {};
-      body = `<p class="muted pos-empty">${!m.connected ? 'รอ EA ใน MT5 เชื่อมต่อ…' : m.eaVersion && m.eaVersion < 2 ? 'EA ใน MT5 เป็นรุ่นเก่า — กด "เปิด MT5 พร้อม EA" ในคู่มือ หรือติดตั้ง EA ใหม่ เพื่อดูออเดอร์ของคุณ' : 'กำลังอ่านข้อมูลบัญชี…'}</p>`;
-    } else {
-      const fl = (a.equity || 0) - (a.balance || 0);
-      const pos = d.positions.map((p) => `<tr data-s="${esc(p.s)}" class="${same(p.s, S.symbol) ? 'cur' : ''}"><td>${esc(p.s)}</td>
-          <td class="${p.side === 'buy' ? 'up' : 'down'}">${p.side === 'buy' ? 'Buy' : 'Sell'} ${p.vol}</td><td>${p.open}<small>→ ${p.price}</small></td>
-          <td class="${cls(p.profit + p.swap)}">${money(p.profit + p.swap)}</td></tr>`).join('');
-      const ord = d.orders.map((o) => `<tr data-s="${esc(o.s)}" class="${same(o.s, S.symbol) ? 'cur' : ''}"><td>${esc(o.s)}</td><td>${ORD[o.type] || esc(o.type)} ${o.vol}</td><td>${o.price}</td><td class="muted">รอ</td></tr>`).join('');
-      body = `<div class="pos-acct"><span>Balance<b>${Number(a.balance || 0).toFixed(2)}</b></span><span>Equity<b>${Number(a.equity || 0).toFixed(2)}</b></span><span>ลอยตัว<b class="${cls(fl)}">${money(fl)}</b></span><small>${esc(cur)}${a.leverage ? ' · 1:' + a.leverage : ''}</small></div>
-        ${d.positions.length || d.orders.length ? `<table class="pos-t"><tbody>${pos}${ord}</tbody></table>` : '<p class="muted pos-empty">ไม่มีออเดอร์เปิดอยู่</p>'}`;
-    }
-    const hist = deals ? histHtml() : '';
-    const html = head + body + `<div class="pos-opts"><label class="chk"><input type="checkbox" data-o="onChart" ${opt.onChart ? 'checked' : ''}> เส้นบนกราฟ</label>
-      <label class="chk"><input type="checkbox" data-o="hist" ${opt.hist ? 'checked' : ''}> ประวัติ</label>
-      ${opt.hist ? `<select data-o="days">${[1, 7, 30, 90].map((n) => `<option value="${n}" ${n === opt.days ? 'selected' : ''}>${n} วัน</option>`).join('')}</select>` : ''}</div>${hist}`;
-    if (html === el._html) return;
-    el._html = html; el.innerHTML = html;
-    el.querySelectorAll('tr[data-s]').forEach((tr) => (tr.onclick = () => { if (!same(tr.dataset.s, S.symbol)) switchSymbol(tr.dataset.s); }));
-    el.querySelectorAll('[data-o]').forEach((i) => (i.onchange = () => {
-      const k = i.dataset.o; opt[k] = k === 'days' ? +i.value : i.checked; store.set('pos' + k[0].toUpperCase() + k.slice(1), opt[k]);
-      if (k !== 'onChart') { deals = null; if (opt.hist) loadDeals(); }
-      lastKey = ''; render(); drawChart();
-    }));
-  }
-  function histHtml() {
-    const closed = deals.filter((x) => x.entry === 'out' || x.entry === 'inout' || x.entry === 'outby');
-    const net = closed.reduce((s, x) => s + x.profit + x.commission + x.swap, 0) + deals.filter((x) => x.entry === 'in').reduce((s, x) => s + x.commission, 0);
-    const win = closed.filter((x) => x.profit > 0).length;
-    const rows = closed.slice(-15).reverse().map((x) => `<tr data-s="${esc(x.s)}"><td>${new Date(x.time * 1000).toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
-      <td>${esc(x.s)}</td><td>${x.side === 'sell' ? 'ปิด Buy' : 'ปิด Sell'} ${x.vol}</td><td class="${cls(x.profit)}">${money(x.profit + x.commission + x.swap)}</td></tr>`).join('');
-    return `<div class="pos-hist"><div class="pos-sum">ปิดไป <b>${closed.length}</b> ครั้ง · ชนะ <b>${closed.length ? Math.round((win / closed.length) * 100) : 0}%</b> · สุทธิ <b class="${cls(net)}">${money(net)}</b></div>
-      ${rows ? `<table class="pos-t"><tbody>${rows}</tbody></table>` : '<p class="muted pos-empty">ไม่มีการซื้อขายในช่วงนี้</p>'}</div>`;
+    if (!mounted) { mounted = true; el.replaceChildren(); mount(Positions, { target: el, props: { onRow: (sym) => { if (!same(sym, S.symbol)) switchSymbol(sym); }, onOpt: setOpt } }); }
+    posView.set({ data, deals, opt: { ...opt }, mt5: (connStatus || {}).mt5 || {}, same: (x) => same(x, S.symbol) }); flushSync();
   }
 
   // ------------------------------------------------------------ chart
