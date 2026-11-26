@@ -59,7 +59,22 @@ Branch: `feat/framework-migration`. The plan has 5 phases: 0 Vite, 1 TypeScript 
   - screenshots match Phase 1 except time-dependent content and the v2.16.0 settings toggles from the rebase;
   - **startup got faster**: about 270 ms vs about 450 ms to a drawn chart (one bundled module instead of ~40 scripts).
 
-## Phase 2 — what is still interim (hand-off)
+### Phase 3: Svelte 5 pages + central state
+- **Svelte 5** (`svelte`, `@sveltejs/vite-plugin-svelte`, `svelte-check`) is wired into Vite; `npm run typecheck` runs `tsc` + `svelte-check --fail-on-warnings` + the stray-global guard.
+- **Central state** lives in `src/state.ts`: `S`, `store`, `THEME`/`TC`/`CHART_THEME`, `AN_DEFAULT`, `PREF_DEFAULT`, `connStatus`/`mainCfg`, the redraw flag (`view.dirty`), plus Svelte stores (`theme`, `conn`, `tick`). `app-core.js` re-exports them for the legacy modules.
+- **Four pages are Svelte components** under `src/pages/` (each `index.ts` = the page's small API + lazy mount):
+  - `news/` (หน้าข่าว + ปฏิทิน + teaser in the ราคา tab) — replaced `news-page.js`;
+  - `learn/` (ศูนย์การเรียนรู้) — replaced `learn-center.js` + `learn-center.css`;
+  - `journal/` (ผลการเทรด) — replaced `journal-page.js` + `journal.css`;
+  - `dashboard/` (แดชบอร์ด, widgets as components, lightweight-charts via a wrapper) — replaced `dashboard.js` + `dashboard.css`.
+- **Pages registry** (`src/pages/registry.ts`): earlier modules (mobile, setup, extras…) call `pages.learn/news/dash/journal` at call time instead of `PT.LEARN/NEWSPAGE/DASH/JOURNALPAGE`. Pages mount on the first idle moment or first use, so time-to-chart is unchanged. `def()` still exposes `PT.DASH`/`PT.LEARN` for the UI tests.
+- **User data kept:** every `store` key is identical before/after (checked with `git grep` on 83b7ed9 vs Phase 3: `dash.layout`, `dash.note.*`, `lc.*`, `jr.*`, `np.calAll`, `pageTabs`, …).
+- **Measured** (Phase 2 commit 83b7ed9 vs Phase 3, same machine):
+  - unit 41/41, UI 106/106, `tsc` + `svelte-check` 0 errors 0 warnings, guard clean;
+  - pixel diff of journal (dark/light/calendar/mobile/empty), dashboard (dark/light/edit/mobile), learn (home/reader/reader-light/mobile list/mobile reader), news page: 10 identical; differences only in the clock (news), a 12 px scroll offset (journal-calendar, content identical) and the live demo candles shifting with time (dashboard dark/light, edit: sub-threshold);
+  - page load median 196–213 ms (Phase 2) vs 203–217 ms (Phase 3), 3 interleaved runs of 5 — same within noise.
+
+## Interim items from Phase 2 (partly resolved in Phase 3 — see the Phase 4 checklist)
 - **Late-bound names through PT inside the app:** about 55 names, used about 280 times; run `grep -o "PT\.[A-Za-z_$]*" *.js`. The most used are `setUI`, `MTF`, `LEARN`, `DASH`, `yOf`, `NEWSPAGE`, `__mobileBack` and `drawings`. They exist because files call "forward" into modules loaded later.
   - In Phase 3/4, untangle them by moving each shared piece into a small module that both sides import: app state from `app-core.js` → `src/state.ts`; overlay helpers (`yOf`, `xIdx`, `el`, `ltxt`) → `src/ui/overlay.ts`; page objects registered in `src/pages.ts`.
   - When a name no longer needs PT, `def()` can stay; it is only for tests and devtools.
@@ -95,7 +110,15 @@ Branch: `feat/framework-migration`. The plan has 5 phases: 0 Vite, 1 TypeScript 
 - The Windows zip packages with `dist-renderer/` and `gen/`. The mac ignore regex was checked path by path.
 
 ## Left
-- **Phase 2:** done (see above); interim items are listed under "Phase 2 — what is still interim".
-- **Phase 3 (Svelte):** rewrite the journal, dashboard and learning center as Svelte 5 components mounted from `src/main.ts`. New features are written in Svelte.
-- **Phase 4 (the rest + main process):** side panel, settings, guide and drawing tools; `main.js`/`mt5.js`/`api.js` move to TypeScript; delete the root wrappers and run strict TypeScript everywhere.
+- **Phases 0–3:** done.
+- **Phase 4 checklist** (the rest + main process):
+  1. **Side tabs → Svelte:** ราคา (watchlist, source pill, alerts, tools, positions panel: `app-data.js` UI parts, `positions.js`), วิเคราะห์ (`app-analysis.js`, `app-bounce.js` UI), ฝึก (`learn.js` SIM/REPLAY/QUIZ UI), คำนวณ (`planner.js`), Log; keep `pages.js` page-tab behaviour.
+  2. **Settings modal → Svelte** (`settings.js` + the `#modal-settings` markup in `index.html`), same `set-settings` payload.
+  3. **Setup guide → Svelte** (`setup.js`, `setup.css`), plus `about.js`, `mobile.js` shell (More page, bottom nav, sheets), `ui.js`, `notify.js`, `news.js` list logic, `pwa.js`.
+  4. **Chart core + drawing tools:** `app-chart.js`, `app-overlay.js`, `draw.js`, `text-tools.js`, `mtf.js`, `indicators.js`, `custom.js` → typed `.ts` modules (canvas drawing stays imperative; Svelte only for toolbars/popovers/layers panel).
+  5. **Remaining PT indirections inside the app** (≈55 names, 125 uses in app `.js` now; most used `MTF`, `yOf`, `setUI`, `el`, `drawings`, `xIdx`, `pushHistory`, `ltxt`, `SETUP`): move each shared piece into a module both sides import — overlay helpers → `src/ui/overlay.ts`, drawings store → `src/chart/drawings.ts`, `setUI`/`SRC_UI` → `src/ui/layout.ts`, `SETUP`/`MSHEET` → registry; then delete their `def()` lines except what tests use (switch tests to `window.PT` getters defined in one place).
+  6. **Type-check the remaining `.js`:** every root renderer module becomes `.ts` (or `// @ts-check` while moving); extend `tsconfig` `include`; `check-free.mjs` can then be retired.
+  7. **Main process → TypeScript:** `main.js`, `mt5.js`, `mt5-auto.js`, `api.js`, `journal-store.js`, `logger.js`, `preload.js`, `trader-preload.js`, `vcg-inject.js` (main side), `claude/price-tracker-mcp.js` → `src/main/*.ts` compiled by esbuild to CJS; delete the root wrappers (`analysis.js`, `bounce.js`, `mm.js`, `journal.js`, `ea-update.js`).
+  8. **Android bridge** `bridge.js` → `.ts`; Capacitor plugin typings.
+  9. **Finish:** remove `src/legacy-order.mjs`/`vite/legacy-plugin.mjs` if nothing classic is left (only `lib/` vendor), strict TS everywhere, same tests + screenshots + startup checks as every phase.
 - **Before merging:** rebased on `feat/price-tracker-app` 171d074 (v2.16.0). Later app-branch renderer edits must be ported by hand (see above).
