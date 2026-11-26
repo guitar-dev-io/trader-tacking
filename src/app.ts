@@ -32,7 +32,7 @@ import '../pages.js';
 import '../about.js';
 import '../journal-page.js';
 import '../dashboard.js';
-import '../learn-center.js';
+import './pages/learn/index';
 import './pages/news/index';
 import '../claude-bridge.js';
 import '../pwa.js';

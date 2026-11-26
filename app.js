@@ -12,7 +12,7 @@ document.querySelectorAll('#tabs button[data-tab]').forEach((b) => (b.onclick = 
   if (b.dataset.tab === 'log') { errCount = 0; $('log-badge').textContent = ''; renderLogs(); }
 }));
 // lesson book: category chips + search over the original lessons (lessons.js) and the guide (lessons-guide.js)
-// the lesson book is the learning center page (learn-center.js)
+// the lesson book is the learning center page (src/pages/learn)
 
 const logs = []; let errCount = 0, logRenderTimer = null;
 vcg.onLogs((list) => {

@@ -246,7 +246,7 @@ ${bars([100, 500, 2000].map((lv) => ({ label: `1:${lv}`, v: MM.margin('XAUUSD', 
     const b = e.target.closest('[data-mm-practice]'); if (!b) return;
     e.preventDefault();
     if (b.dataset.mmPractice !== Q.kind) { Q.kind = b.dataset.mmPractice; saveQ(); }
-    // practice lives in the learning center (learn-center.js)
+    // practice lives in the learning center (src/pages/learn)
     if (PT.LEARN) PT.LEARN.open('p:mmquiz');
     if (typeof toast === 'function') toast('ฝึกโจทย์: ' + (MM.KIND_NAME[Q.kind] || 'ทุกหัวข้อ'), 'info', 2500);
   });
