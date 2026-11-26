@@ -78,6 +78,10 @@ cd android && ./gradlew assembleRelease
 
 ถ้าต้องการให้เปิดได้เลยโดยไม่มีคำเตือน ต้องเซ็นและ notarize ด้วยบัญชี Apple Developer (ปีละ 99 USD) — ใส่ใน CI ได้ภายหลัง
 
+## ข่าวตลาด (แท็บ "ข่าว")
+
+หัวข้อข่าวจาก FXStreet, Investing.com (Forex / Commodities), Federal Reserve, ECB และ US BLS (RSS) รวมกัน ตัดซ้ำ กรอง "เกี่ยวกับ symbol ที่เปิดอยู่" (เช่น XAUUSD → gold, Fed, CPI, NFP, dollar…) พร้อมปฏิทินเศรษฐกิจที่ใกล้จะออก แตะหัวข้อเพื่ออ่านที่เว็บต้นทาง · อัปเดตทุก 5 นาที · แจ้งเตือนข่าวใหม่ที่เกี่ยวข้อง · Claude อ่านได้ผ่าน tool `get_news`
+
 ## ให้ Claude เข้าถึงแอป (Mac · MCP)
 
 แอป Mac มี MCP server ในตัว (`claude/price-tracker-mcp.js`) ให้ Claude Desktop / Claude Code ใช้แอปนี้ได้:

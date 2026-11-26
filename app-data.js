@@ -183,6 +183,7 @@ function switchSymbol(s) {
   if (main) main.applyOptions({ priceFormat: priceFormat() });
   refreshPriceLines(); buildIndicators(); renderWatchlist(); renderAlerts(); updateHeader();
   if (typeof NEWS !== 'undefined') NEWS.render();
+  if (typeof HEADLINES !== 'undefined') HEADLINES.render();
   if (S.source === 'demo' && typeof DEMO !== 'undefined') DEMO.connect();
   loadChart();
 }

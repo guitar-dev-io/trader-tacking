@@ -448,6 +448,15 @@ ipcMain.handle('fetch-json', async (_e, url) => {
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return r.json();
 });
+// news feeds (RSS/XML) from a fixed list of publishers — text, not JSON
+const FEED_HOSTS = ['www.fxstreet.com', 'www.investing.com', 'www.federalreserve.gov', 'www.ecb.europa.eu', 'www.bls.gov'];
+ipcMain.handle('fetch-text', async (_e, url) => {
+  const u = new URL(url);
+  if (u.protocol !== 'https:' || !FEED_HOSTS.includes(u.hostname)) throw new Error('host not allowed: ' + u.hostname);
+  const r = await enet.fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) PriceTracker', Accept: 'application/rss+xml, application/xml, text/xml, */*' } });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return (await r.text()).slice(0, 2e6);
+});
 ipcMain.handle('sign-out', async () => {
   log.warn('auth', 'ผู้ใช้สั่งออกจากระบบ — ล้าง session ของ WebTrader');
   await session.fromPartition('persist:vcg').clearStorageData();

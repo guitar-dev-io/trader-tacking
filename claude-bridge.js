@@ -130,6 +130,7 @@
   }
   const CMDS = {
     perf,
+    news: (a) => (typeof HEADLINES !== 'undefined' ? { symbol: S.symbol, headlines: HEADLINES.list(a || {}), calendar: typeof NEWS !== 'undefined' && NEWS.upcoming ? NEWS.upcoming(10) : [] } : { headlines: [] }),
     view, open_chart: openChart, candles, analysis, bounce, draw, clear_drawings: clearDrawings, plan,
     chart_rect: () => { const r = document.getElementById('chart-wrap').getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; },
   };

@@ -145,6 +145,7 @@
   side.insertAdjacentHTML('afterbegin', '<div id="m-page-h"><button class="mph-back" aria-label="กลับ">‹</button><b class="mph-t"></b></div>');
   side.insertAdjacentHTML('beforeend', `<div class="tab hidden" id="tab-more"><div class="m-more">
     <button data-go="calc">${ICON.svg('calc', 22)}<span><b>คำนวณ lot / จุดเติม</b><small>ขนาดไม้จาก % ความเสี่ยง, SL เป็นจุด</small></span></button>
+    <button data-go="news">📰<span><b>ข่าวตลาด</b><small>FXStreet, Investing, Fed, ECB, BLS + ปฏิทินเศรษฐกิจ</small></span></button>
     <button data-go="learn">${ICON.svg('book', 22)}<span><b>บทเรียน</b><small>แท่งเทียน, Demand & Supply, บริหารเงิน</small></span></button>
     <button data-go="log">${ICON.svg('logs', 22)}<span><b>Log</b><small>สถานะการเชื่อมต่อ · ส่งให้ผู้พัฒนาเมื่อมีปัญหา</small></span><i id="m-logb"></i></button>
     <button data-do="settings">${ICON.svg('gear', 22)}<span><b>การตั้งค่า</b><small>เวลา, แจ้งเตือน, Session, ข้อมูล</small></span></button>
@@ -153,8 +154,8 @@
     <button data-do="login">🔐<span><b>เข้าสู่ระบบ VCG</b><small>เปิดหน้า login ของ VCG WebTrader</small></span></button>
     <button data-do="reconnect">↻<span><b>เชื่อมต่อใหม่</b><small>โหลดหน้า VCG ใหม่</small></span></button>
     <p class="muted m-ver"></p></div></div>`);
-  const PAGES = { market: 'ราคา', analysis: 'วิเคราะห์', practice: 'ฝึกเทรด', calc: 'คำนวณ', learn: 'บทเรียน', log: 'Log', more: 'เพิ่มเติม' };
-  const SUB = { calc: 1, learn: 1, log: 1 };
+  const PAGES = { market: 'ราคา', analysis: 'วิเคราะห์', practice: 'ฝึกเทรด', calc: 'คำนวณ', news: 'ข่าว', learn: 'บทเรียน', log: 'Log', more: 'เพิ่มเติม' };
+  const SUB = { calc: 1, news: 1, learn: 1, log: 1 };
   let page = null;
   function showPage(t) {
     page = t;

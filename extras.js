@@ -173,7 +173,12 @@ const NEWS = (() => {
     }
   }
   refresh(); setInterval(() => refresh(), 3600e3); setInterval(check, 30000);
-  return { refresh, render, draw };
+  // next relevant events for the news tab
+  function upcoming(n = 4) {
+    const now = Date.now() / 1000;
+    return relevant().filter((e) => e.t > now - 600).slice(0, n).map((e) => ({ ...e, when: hhmm(e.t) }));
+  }
+  return { refresh, render, draw, upcoming };
 })();
 
 // ---------------------------------------------------------------- update checker (GitHub Releases)

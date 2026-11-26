@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('vcg', {
   setSource: (src) => ipcRenderer.send('set-source', src),
   saveEA: () => ipcRenderer.invoke('save-ea'),
   fetchJSON: (url) => ipcRenderer.invoke('fetch-json', url),
+  fetchText: (url) => ipcRenderer.invoke('fetch-text', url),
   onQuotes: (cb) => ipcRenderer.on('quotes', (_e, list) => cb(list)),
   onStatus: (cb) => ipcRenderer.on('status', (_e, s) => cb(s)),
   onChart: (cb) => ipcRenderer.on('chart', (_e, m) => cb(m)),

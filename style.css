@@ -411,3 +411,20 @@ body.mobile #toasts { bottom: 70px; }
 .cn-row button small { font-size: 11px; color: var(--muted); }
 .cn-link { display: block; margin: 14px auto 0; background: none; border: none; color: #8ab4ff; text-decoration: underline; font-size: 12.5px; }
 .cn-diag { margin-top: 10px; font-size: 10.5px; color: #5d6373; text-align: center; word-break: break-all; }
+
+/* news tab */
+#tab-news .panel-h { display: flex; justify-content: space-between; align-items: center; }
+.nw-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.nw-chips button { padding: 3px 9px; border-radius: 12px; font-size: 11.5px; }
+.nw-chips button.on { background: #2962ff; border-color: #2962ff; color: #fff; }
+.nw-cal { margin-top: 8px; padding: 6px 8px; border-radius: 6px; background: #1c2030; font-size: 12px; line-height: 1.6; }
+.nw-list { display: flex; flex-direction: column; }
+.nw-item { display: flex; flex-direction: column; gap: 3px; padding: 9px 4px; border-bottom: 1px solid var(--line); color: #d1d4dc; text-decoration: none; }
+.nw-item:hover { background: #ffffff08; }
+.nw-item .nw-t { font-size: 13px; line-height: 1.4; }
+.nw-item .nw-m { font-size: 11px; color: var(--muted); }
+.nw-item.new .nw-t::before { content: '● '; color: #2962ff; }
+.nw-item.official .nw-m b { color: #f6c343; font-weight: 600; }
+.nw-foot { font-size: 11px; margin-top: 8px; }
+#news-badge:not(:empty) { background: #2962ff; color: #fff; border-radius: 8px; padding: 0 5px; font-size: 10px; margin-left: 2px; }
+body.m2 .nw-item .nw-t { font-size: 15px; } body.m2 .nw-item { padding: 12px 4px; }

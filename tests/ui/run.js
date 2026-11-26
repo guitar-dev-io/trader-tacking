@@ -40,6 +40,17 @@ app.whenReady().then(async () => {
   ipcMain.handle('get-settings', () => ({ api: {}, webhook: {}, telegram: {}, net: { slowMs: 800, delayMs: 3000, staleSec: 45, stuckSec: 60, notify: false }, version: 'test', source: 'vcg' }));
   ipcMain.handle('set-settings', () => true); ipcMain.handle('notify', () => 0); ipcMain.handle('sign-out', () => true);
   ipcMain.handle('fetch-json', () => { throw new Error('offline (test)'); });
+  const iso = (m) => new Date(Date.now() - m * 60000);
+  const RSS = {
+    'www.fxstreet.com': `<?xml version="1.0"?><rss version="2.0"><channel><title>FXStreet</title>
+      <item><title>Gold Price Forecast: XAU/USD rebounds as Fed bets shift</title><link>https://www.fxstreet.com/news/gold-1</link><pubDate>${iso(5).toUTCString()}</pubDate></item>
+      <item><title>GBP/JPY: Yen weakens after BoJ comments</title><link>https://www.fxstreet.com/news/gbpjpy-2</link><pubDate>${iso(15).toUTCString()}</pubDate></item></channel></rss>`,
+    'www.investing.com': `<?xml version="1.0"?><rss version="2.0"><channel><title>Investing</title>
+      <item><title>Gold steadies near record as dollar slips</title><link>https://www.investing.com/news/commodities-news/gold-3</link><pubDate>${iso(30).toISOString().slice(0, 19).replace('T', ' ')}</pubDate></item></channel></rss>`,
+    'www.federalreserve.gov': `<?xml version="1.0"?><rss version="2.0"><channel><title>Fed</title>
+      <item><title>Federal Reserve issues FOMC statement</title><link>https://www.federalreserve.gov/newsevents/pressreleases/monetary1.htm</link><pubDate>${iso(60).toUTCString()}</pubDate></item></channel></rss>`,
+  };
+  ipcMain.handle('fetch-text', (_e, url) => { const h = new URL(url).hostname; if (!RSS[h]) throw new Error('offline (test)'); return RSS[h]; });
   ipcMain.on('chart-request', (_e, o) => reqs.push(o));
   ['log', 'chart-data', 'analysis', 'set-source', 'add-symbol', 'remove-symbol', 'set-tray', 'toggle-csv', 'open-csv', 'show-trader', 'reload-trader', 'open-log-file', 'open-log-folder'].forEach((c) => ipcMain.on(c, () => {}));
 
@@ -157,7 +168,22 @@ app.whenReady().then(async () => {
       await cmd('open_chart', { timeframe: '1H' }); send('chart', { type: 'chart', slot: 'main', data: { history: { candles: candles(1500, 3600, 11) } } }); await sleep(1500);
       const pf = await cmd('perf');
       check('claude: perf measurement', pf.data && pf.data.analyzeMs >= 0 && pf.data.bounceMs >= 0 && pf.data.frameMs > 0 && pf.data.cacheReadMs >= 0, pf.data || pf.error);
+      const nwc = await cmd('news', { relevant: true });
+      check('claude: news headlines', nwc.data && nwc.data.headlines.length >= 2 && nwc.data.headlines.every((h) => h.link && h.source), nwc.data && nwc.data.headlines.length);
       const nope = await cmd('rm_rf'); check('claude: unknown command rejected', /ไม่รู้จักคำสั่ง/.test(nope.error || ''), nope.error);
+    }
+
+    // news tab: RSS from several publishers, Investing.com date format, relevance to XAUUSD, links open outside
+    {
+      await js(`document.querySelector('#tabs [data-tab="news"]').click(); HEADLINES.refresh(true); 1`); await sleep(1200);
+      const nw = JSON.parse(await js(`(() => { const items = [...document.querySelectorAll('#newsfeed .nw-item')];
+        const rel = items.map((a) => a.querySelector('.nw-t').textContent);
+        document.querySelector('[data-nf=all]').click(); const all = document.querySelectorAll('#newsfeed .nw-item').length;
+        return JSON.stringify({ rel, all, blank: items.every((a) => a.target === '_blank'), invTime: [...document.querySelectorAll('#newsfeed .nw-m')].map((m) => m.textContent).find((t) => /Investing/.test(t)) }); })()`));
+      check('news: relevant headlines for XAUUSD (gold, Fed) and not GBP/JPY', nw.rel.some((t) => /Gold Price/.test(t)) && nw.rel.some((t) => /FOMC/.test(t)) && !nw.rel.some((t) => /GBP\/JPY/.test(t)), nw.rel);
+      check('news: all sources merged, open in browser', nw.all === 4 && nw.blank, nw);
+      await js(`document.querySelector('[data-nf=rel]').click(); 1`); await sleep(200); await A.shot('news');
+      check('news: Investing.com time parsed', /30 นาที/.test(nw.invTime || ''), nw.invTime);
     }
 
     // layout: narrow window, wide side panel → toolbar buttons stay inside the chart column

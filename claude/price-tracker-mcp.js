@@ -70,6 +70,9 @@ const TOOLS = [
       const t1 = Date.now(); const p = await cmd('perf'); const cmdMs = Date.now() - t1;
       return { app: { version: st.version, arch: st.arch, rosetta: st.rosetta, secondsToFeedReady: st.bootSec, source: st.source, connected: st.connected, net: st.net }, apiRoundTripMs: apiMs, perfCommandMs: cmdMs, chart: p };
     } },
+  { name: 'get_news', description: 'Latest market headlines the app collects (FXStreet, Investing.com forex/commodities, Federal Reserve, ECB, US BLS) with source, time and link, plus upcoming high-impact economic calendar events (Forex Factory). relevant=true keeps headlines about the open symbol (and official releases).',
+    inputSchema: { type: 'object', properties: { relevant: { type: 'boolean' }, limit: { type: 'number' }, symbol: { type: 'string' } } },
+    run: (a) => cmd('news', a) },
   { name: 'add_symbol', description: 'Add a symbol to the watchlist (e.g. EURUSD, BTCUSD).', inputSchema: { type: 'object', properties: { symbol: { type: 'string' } }, required: ['symbol'] },
     run: (a) => call('POST', '/api/symbols', { symbol: a.symbol }) },
   { name: 'get_logs', description: 'Recent app log lines (connection problems etc.).', inputSchema: { type: 'object', properties: { limit: { type: 'number' }, level: { type: 'string', enum: ['info', 'warn', 'error'] } } },
