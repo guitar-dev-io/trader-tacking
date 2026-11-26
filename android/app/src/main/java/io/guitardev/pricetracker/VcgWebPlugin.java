@@ -15,6 +15,10 @@ import android.webkit.WebSettings;
 import android.webkit.WebStorage;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.os.Message;
+import androidx.webkit.WebSettingsCompat;
+import androidx.webkit.WebViewFeature;
+import java.util.Collections;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -72,23 +76,63 @@ public class VcgWebPlugin extends Plugin {
         }
     }
 
+    private FrameLayout content;          // holds the WebTrader page and any sign-in popups on top of it
+    private WebView popup;
+
     @SuppressLint("SetJavaScriptEnabled")
-    private void create() {
-        if (web != null) return;
-        web = new WebView(getContext());
-        WebSettings s = web.getSettings();
+    private void configure(WebView w) {
+        WebSettings s = w.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setDatabaseEnabled(true);
         s.setUserAgentString(UA);
         s.setUseWideViewPort(true);
         s.setLoadWithOverviewMode(true);
-        s.setSupportMultipleWindows(false);
+        // "Sign in with Google" etc. open a popup window and talk back to the page through window.opener
+        s.setSupportMultipleWindows(true);
+        s.setJavaScriptCanOpenWindowsAutomatically(true);
         s.setMediaPlaybackRequiresUserGesture(true);
+        // don't announce the app package in X-Requested-With (identity providers use it to refuse embedded browsers)
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.REQUESTED_WITH_HEADER_ALLOW_LIST)) {
+            WebSettingsCompat.setRequestedWithHeaderOriginAllowList(s, Collections.emptySet());
+        }
         CookieManager.getInstance().setAcceptCookie(true);
-        CookieManager.getInstance().setAcceptThirdPartyCookies(web, true);
+        CookieManager.getInstance().setAcceptThirdPartyCookies(w, true);
+    }
+
+    private final WebChromeClient chrome = new WebChromeClient() {
+        @Override
+        public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, Message resultMsg) {
+            closePopup();
+            popup = new WebView(getContext());
+            configure(popup);
+            popup.setWebChromeClient(this);
+            popup.setWebViewClient(new WebViewClient());
+            popup.setBackgroundColor(Color.WHITE);
+            content.addView(popup, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            WebView.WebViewTransport t = (WebView.WebViewTransport) resultMsg.obj;
+            t.setWebView(popup);
+            resultMsg.sendToTarget();
+            return true;
+        }
+
+        @Override
+        public void onCloseWindow(WebView window) { if (window == popup) closePopup(); }
+    };
+
+    private void closePopup() {
+        if (popup == null) return;
+        content.removeView(popup);
+        popup.destroy();
+        popup = null;
+    }
+
+    private void create() {
+        if (web != null) return;
+        web = new WebView(getContext());
+        configure(web);
         web.addJavascriptInterface(new NativeBridge(), "__vcgNative");
-        web.setWebChromeClient(new WebChromeClient());
+        web.setWebChromeClient(chrome);
         web.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) { currentUrl = url; }
@@ -129,7 +173,9 @@ public class VcgWebPlugin extends Plugin {
         back.setOnClickListener(v -> hideOverlay());
         bar.addView(back);
         overlay.addView(bar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        overlay.addView(web, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        content = new FrameLayout(getContext());
+        content.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        overlay.addView(content, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         overlay.setVisibility(View.INVISIBLE);
         // keep the login page clear of the status bar, gesture bar and on-screen keyboard
         ViewCompat.setOnApplyWindowInsetsListener(overlay, (v, insets) -> {
@@ -243,6 +289,7 @@ public class VcgWebPlugin extends Plugin {
 
     /** Android back button: close the WebTrader overlay first. */
     public boolean handleBack() {
+        if (popup != null) { if (popup.canGoBack()) popup.goBack(); else closePopup(); return true; }
         if (overlay != null && overlay.getVisibility() == View.VISIBLE) { hideOverlay(); return true; }
         return false;
     }
