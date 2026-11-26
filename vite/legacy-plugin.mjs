@@ -16,6 +16,7 @@ import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
 import { transform } from 'esbuild';
 import { LEGACY_SCRIPTS, WEB_ONLY_SCRIPTS } from '../src/legacy-order.mjs';
+import { buildCore } from '../scripts/build-core.mjs';
 
 const MARKER = '<!-- legacy-scripts -->';
 const DEV_URL = '/@pt-legacy/';
@@ -36,6 +37,7 @@ export default function legacyScripts({ root, web, version }) {
     name: 'pt-legacy-scripts',
     configResolved(cfg) { outDir = cfg.build.outDir; },
     async buildStart() {
+      await buildCore({ quiet: true });                     // src/core/*.ts → gen/*.js (part of the legacy list)
       for (const f of list()) this.addWatchFile(path.join(root, f));
       // parse check only (never shipped): syntax errors + the same top-level name declared in two files
       const all = list().map((f) => `\n/* ==== ${f} ==== */\n${read(f)}\n;`).join('');
@@ -59,8 +61,12 @@ export default function legacyScripts({ root, web, version }) {
         return web ? webHead(html) : html;
       },
     },
-    configureServer(server) {
+    async configureServer(server) {
       const req = createRequire(import.meta.url);
+      await buildCore({ quiet: true });
+      const coreDir = path.join(root, 'src', 'core');
+      server.watcher.add(coreDir);
+      server.watcher.on('change', (f) => { if (path.resolve(f).startsWith(coreDir + path.sep)) buildCore({ quiet: true }).then(() => server.ws.send({ type: 'full-reload' }), (e) => server.config.logger.error(String(e))); });
       server.middlewares.use((rq, rs, next) => {
         const u = rq.url.split('?')[0];
         if (u.startsWith(DEV_URL)) { const f = u.slice(DEV_URL.length); if (list().includes(f)) { rs.setHeader('Content-Type', 'text/javascript'); return rs.end(read(f)); } }

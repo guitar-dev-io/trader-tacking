@@ -4,30 +4,16 @@
 // Nothing here can trade: it only writes the read-only EA source and runs the compiler.
 const fs = require('fs'), path = require('path');
 
-// "#property version   "1.03"" → 103
-function bundledBuild(src) {
-  const m = String(src).match(/#property\s+version\s+"(\d+)\.(\d+)"/);
-  return m ? +m[1] * 100 + +m[2] : null;
-}
-// hello without "build" = EA older than 1.03
-const helloBuild = (info) => (info && info.build ? +info.build : info && info.v >= 2 ? 102 : 101);
-
-// Should we update now?  state: { [accountKey]: bundled build already attempted }
-function shouldUpdate({ info, bundled, enabled = true, attempted = {}, account, running = false }) {
-  if (!enabled || running || !bundled || !info) return { ok: false, why: !enabled ? 'disabled' : running ? 'running' : 'no-info' };
-  const have = helloBuild(info);
-  if (have >= bundled) return { ok: false, why: 'current', have };
-  if (attempted[account] === bundled) return { ok: false, why: 'already-tried', have };
-  return { ok: true, have };
-}
+// version checks are pure TypeScript: src/core/ea-version.ts (compiled to gen/ea-version.js)
+const { bundledBuild, helloBuild, shouldUpdate, parseCompileLog } = require('./gen/ea-version.js');
 
 // MetaEditor writes <name>.log next to the source (UTF-16): "Result: 0 errors, 1 warnings"
 function readCompileLog(dir) {
   for (const enc of ['utf16le', 'utf8']) {
     try {
       const t = fs.readFileSync(path.join(dir, 'PriceTrackerBridge.log'), enc).replace(/^﻿/, '');
-      const m = t.match(/(\d+)\s+errors?,\s*(\d+)\s+warnings?/i);
-      if (m) return { text: t, errors: +m[1], warnings: +m[2] };
+      const m = parseCompileLog(t);
+      if (m) return { text: t, errors: m.errors, warnings: m.warnings };
       if (enc === 'utf8') return { text: t, errors: null, warnings: null };
     } catch (_) { return { text: '', errors: null, warnings: null }; }
   }

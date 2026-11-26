@@ -9,3 +9,4 @@ android/build/
 dist-win/
 _site/
 dist-renderer/
+gen/
