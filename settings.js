@@ -1,4 +1,4 @@
-/* global S, store, $, esc, vcg, ICON, ZONES, TZ:writable, zoneOffsetSec, loadChart, runAnalysis, PREF_DEFAULT */
+/* global S, store, $, esc, vcg, ICON, ZONES, TZ:writable, zoneOffsetSec, loadChart, runAnalysis, PREF_DEFAULT, SETUP */
 // Toasts, network status, the Settings window, backup / restore / reset.
 
 // ---------------------------------------------------------------- toasts
@@ -165,6 +165,7 @@ function renderMt5Info() {
     : `⏳ รอ EA เชื่อมต่อที่ 127.0.0.1:${m.port || 7788}`;
 }
 if ($('st-install-ea')) {
+  if ($('st-mt5-guide')) $('st-mt5-guide').onclick = () => { $('modal-settings').classList.add('hidden'); SETUP.open('mt5', 0); };
   if (!vcg.mt5InstallEA) { $('st-install-ea').disabled = $('st-copy-ea').disabled = true; }
   $('st-install-ea').onclick = async () => {
     const r = await vcg.mt5InstallEA(), out = $('st-ea-out'); out.classList.remove('hidden');

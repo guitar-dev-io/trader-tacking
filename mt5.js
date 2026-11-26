@@ -135,7 +135,39 @@ function findExpertDirs({ home, appData, platform, env = {} }) {
   return [...out];
 }
 
-module.exports = { findExpertDirs, resolve,
+// Plan how to start MT5 with the EA already on a chart (MT5 "/config:" startup file).
+//  expertsDir: an MQL5/Experts folder from findExpertDirs. Returns null if no terminal64.exe was found.
+//  macOS: MT5 is a Wine bottle, so we run the bottle's wine with WINEPREFIX; Windows runs the exe directly.
+function planLaunch({ expertsDir, platform, appBundles = [], symbol, period = 'M5' }) {
+  const fs = require('fs'), path = require('path');
+  const dataDir = path.dirname(path.dirname(expertsDir));            // …/MetaTrader 5 (or Terminal/<id>)
+  let installDir = dataDir;
+  try { const o = fs.readFileSync(path.join(dataDir, 'origin.txt'), 'utf16le').replace(/^\uFEFF/, '').trim(); if (o && /terminal/i.test(dataDir)) installDir = o; } catch (_) {}
+  const exe = (n) => { for (const x of [n, n.toLowerCase()]) { const f = path.join(installDir, x); if (fs.existsSync(f)) return f; } return null; };
+  const terminal = exe('terminal64.exe'), editor = exe('MetaEditor64.exe');
+  const ini = ['[StartUp]', 'Expert=PriceTrackerBridge', symbol ? 'Symbol=' + symbol : '', 'Period=' + period,
+    '[Experts]', 'Enabled=1', 'AllowLiveTrading=0', 'AllowDllImport=0', 'WebRequest=1', 'WebRequestUrl=http://127.0.0.1', ''].filter((l) => l !== '').join('\r\n') + '\r\n';
+  const iniPath = path.join(dataDir, 'config', 'pricetracker-start.ini');
+  if (platform === 'darwin') {
+    const i = expertsDir.indexOf(path.sep + 'drive_c' + path.sep); if (i < 0) return null;
+    const prefix = expertsDir.slice(0, i), win = (f) => 'C:' + f.slice(i + 8).split(path.sep).join('\\');
+    let wine = null;
+    const find = (d, depth) => { if (wine || depth > 5) return; let ents; try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch (_) { return; }
+      for (const n of ['wine64', 'wine']) { const e = ents.find((x) => x.name === n && !x.isDirectory()); if (e && path.basename(d) === 'bin') { wine = path.join(d, n); return; } }
+      for (const e of ents) if (e.isDirectory() && !/^(lib|share|include|drive_c)$/.test(e.name)) find(path.join(d, e.name), depth + 1); };
+    for (const b of appBundles) find(path.join(b, 'Contents'), 0);
+    if (!terminal || !wine) return { terminal, wine, ini, iniPath, missing: !terminal ? 'terminal64.exe' : 'wine' };
+    return { ini, iniPath, env: { WINEPREFIX: prefix, WINEDEBUG: '-all' },
+      compile: editor && { cmd: wine, args: [win(editor), '/compile:' + win(path.join(expertsDir, 'PriceTrackerBridge.mq5')), '/log'] },
+      launch: { cmd: wine, args: [win(terminal), '/config:' + win(iniPath)] } };
+  }
+  if (!terminal) return { ini, iniPath, missing: 'terminal64.exe' };
+  return { ini, iniPath, env: {},
+    compile: editor && { cmd: editor, args: ['/compile:' + path.join(expertsDir, 'PriceTrackerBridge.mq5'), '/log'] },
+    launch: { cmd: terminal, args: ['/config:' + iniPath] } };
+}
+
+module.exports = { findExpertDirs, resolve, planLaunch,
   start, stop, request, watch,
   status: () => ({ listening: !!st.server, connected: st.connected, broker: st.info && st.info.broker, server: st.info && st.info.server,
     symbols: st.info ? st.info.symbols : [], unknown: [...st.unknown], port, lastTick: st.lastTick }),

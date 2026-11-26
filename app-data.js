@@ -1,5 +1,5 @@
 // Price Tracker renderer · data: chart loading, live quotes/watchlist, status, price alerts
-/* global LightweightCharts, IND, AN, BOUNCE, CUSTOM, LESSONS, ICON, vcg */
+/* global LightweightCharts, IND, AN, BOUNCE, CUSTOM, LESSONS, ICON, vcg, SETUP */
 // ---------------------------------------------------------------- data loading
 let loadTimeout = null;
 function loadChart() {
@@ -205,7 +205,7 @@ function renderConnect(st = connStatus) {
   const li = (i, t, sub) => `<li class="${i < step ? 'done' : i === step ? 'now' : ''}"><b>${i < step ? '✓' : i + 1}</b><span>${t}<small>${sub}</small></span></li>`;
   const html = web ? `<div class="cn-card"><div class="cn-logo">📈 Price Tracker</div><h3>เวอร์ชันเว็บเชื่อมต่อ VCG ไม่ได้</h3>
       <p class="muted">ราคาจาก VCG ใช้ได้ในแอป Mac และแอป Android · ในเบราว์เซอร์ใช้ข้อมูล Demo ฝึกได้ทุกอย่าง</p>
-      <button class="cn-primary" data-cn="demo">ใช้ข้อมูล Demo</button></div>`
+      <button class="cn-primary" data-cn="demo">ใช้ข้อมูล Demo</button><button class="cn-link" data-cn="guide">📘 วิธีติดตั้งแอป Mac / Android</button></div>`
     : `<div class="cn-card"><div class="cn-logo">📈 Price Tracker</div>
       <h3>เชื่อมต่อราคาจาก VCG Markets</h3>
       <ol class="cn-steps">
@@ -216,6 +216,7 @@ function renderConnect(st = connStatus) {
       <button class="cn-primary" data-cn="login">🔐 ${stage === 'connecting' ? 'เปิดหน้า VCG' : 'เข้าสู่ระบบ VCG'}</button>
       <p class="muted cn-hint">${mobile ? 'หน้า login จะเปิดเต็มจอ · ใช้ <b>อีเมล + รหัสผ่าน</b> (Google ไม่อนุญาตให้ login ด้วยบัญชี Google ในแอป) · login เสร็จแอปจะปิดให้เอง' : 'จะเปิดหน้าต่าง VCG WebTrader · login แล้วปิดหน้าต่างได้เลย แอปยังรับราคาต่อ'}</p>
       <div class="cn-row"><button data-cn="demo">ลองด้วยข้อมูล Demo<small>ไม่ต้อง login</small></button><button data-cn="retry">↻ เชื่อมต่อใหม่</button></div>
+      <button class="cn-link" data-cn="guide">📘 คู่มือเริ่มต้น — ติดตั้ง, login, เชื่อม MT5</button>
       <button class="cn-link" data-cn="log">ดู Log — ถ้ามีปัญหาส่งภาพหน้านี้ให้ผู้พัฒนา</button>
       <div class="cn-diag">${esc(stage)}${st.page ? ' · ' + esc(st.page) : ''}${st.nativeOk === false ? ' · ⚠️ native bridge ไม่ทำงาน' : ''}${st.overlay ? ' · login window เปิดอยู่' : ''}</div>
     </div>`;
@@ -226,6 +227,7 @@ function renderConnect(st = connStatus) {
       if (k === 'login') { const ok = vcg.showTrader(); vcg.log('info', 'ผู้ใช้กดเข้าสู่ระบบ VCG จากหน้าเชื่อมต่อ', null, 'auth'); if (ok === false) toast('เปิดหน้า login ไม่ได้ — ดูแท็บ Log', 'error'); }
       else if (k === 'demo') setSource('demo');
       else if (k === 'retry') { vcg.reloadTrader(); toast('กำลังเชื่อมต่อใหม่…', 'info'); setTimeout(loadChart, 8000); }
+      else if (k === 'guide') SETUP.open();
       else if (k === 'log') document.querySelector('#tabs [data-tab="log"]').click();
     }));
   }

@@ -1,0 +1,37 @@
+/* Setup guide (setup.js) */
+#setup { position: fixed; inset: 0; z-index: 9000; background: #0009; display: flex; align-items: center; justify-content: center; padding: 16px; }
+#setup.hidden { display: none; }
+#setup .su-card-wrap { position: relative; width: 100%; max-width: 560px; max-height: calc(100vh - 32px); overflow: auto; background: #151924; border: 1px solid var(--line); border-radius: 14px; padding: 20px 20px 16px; box-shadow: 0 10px 40px #000a; line-height: 1.55; }
+#setup h2 { margin: 0 30px 4px 0; font-size: 19px; }
+#setup h3 { margin: 14px 0 6px; font-size: 16px; }
+#setup .su-x { position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; border-radius: 50%; padding: 0; }
+#setup .su-card { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; padding: 12px 14px; margin: 8px 0; border-radius: 10px; cursor: pointer; background: #1b2030; }
+#setup .su-card:hover:not(:disabled) { border-color: var(--accent); }
+#setup .su-card:disabled { opacity: .5; cursor: default; }
+#setup .su-card i { font-style: normal; font-size: 24px; width: 32px; text-align: center; }
+#setup .su-card b { display: block; }
+#setup .su-card small, #setup li small { display: block; color: var(--muted); font-size: 12px; }
+#setup .su-sec { margin: 16px 0 2px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+#setup .su-now { margin: 10px 0; padding: 8px 12px; border-radius: 8px; background: #2a2412; color: #f5c46b; font-size: 13px; }
+#setup .su-now.ok { background: #0f2a26; color: #5fd3c4; }
+#setup .su-safe { padding: 8px 12px; border-radius: 8px; background: #14203a; font-size: 13px; }
+#setup ol, #setup ul { padding-left: 22px; margin: 6px 0; }
+#setup li { margin: 6px 0; }
+#setup a { color: #6f9bff; }
+#setup kbd { display: inline-block; padding: 0 6px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; font-size: 12px; background: #1c2030; }
+#setup code { background: #1c2030; padding: 1px 6px; border-radius: 4px; user-select: all; }
+#setup .su-primary { display: block; width: 100%; margin: 12px 0 4px; padding: 12px; font-size: 15px; font-weight: 700; border: none; border-radius: 10px; background: var(--accent); color: #fff; cursor: pointer; }
+#setup .su-primary:disabled { opacity: .6; }
+#setup .su-dots { display: flex; align-items: center; margin: 12px 0 4px; }
+#setup .su-dots i { flex: 1; height: 2px; background: var(--line); }
+#setup .su-dots button { width: 28px; height: 28px; padding: 0; border-radius: 50%; font-size: 12px; }
+#setup .su-dots button.now { background: var(--accent); border-color: var(--accent); color: #fff; }
+#setup .su-dots button.done { background: #0f2a26; border-color: var(--up); color: var(--up); }
+#setup .su-nav { display: flex; justify-content: space-between; gap: 8px; margin-top: 14px; }
+#setup .su-nav button { padding: 9px 16px; border-radius: 8px; }
+#setup .su-next { background: var(--accent); border-color: var(--accent); color: #fff; }
+#setup .su-run { list-style: none; padding: 0; font-size: 13px; }
+#setup .su-run .ok { color: var(--up); } #setup .su-run .bad { color: #ff8a80; }
+#setup details { margin-top: 10px; } #setup summary { cursor: pointer; color: var(--muted); }
+body.mobile #setup { padding: 0; align-items: stretch; }
+body.mobile #setup .su-card-wrap { max-width: none; max-height: none; height: 100%; border-radius: 0; border: none; padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)); }

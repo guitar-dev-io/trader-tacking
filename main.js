@@ -421,6 +421,37 @@ ipcMain.handle('mt5-install-ea', async () => {
   if (done[0]) shell.showItemInFolder(path.join(done[0], 'PriceTrackerBridge.mq5'));
   return { installed: done, failed };
 });
+// One-click: copy the EA, compile it with MetaEditor, then start MT5 with the EA already on a chart.
+ipcMain.handle('mt5-launch', async (_e, opt = {}) => {
+  const { spawn, execFileSync } = require('child_process');
+  const steps = [], ok = (t) => steps.push({ ok: true, t }), bad = (t) => steps.push({ ok: false, t });
+  const dirs = findMt5ExpertDirs();
+  if (!dirs.length) { bad('ไม่พบ MT5 ในเครื่อง — ติดตั้ง MT5 แล้วเปิดโปรแกรม 1 ครั้งก่อน'); return { ok: false, steps }; }
+  const dir = dirs[0];
+  try { fs.writeFileSync(path.join(dir, 'PriceTrackerBridge.mq5'), fs.readFileSync(path.join(__dirname, 'mt5', 'PriceTrackerBridge.mq5'))); ok('คัดลอก EA ลง MT5 แล้ว'); }
+  catch (e) { bad('คัดลอก EA ไม่ได้: ' + e.message); return { ok: false, steps }; }
+  const bundles = ['/Applications/MetaTrader 5.app', path.join(app.getPath('home'), 'Applications', 'MetaTrader 5.app')].filter((b) => fs.existsSync(b));
+  const sym = mt5.status().symbols.find((x) => /^XAUUSD/i.test(x));
+  const plan = mt5.planLaunch({ expertsDir: dir, platform: process.platform, appBundles: bundles, symbol: opt.symbol || sym, period: opt.period || 'M5' });
+  log.info('mt5', 'แผนเปิด MT5', plan && { launch: plan.launch, compile: plan.compile, missing: plan.missing, iniPath: plan.iniPath });
+  if (!plan || plan.missing) { bad('หาโปรแกรม MT5 (' + ((plan && plan.missing) || 'terminal64.exe') + ') ไม่เจอ — เปิด MT5 เองแล้วลาก EA ลงกราฟ'); return { ok: false, steps, manual: true }; }
+  let running = false;
+  try { running = !!String(execFileSync(process.platform === 'win32' ? 'tasklist' : 'pgrep', process.platform === 'win32' ? ['/FI', 'IMAGENAME eq terminal64.exe'] : ['-fl', 'terminal64'], { encoding: 'utf8' })).match(/terminal64/i); } catch (_) {}
+  if (running && !opt.force) { bad('MT5 เปิดอยู่ — ปิด MT5 ก่อน (Cmd+Q) แล้วกดใหม่ ให้ MT5 เปิดพร้อม EA'); return { ok: false, steps, running: true }; }
+  const env = { ...process.env, ...plan.env };
+  if (plan.compile) {
+    const code = await new Promise((res) => { const p = spawn(plan.compile.cmd, plan.compile.args, { env }); const t = setTimeout(() => { try { p.kill(); } catch (_) {} res(-1); }, 90000); p.on('error', () => { clearTimeout(t); res(-2); }); p.on('exit', (c) => { clearTimeout(t); res(c); }); });
+    let logTxt = ''; try { logTxt = fs.readFileSync(path.join(dir, 'PriceTrackerBridge.log'), 'utf16le'); } catch (_) {}
+    const m = logTxt.match(/(\d+)\s+errors?,\s*(\d+)\s+warnings?/i), ex5 = fs.existsSync(path.join(dir, 'PriceTrackerBridge.ex5'));
+    log.info('mt5', 'compile EA', { code, result: m ? m[0] : null });
+    if (m && +m[1] > 0) { bad('compile ไม่ผ่าน: ' + m[0] + ' — ดูรายละเอียดใน Log'); log.warn('mt5', 'compile log', logTxt.slice(-3000)); return { ok: false, steps }; }
+    ex5 ? ok('compile EA แล้ว' + (m ? ` (${m[0]})` : '')) : bad('ยังไม่เห็นไฟล์ .ex5 — MT5 จะ compile ให้ตอนเปิด หรือเปิด MetaEditor แล้วกด F7');
+  }
+  try { fs.mkdirSync(path.dirname(plan.iniPath), { recursive: true }); fs.writeFileSync(plan.iniPath, plan.ini); } catch (e) { bad('เขียนไฟล์ตั้งค่าไม่ได้: ' + e.message); return { ok: false, steps }; }
+  try { const p = spawn(plan.launch.cmd, plan.launch.args, { env, detached: true, stdio: 'ignore' }); p.unref(); ok('กำลังเปิด MT5 พร้อม EA…'); }
+  catch (e) { bad('เปิด MT5 ไม่ได้: ' + e.message); return { ok: false, steps }; }
+  return { ok: true, steps };
+});
 ipcMain.handle('mt5-ea-source', () => fs.readFileSync(path.join(__dirname, 'mt5', 'PriceTrackerBridge.mq5'), 'utf8'));
 function startMt5() {
   mt5.start(settings.mt5.port, {

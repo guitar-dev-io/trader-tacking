@@ -57,12 +57,22 @@ app.whenReady().then(async () => {
   try {
     // ------------------------------------------------------------------ desktop app
     const A = await open(path.join(ROOT, 'index.html'));
-    const { js, send } = A;
+    const { js, send, shot } = A;
     send('status', { connected: true, loggedIn: true, symbols: ['XAUUSD'], traySymbol: 'XAUUSD', source: 'vcg' });
     send('net', { level: 'ok', rtt: 80, feedDelay: 50, lastTickAgo: 1, reconnects: 0, connected: true });
     await sleep(300);
     check('boot: chart requested', reqs.length > 0, reqs[0] && reqs[0].symbol);
     check('boot: clean default (no analysis overlays on)', await js(`Object.entries(S.an).filter(([k, v]) => v === true && AN_VIEW_KEYS.includes(k)).length === 0`));
+    await js(`store.set('setupDone', 1)`);
+    const su = JSON.parse(await js(`(() => { SETUP.open(); const cards = document.querySelectorAll('#setup .su-card').length;
+      document.querySelector('#setup [data-path=mt5]').click(); const steps = document.querySelectorAll('#setup .su-dots button').length;
+      document.querySelector('#setup [data-nav=next]').click(); const h = document.querySelector('#setup h3').textContent;
+      document.querySelector('#setup [data-nav=back]').click(); document.querySelector('#setup [data-nav=back]').click();
+      document.querySelector('#setup [data-path=vcg]').click(); const vcgBtn = !!document.querySelector('#setup [data-act=vcg-login]') || document.querySelectorAll('#setup .su-dots button').length === 3;
+      SETUP.close(true); return JSON.stringify({ cards, steps, h, vcgBtn, closed: !SETUP.isOpen() }); })()`));
+    await js(`SETUP.open()`); await new Promise((r) => setTimeout(r, 300)); await shot('setup-start');
+    await js(`SETUP.open('mt5', 3)`); await new Promise((r) => setTimeout(r, 300)); await shot('setup-mt5'); await js(`SETUP.open('install', 0)`); await new Promise((r) => setTimeout(r, 300)); await shot('setup-install'); await js(`SETUP.close(true)`);
+    check('setup guide: start cards, MT5 5 steps, navigation, close', su.cards === 4 && su.steps === 5 && /Login/.test(su.h) && su.vcgBtn && su.closed, su);
 
     send('chart', { type: 'chart', slot: 'main', data: { history: { candles: candles(1500, 3600, 11) } } });
     await sleep(1200);

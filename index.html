@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="lessons-guide.css">
 <link rel="stylesheet" href="mobile.css">
+<link rel="stylesheet" href="setup.css">
 </head>
 <body>
 <div id="titlebar">
@@ -219,7 +220,7 @@
           <h4>MT5 (โบรกเกอร์ที่ใช้ MetaTrader 5 เช่น Brex Capital)</h4>
           <div id="st-mt5-info" class="net-now"></div>
           <div class="row"><label>พอร์ต MT5</label><input id="st-mt5-port" type="number" min="1024" max="65535"><button id="st-save-ea">⬇ บันทึกไฟล์ EA</button></div>
-          <div class="btns" style="margin:6px 0"><button id="st-install-ea" class="primary">ติดตั้ง EA ลง MT5 ให้อัตโนมัติ</button><button id="st-copy-ea">คัดลอกโค้ด EA</button></div>
+          <div class="btns" style="margin:6px 0"><button id="st-install-ea" class="primary">ติดตั้ง EA ลง MT5 ให้อัตโนมัติ</button><button id="st-copy-ea">คัดลอกโค้ด EA</button><button id="st-mt5-guide">📘 ตัวช่วยเชื่อมต่อ MT5</button></div>
           <pre id="st-ea-out" class="hidden" style="white-space:pre-wrap;word-break:break-all;font-size:11.5px"></pre>
           <ol class="mt5-steps">
             <li>กด "บันทึกไฟล์ EA" แล้วใน MT5 เปิด <b>File › Open Data Folder › MQL5 › Experts</b> วางไฟล์ <code>PriceTrackerBridge.mq5</code></li>
@@ -317,6 +318,7 @@
 <script src="extras.js"></script>
 <script src="learn.js"></script>
 <script src="news.js"></script>
+<script src="setup.js"></script>
 <script src="mtf.js"></script>
 <script src="ui.js"></script>
 <script src="mobile.js"></script>

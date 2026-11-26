@@ -1,4 +1,4 @@
-/* global S, store, $, ICON, vcg, chart, dirty:writable, TOOLS, GROUPS, setTool, undo, switchSymbol, fmt, esc, toast, setSource, REPLAY, openIndicatorMenu, openAnalysisMenu */
+/* global S, store, $, ICON, vcg, chart, dirty:writable, TOOLS, GROUPS, setTool, undo, switchSymbol, fmt, esc, toast, setSource, REPLAY, openIndicatorMenu, openAnalysisMenu, SETUP */
 // Phone layout (Android app / narrow windows). The desktop UI is a TradingView-style workstation; on a phone we
 // re-arrange the same parts into a mobile shell instead of shrinking the desktop:
 //   header: symbol (tap → symbol sheet) · price · change · status dot
@@ -150,6 +150,7 @@
     <button data-go="log">${ICON.svg('logs', 22)}<span><b>Log</b><small>สถานะการเชื่อมต่อ · ส่งให้ผู้พัฒนาเมื่อมีปัญหา</small></span><i id="m-logb"></i></button>
     <button data-do="settings">${ICON.svg('gear', 22)}<span><b>การตั้งค่า</b><small>เวลา, แจ้งเตือน, Session, ข้อมูล</small></span></button>
     <div class="m-sec">การเชื่อมต่อ</div>
+    <button data-do="guide">📘<span><b>คู่มือเริ่มต้น</b><small>ติดตั้งแอป · วิธี login · เลือกแหล่งราคา</small></span></button>
     <div class="m-src"></div>
     <button data-do="login">🔐<span><b>เข้าสู่ระบบ VCG</b><small>เปิดหน้า login ของ VCG WebTrader</small></span></button>
     <button data-do="reconnect">↻<span><b>เชื่อมต่อใหม่</b><small>โหลดหน้า VCG ใหม่</small></span></button>
@@ -171,6 +172,7 @@
   on(side.querySelector('.mph-back'), 'click', () => showPage('more'));
   side.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => showPage(b.dataset.go)));
   on(side.querySelector('[data-do=settings]'), 'click', () => $('open-settings').click());
+  on(side.querySelector('[data-do=guide]'), 'click', () => SETUP.open());
   on(side.querySelector('[data-do=login]'), 'click', () => { vcg.showTrader(); });
   on(side.querySelector('[data-do=reconnect]'), 'click', () => { vcg.reloadTrader(); toast('กำลังเชื่อมต่อใหม่…', 'info'); });
   side.querySelector('.m-ver').textContent = 'Price Tracker ' + (window.APP_VERSION || '');
