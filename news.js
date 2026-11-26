@@ -1,4 +1,4 @@
-/* global S, store, $, esc, vcg, toast, NEWS, tf */
+/* global S, store, $, esc, vcg, toast, NEWS, tf, ICON */
 // Market news ("ข่าว" tab): headlines from a fixed list of established publishers and official sources (RSS),
 // merged, de-duplicated, tagged by relevance to the open symbol. Only the headline, source and time are shown;
 // tapping opens the publisher's own page in the browser.
@@ -69,7 +69,7 @@ const HEADLINES = (() => {
   function notifyNew() {
     const words = symbolWords(S.symbol), last = store.get('headlines.notified', 0);
     const fresh = items.list.filter((x) => x.t > last && x.t > Date.now() - 30 * 60e3 && (x.kind === 'official' || relevantTo(x, words)));
-    if (fresh.length && last) toast(`📰 ${fresh[0].src}: ${fresh[0].title}${fresh.length > 1 ? ` (+${fresh.length - 1})` : ''}`, 'info', 10000);
+    if (fresh.length && last) toast(`${fresh[0].src}: ${fresh[0].title}${fresh.length > 1 ? ` (+${fresh.length - 1})` : ''}`, 'info', 10000);
     store.set('headlines.notified', Math.max(last, ...items.list.map((x) => x.t), 0));
   }
   const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'เมื่อสักครู่' : m < 60 ? m + ' นาที' : m < 1440 ? Math.round(m / 60) + ' ชม.' : Math.round(m / 1440) + ' วัน'; };
@@ -83,14 +83,14 @@ const HEADLINES = (() => {
     const chips = [['rel', `เกี่ยวกับ ${S.symbol}`], ['all', 'ทั้งหมด'], ['official', 'ทางการ (Fed/ECB/BLS)'], ...FEEDS.filter((f) => f.kind === 'market').map((f) => [f.id, f.name.split(' ·')[0] === 'Investing.com' ? f.name.replace('Investing.com · ', 'Investing ') : f.name])];
     const cal = typeof NEWS !== 'undefined' && NEWS.upcoming ? NEWS.upcoming(4) : [];
     box.innerHTML = `
-      <div class="panel nw-head"><div class="panel-h"><span>📰 ข่าวตลาด</span><button id="nw-refresh" class="ib" title="โหลดใหม่">${loading ? '…' : '↻'}</button></div>
+      <div class="panel nw-head"><div class="panel-h"><span>${ICON.html('newspaper', 16)}ข่าวตลาด</span><button id="nw-refresh" class="ib" title="โหลดใหม่" aria-label="โหลดใหม่">${ICON.svg(loading ? 'loader-circle' : 'refresh-cw', 16)}</button></div>
         <div class="nw-chips">${chips.map(([k, n]) => `<button data-nf="${k}" class="${filter === k ? 'on' : ''}">${esc(n)}</button>`).join('')}</div>
-        ${cal.length ? `<div class="nw-cal">${cal.map((e) => `<div>${e.impact === 'High' ? '🔴' : '🟠'} <b>${esc(e.when)}</b> ${esc(e.ccy)} ${esc(e.title)}</div>`).join('')}<small class="muted">ปฏิทินเศรษฐกิจ (Forex Factory)</small></div>` : ''}
+        ${cal.length ? `<div class="nw-cal">${cal.map((e) => `<div><i class="imp ${e.impact === 'High' ? 'hi' : 'md'}"></i><b>${esc(e.when)}</b> ${esc(e.ccy)} ${esc(e.title)}</div>`).join('')}<small class="muted">ปฏิทินเศรษฐกิจ (Forex Factory)</small></div>` : ''}
       </div>
       <div class="nw-list">${list.length ? list.slice(0, 80).map((x) => `<a class="nw-item ${x.t > seenAt ? 'new' : ''} ${x.kind}" href="${esc(x.link)}" target="_blank" rel="noopener noreferrer">
           <span class="nw-t">${esc(x.title)}</span><span class="nw-m">${esc(x.src)} · ${ago(x.t)}${x.kind === 'official' ? ' · <b>ทางการ</b>' : ''}</span></a>`).join('')
-        : `<p class="muted">${loading ? 'กำลังโหลดข่าว…' : items.list.length ? 'ไม่มีข่าวในหมวดนี้' : 'ยังโหลดข่าวไม่ได้ — ตรวจอินเทอร์เน็ตแล้วกด ↻'}</p>`}</div>
-      <p class="muted nw-foot">แหล่ง: ${FEEDS.map((f) => esc(f.name) + (errors[f.id] ? ' ⚠️' : '')).join(' · ')} · แตะหัวข้อเพื่ออ่านที่เว็บต้นทาง · อัปเดตทุก 5 นาที${items.at ? ' · ล่าสุด ' + ago(items.at) : ''}</p>`;
+        : `<p class="muted">${loading ? 'กำลังโหลดข่าว…' : items.list.length ? 'ไม่มีข่าวในหมวดนี้' : 'ยังโหลดข่าวไม่ได้ — ตรวจอินเทอร์เน็ตแล้วกดปุ่มโหลดใหม่'}</p>`}</div>
+      <p class="muted nw-foot">แหล่ง: ${FEEDS.map((f) => esc(f.name) + (errors[f.id] ? ' ' + ICON.html('triangle-alert', 12, 'warn') : '')).join(' · ')} · แตะหัวข้อเพื่ออ่านที่เว็บต้นทาง · อัปเดตทุก 5 นาที${items.at ? ' · ล่าสุด ' + ago(items.at) : ''}</p>`;
     box.querySelectorAll('[data-nf]').forEach((b) => (b.onclick = () => { filter = b.dataset.nf; store.set('headlines.filter', filter); render(); }));
     $('nw-refresh').onclick = () => refresh(true);
   }

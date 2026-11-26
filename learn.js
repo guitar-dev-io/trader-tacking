@@ -1,4 +1,4 @@
-/* global S, store, $, esc, fmt, digits, tf, TZ, setAllData, pushLast, chart, toast, vcg, el, label, txt, yOf, xIdx, chartW, autoVpp, vpp, plannerLot,
+/* global ICON, S, store, $, esc, fmt, digits, tf, TZ, setAllData, pushLast, chart, toast, vcg, el, label, txt, yOf, xIdx, chartW, autoVpp, vpp, plannerLot,
    drawings:writable, saveDrawings, drawingsKey, switchSymbol, renderTfs, loadChart, dirty:writable, UP, DOWN, renderLayers, normalize, onQuotesMsg:writable, desktopNotify, beep */
 // Learning tools: Bar Replay, paper trading (simulated orders on live or replay data), practice exercises, journal & stats, lesson packs.
 
@@ -6,10 +6,10 @@
 const REPLAY = (() => {
   const bar = document.createElement('div');
   bar.id = 'replaybar'; bar.className = 'hidden';
-  bar.innerHTML = `<span class="rp-title">⏪ Replay</span>
-    <button data-r="back" title="ถอย 1 แท่ง">⏮</button><button data-r="play" title="เล่น/หยุด (Space)">▶</button><button data-r="step" title="เดินหน้า 1 แท่ง (→)">⏭</button>
+  bar.innerHTML = `<span class="rp-title">${ICON.html('rewind', 16)}Replay</span>
+    <button data-r="back" title="ถอย 1 แท่ง" aria-label="ถอย 1 แท่ง">${ICON.svg('skip-back', 16)}</button><button data-r="play" title="เล่น/หยุด (Space)" aria-label="เล่น/หยุด">${ICON.svg('play', 16)}</button><button data-r="step" title="เดินหน้า 1 แท่ง (→)" aria-label="เดินหน้า 1 แท่ง">${ICON.svg('skip-forward', 16)}</button>
     <select data-r="speed" title="ความเร็ว"><option value="1">1 แท่ง/วิ</option><option value="2">2/วิ</option><option value="5">5/วิ</option><option value="10">10/วิ</option><option value="25">25/วิ</option></select>
-    <span class="rp-info"></span><button data-r="exit" class="rp-exit" title="ออกจาก Replay">✕ ออก</button>`;
+    <span class="rp-info"></span><button data-r="exit" class="rp-exit" title="ออกจาก Replay">${ICON.html('x', 14)}ออก</button>`;
   $('chart-wrap').appendChild(bar);
   const info = bar.querySelector('.rp-info'), playBtn = bar.querySelector('[data-r=play]');
   let timer = null, picking = false;
@@ -45,8 +45,8 @@ const REPLAY = (() => {
     R.idx--; S.candles = R.full.slice(0, R.idx + 1); setAllData(); update();
     if (typeof MTF !== 'undefined') MTF.replaySync();
   }
-  function play() { if (timer) return stopPlay(); const sp = +bar.querySelector('[data-r=speed]').value; timer = setInterval(() => step(1), 1000 / sp); playBtn.textContent = '⏸'; }
-  function stopPlay() { clearInterval(timer); timer = null; playBtn.textContent = '▶'; }
+  function play() { if (timer) return stopPlay(); const sp = +bar.querySelector('[data-r=speed]').value; timer = setInterval(() => step(1), 1000 / sp); playBtn.innerHTML = ICON.svg('pause', 16); }
+  function stopPlay() { clearInterval(timer); timer = null; playBtn.innerHTML = ICON.svg('play', 16); }
   function exit() {
     if (!S.replay) return;
     stopPlay(); QUIZ.abort();
@@ -132,7 +132,7 @@ const SIM = (() => {
     const h = { ...p, exit, reason, closeTime: t, pnl, r };
     a.history.push(h); if (a.history.length > 2000) a.history.shift();
     saveAcc(); if (quiet) { QUIZ.onClose(h); return; } render(); dirty = true;
-    const msg = `${reason === 'TP' ? '🎯 TP' : reason === 'SL' ? '🛑 SL' : 'ปิด'} ${p.side === 1 ? 'BUY' : 'SELL'} ${p.symbol} ${money(pnl)}${r != null ? ` (${r >= 0 ? '+' : ''}${r.toFixed(2)}R)` : ''}`;
+    const msg = `${reason === 'TP' ? 'ถึง TP' : reason === 'SL' ? 'โดน SL' : 'ปิด'} ${p.side === 1 ? 'BUY' : 'SELL'} ${p.symbol} ${money(pnl)}${r != null ? ` (${r >= 0 ? '+' : ''}${r.toFixed(2)}R)` : ''}`;
     toast(msg, pnl >= 0 ? 'ok' : 'warn');
     QUIZ.onClose(h);
   }
@@ -297,7 +297,7 @@ const QUIZ = (() => {
     if (S.replay) REPLAY.exit();
     REPLAY.start(idx);
     q = { startIdx: idx, traded: false, played: 0 };
-    toast('🎯 โจทย์ใหม่: วิเคราะห์โครงสร้าง แล้ววางคำสั่งจำลอง (หรือกด "ข้าม") — แอปจะเล่นต่อจนรู้ผล', 'info', 10000);
+    toast('โจทย์ใหม่: วิเคราะห์โครงสร้าง แล้ววางคำสั่งจำลอง (หรือกด "ข้าม") — แอปจะเล่นต่อจนรู้ผล', 'info', 10000);
     render();
   }
   function onTrade() { if (!q || q.traded) return; q.traded = true; render(); REPLAY.play(); }
@@ -310,7 +310,7 @@ const QUIZ = (() => {
     const res = store.get('quiz.results', []);
     res.push({ t: Date.now(), symbol: S.symbol, tf: tf().label, skipped: !!(qq && qq.skipped) || !h, r: h ? h.r : null, pnl: h ? h.pnl : null });
     store.set('quiz.results', res.slice(-500));
-    if (h) { const good = h.r != null ? h.r > 0 : h.pnl > 0; toast(`${good ? '✅ ถูกทาง' : '❌ ผิดทาง'} — ${h.reason} ${h.r != null ? h.r.toFixed(2) + 'R' : ''} · ดูกราฟต่อได้ หรือกด "โจทย์ถัดไป"`, good ? 'ok' : 'warn', 10000); beep(); }
+    if (h) { const good = h.r != null ? h.r > 0 : h.pnl > 0; toast(`${good ? 'ถูกทาง' : 'ผิดทาง'} — ${h.reason} ${h.r != null ? h.r.toFixed(2) + 'R' : ''} · ดูกราฟต่อได้ หรือกด "โจทย์ถัดไป"`, good ? 'ok' : 'warn', 10000); beep(); }
     render();
   }
   function abort() { q = null; render(); }
@@ -321,7 +321,7 @@ const QUIZ = (() => {
     const rs = done.filter((r) => r.r != null).map((r) => r.r);
     box.innerHTML = `<div class="panel-h">ฝึกด้วย Replay</div>
       <p class="muted">ย้อนกราฟแล้วเล่นทีละแท่ง โดยไม่เห็นอนาคต — ฝึกตีโซน วางจุดเข้า SL TP แล้วดูผล</p>
-      <div class="btns"><button id="rp-pick">⏪ เลือกจุดเริ่มบนกราฟ</button><button id="rp-quiz" class="primary">🎯 สุ่มโจทย์</button>${q && !q.traded ? '<button id="rp-skip">ข้าม (ไม่เข้า)</button>' : ''}${S.replay ? '<button id="rp-exit">ออกจาก Replay</button>' : ''}</div>
+      <div class="btns"><button id="rp-pick">${ICON.html('rewind', 15)}เลือกจุดเริ่มบนกราฟ</button><button id="rp-quiz" class="primary">${ICON.html('target', 15)}สุ่มโจทย์</button>${q && !q.traded ? '<button id="rp-skip">ข้าม (ไม่เข้า)</button>' : ''}${S.replay ? '<button id="rp-exit">ออกจาก Replay</button>' : ''}</div>
       <div class="sum" style="margin-top:8px"><span>โจทย์ที่ทำ</span><b>${done.length} (ข้าม ${res.length - done.length})</b><span>ถูกทาง</span><b>${done.length ? Math.round((wins / done.length) * 100) + '%' : '—'}</b><span>R เฉลี่ย</span><b>${rs.length ? (rs.reduce((a, b) => a + b, 0) / rs.length).toFixed(2) + 'R' : '—'}</b></div>
       <p class="muted">คีย์ลัด: Space = เล่น/หยุด · → = 1 แท่ง · Shift+→ = 10 แท่ง · ← = ถอย</p>`;
     $('rp-pick').onclick = () => REPLAY.pick();

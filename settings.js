@@ -4,7 +4,10 @@
 // ---------------------------------------------------------------- toasts
 function toast(msg, kind = 'info', ms = 5000) {
   if (!S.prefs.toast && kind !== 'error') return;
-  const t = document.createElement('div'); t.className = 'toast ' + kind; t.textContent = msg;
+  // one icon per kind (Lucide) instead of emoji in the text
+  const t = document.createElement('div'); t.className = 'toast ' + kind;
+  t.innerHTML = ICON.html({ ok: 'circle-check', error: 'circle-x', warn: 'triangle-alert' }[kind] || 'info', 16, 'toast-ic') + '<span></span>';
+  t.lastChild.textContent = String(msg).replace(/^\s*(?:\p{Extended_Pictographic}\uFE0F?\s*)+/u, '');
   $('toasts').appendChild(t);
   while ($('toasts').children.length > 4) $('toasts').firstChild.remove();
   setTimeout(() => t.remove(), ms);
@@ -25,7 +28,7 @@ vcg.onNet((n) => {
   el.title = `CPU: หน้าจอ ${c.ui ?? '—'}% · WebTrader ${c.webtrader ?? '—'}% · ตัวแอป ${c.app ?? '—'}% · GPU ${c.gpu ?? '—'}%\nสถานะ: ${NET_TH[n.level]}\nPing: ${n.rtt ?? '—'} ms\nราคาหน่วงเพิ่ม (เทียบตอนปกติ): ${n.feedDelay ?? '—'} ms\nราคาล่าสุด: ${n.lastTickAgo != null ? Math.round(n.lastTickAgo) + ' วินาทีที่แล้ว' : '—'}\nหลุดไปแล้ว: ${n.reconnects} ครั้ง`;
   const b = $('netbanner');
   if (n.level === 'ok') { b.classList.add('hidden'); bannerDismissed = null; }
-  else if (bannerDismissed !== n.level) { b.className = n.level; $('netbanner-text').textContent = '⚠️ ' + (n.detail || NET_TH[n.level]); b.title = n.detail || ''; }
+  else if (bannerDismissed !== n.level) { b.className = n.level; $('netbanner-text').textContent = (n.detail || NET_TH[n.level]); b.title = n.detail || ''; }
   if (n.level !== lastNetLevel) {
     if (n.level === 'ok') toast('การเชื่อมต่อกลับมาปกติ', 'ok');
     else if (n.level === 'down' || n.level === 'offline') toast(n.detail || NET_TH[n.level], 'error', 8000); // slow/stale: the titlebar pill is enough
@@ -167,8 +170,8 @@ function renderMt5Info() {
   else pill('st-vcg-pill', st.connected && S.source === 'vcg' ? 'ok' : st.loggedIn ? 'wait' : 'bad', st.connected && S.source === 'vcg' ? 'เชื่อมต่อแล้ว' : st.loggedIn ? 'login แล้ว' : 'ยังไม่ได้ login');
   if (!vcg.capabilities?.mt5) { box.textContent = 'ใช้ได้เฉพาะแอปบนคอม (Mac / Windows)'; pill('st-mt5-pill', '', 'เฉพาะบนคอม'); $('st-use-mt5') && ($('st-use-mt5').disabled = true); return; }
   pill('st-mt5-pill', m.connected ? 'ok' : S.source === 'mt5' ? 'wait' : '', m.connected ? 'EA เชื่อมต่อแล้ว' : S.source === 'mt5' ? 'รอ EA' : 'ไม่ได้ใช้');
-  box.innerHTML = m.connected ? `✅ <b>${esc(m.broker || '')}</b> (${esc(m.server || '')}) · ${(m.symbols || []).length} symbol ใน Market Watch${(m.unknown || []).length ? `<br>⚠️ ไม่พบใน MT5: ${esc(m.unknown.join(', '))}` : ''}`
-    : S.source === 'mt5' ? `⏳ รอ EA เชื่อมต่อที่ 127.0.0.1:${m.port || 7788} — เปิด MT5 แล้วติด EA บนกราฟ` : 'ยังไม่ได้เลือก MT5 เป็นแหล่งราคา';
+  box.innerHTML = m.connected ? `${ICON.html('circle-check', 15, 'up')}<b>${esc(m.broker || '')}</b> (${esc(m.server || '')}) · ${(m.symbols || []).length} symbol ใน Market Watch${(m.unknown || []).length ? `<br>${ICON.html('triangle-alert', 15, 'warn')}ไม่พบใน MT5: ${esc(m.unknown.join(', '))}` : ''}`
+    : S.source === 'mt5' ? `${ICON.html('hourglass', 15)}รอ EA เชื่อมต่อที่ 127.0.0.1:${m.port || 7788} — เปิด MT5 แล้วติด EA บนกราฟ` : 'ยังไม่ได้เลือก MT5 เป็นแหล่งราคา';
 }
 ['vcg', 'mt5', 'demo'].forEach((k) => { const b = $('st-use-' + k); if (b) b.onclick = () => { setSource(k); renderMt5Info(); if (k === 'mt5' && !(lastStatus && lastStatus.mt5 && lastStatus.mt5.connected)) { $('modal-settings').classList.add('hidden'); SETUP.open('mt5', 0); } }; });
 if ($('st-open-guide')) $('st-open-guide').onclick = () => { $('modal-settings').classList.add('hidden'); SETUP.open(); };
@@ -225,7 +228,7 @@ function renderSessRows() {
     <td><input type="text" class="hm" data-f="close" value="${x.close}" placeholder="HH:MM" maxlength="5"></td>
     <td><select data-f="zone">${SESS_ZONES.map(([z, n]) => `<option value="${z}" ${z === x.zone ? 'selected' : ''}>${n}</option>`).join('')}</select></td>
     <td class="pv">${sessPreview(x)}</td>
-    <td><button data-del="${i}" title="ลบ">✕</button></td></tr>`).join('');
+    <td><button data-del="${i}" title="ลบ" aria-label="ลบ">${ICON.svg('x', 14)}</button></td></tr>`).join('');
   $('sess-rows').querySelectorAll('[data-f]').forEach((inp) => (inp.oninput = inp.onchange = () => {
     const i = +inp.closest('tr').dataset.i, f = inp.dataset.f;
     sessDraft[i][f] = f === 'on' ? inp.checked : inp.value;
@@ -261,7 +264,7 @@ $('st-file').onchange = async () => {
     if (b.main) await vcg.setSettings(b.main);
     vcg.log('info', `กู้คืนข้อมูลจาก ${f.name}`, null, 'data');
     location.reload();
-  } catch (e) { $('st-reset-msg').textContent = '❌ ' + e.message; vcg.log('error', 'กู้คืนไม่สำเร็จ: ' + e.message, null, 'data'); }
+  } catch (e) { $('st-reset-msg').textContent = 'ผิดพลาด: ' + e.message; vcg.log('error', 'กู้คืนไม่สำเร็จ: ' + e.message, null, 'data'); }
 };
 let resetArmed = false;
 $('st-reset').onclick = () => {

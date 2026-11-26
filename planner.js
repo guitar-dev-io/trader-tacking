@@ -1,4 +1,4 @@
-/* global S, store, $, esc, fmt, digits, activeSignal, el, label, chartW, yOf, dirty:writable, UP, DOWN, vcg */
+/* global ICON, S, store, $, esc, fmt, digits, activeSignal, el, label, chartW, yOf, dirty:writable, UP, DOWN, vcg */
 // Position & scale-in calculator ("คำนวณ" tab): lot size from risk, add-on (เติมไม้) levels, average price,
 // loss at SL, profit at TP, and the plan drawn on the chart.
 

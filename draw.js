@@ -193,7 +193,7 @@ function renderDrawing(d, sel, W, H) {
       [...FIBX].sort((x, y) => x - y).forEach((k) => {
         const y = yOf(at(k)); if (y == null) return; const big = k === 1.618 || k === 2.618;
         el('line', { x1: L, y1: y, x2: R, y2: y, stroke: sel ? TC().sel : fibColor(k), 'stroke-width': big ? 1.6 : 1, 'stroke-dasharray': k === 0 ? '3 3' : '' });
-        txt(L + 4, y - 3, `${(k * 100).toFixed(1).replace(/\.0$/, '')}% (${fmt(at(k))})${big ? ' 🎯' : ''}`, fibColor(k), 'start', 11, big ? 700 : 400);
+        txt(L + 4, y - 3, `${(k * 100).toFixed(1).replace(/\.0$/, '')}% (${fmt(at(k))})${big ? ' ◎' : ''}`, fibColor(k), 'start', 11, big ? 700 : 400);
       });
       break;
     }
@@ -403,7 +403,7 @@ function renderLayers() {
   const desc = (d) => d.type === 'hline' ? fmt(d.pts[0].price) : d.type === 'text' ? esc(d.text) : d.type === 'vline' ? fmtTime(d.pts[0].time) : d.pts[0] ? fmt(d.pts[0].price) : '';
   p.innerHTML = `<div class="group">รูปวาดบน ${S.symbol} (${drawings.length})</div>` + (drawings.map((d, i) =>
     `<div class="item ${S.selected === i ? 'sel' : ''}" data-i="${i}"><span>${ICON.svg(TOOLS[d.type]?.icon || 'trend', 16)} ${TOOLS[d.type]?.name.split(' (')[0] || d.type} <small>${desc(d)}</small></span>
-     <span><input type="color" data-c="${i}" value="${(d.color || '#2962ff').slice(0, 7)}" style="width:22px;height:18px;padding:0;border:none;background:none"> <button data-del="${i}">✕</button></span></div>`).join('') || '<div class="item muted">ยังไม่มีรูปวาด</div>');
+     <span><input type="color" data-c="${i}" value="${(d.color || '#2962ff').slice(0, 7)}" style="width:22px;height:18px;padding:0;border:none;background:none"> <button data-del="${i}" aria-label="ลบ">${ICON.svg('x', 14)}</button></span></div>`).join('') || '<div class="item muted">ยังไม่มีรูปวาด</div>');
   p.querySelectorAll('[data-i]').forEach((r) => (r.onclick = (e) => { if (e.target.closest('button, input')) return; S.selected = +r.dataset.i; dirty = true; renderLayers(); }));
   p.querySelectorAll('[data-del]').forEach((b) => (b.onclick = () => { if (S.locked) return; pushHistory(); drawings.splice(+b.dataset.del, 1); S.selected = null; saveDrawings(); dirty = true; renderLayers(); }));
   p.querySelectorAll('[data-c]').forEach((c) => (c.oninput = () => { drawings[+c.dataset.c].color = c.value; saveDrawings(); dirty = true; }));
@@ -573,7 +573,7 @@ function tickClock() {
   const wd = new Date(now * 1000).getUTCDay();
   const open = sessionsAround(now).filter((x) => now >= x.a && now < x.b);
   const weekend = wd === 6 || (wd === 0 && !open.length);
-  $('sess-status').innerHTML = weekend ? '🔴 ตลาด FX ปิด (เสาร์-อาทิตย์)' : open.length
+  $('sess-status').innerHTML = weekend ? '<i class="imp hi"></i>ตลาด FX ปิด (เสาร์-อาทิตย์)' : open.length
     ? open.map((x) => `<span style="color:${x.s.color}">● ${x.s.name}</span> <small>ปิด ${fmtDur(x.b - now)}</small>`).join(' &nbsp;')
     : '○ ช่วงรอยต่อ session';
 }
@@ -588,7 +588,7 @@ $('sess-status').onclick = (e) => {
       const isOpen = now >= x.a && now < x.b;
       return `<div class="item"><span style="color:${s.color}">● ${s.name}</span><span>${hm(x.a)}–${hm(x.b)} ${isOpen ? '<b class="up">เปิดอยู่</b>' : `<small>เปิดอีก ${fmtDur(x.a - now)}</small>`}</span></div>`; }).join('') +
     `<div class="item muted" style="display:block;line-height:1.5">ช่วง London+New York ซ้อนกันมักผันผวนสูงสุด · เวลาปรับตามเวลาฤดูร้อน (DST) อัตโนมัติ</div>
-    <div class="item"><button id="sess-edit">⚙ แก้ไขช่วงเวลา…</button></div>`;
+    <div class="item"><button id="sess-edit">${ICON.html('settings', 14)}แก้ไขช่วงเวลา…</button></div>`;
   $('sess-edit').onclick = () => { p.classList.add('hidden'); openSettings('sess'); };
   p.classList.remove('hidden'); p.style.left = 'auto'; p.style.right = '10px'; p.style.top = 'auto'; p.style.bottom = '6px';
   setTimeout(() => { p.style.left = ''; }, 0);

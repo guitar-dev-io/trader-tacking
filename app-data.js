@@ -148,9 +148,9 @@ function updateHeader() {
 function renderWatchlist() {
   const tb = document.querySelector('#wl tbody');
   tb.innerHTML = S.symbols.map((s) => `<tr data-s="${s}" class="${s === S.symbol ? 'sel' : ''}">
-    <td><button class="star ${s === S.traySymbol ? 'on' : ''}" data-act="star" title="แสดงบนแถบเมนู">★</button>${s}</td>
+    <td><button class="star ${s === S.traySymbol ? 'on' : ''}" data-act="star" title="แสดงบนแถบเมนู" aria-label="แสดงบนแถบเมนู">${ICON.svg('star', 14)}</button>${s}</td>
     <td class="b">—</td><td class="a">—</td><td class="p">—</td>
-    <td><button class="x" data-act="rm" title="ลบ">✕</button></td></tr>`).join('');
+    <td><button class="x" data-act="rm" title="ลบ" aria-label="ลบ">${ICON.svg('x', 14)}</button></td></tr>`).join('');
   S.symbols.forEach((s) => S.quotes[s] && updateRow(S.quotes[s]));
 }
 function updateRow(q, prev) {
@@ -208,41 +208,41 @@ function renderConnect(st = connStatus) {
   const slow = connectingSince && Date.now() - connectingSince > 45000;
   const netBad = st.net && /down|offline|error|lost/i.test(st.net.level || '');
   const step = { starting: 0, login: 1, connecting: 2 }[stage] ?? 1;
-  const li = (i, t, sub) => `<li class="${i < step ? 'done' : i === step ? 'now' : ''}"><b>${i < step ? '✓' : i + 1}</b><span>${t}${sub ? `<small>${sub}</small>` : ''}</span></li>`;
-  const chip = (k, icon, t, sub) => `<button class="cn-src ${S.source === k ? 'on' : ''}" data-src="${k}"${k === 'demo' ? ' data-cn="demo"' : ''}><i>${icon}</i><b>${t}</b><small>${sub}</small></button>`;
+  const li = (i, t, sub) => `<li class="${i < step ? 'done' : i === step ? 'now' : ''}"><b>${i < step ? ICON.svg('check', 14) : i + 1}</b><span>${t}${sub ? `<small>${sub}</small>` : ''}</span></li>`;
+  const chip = (k, icon, t, sub) => `<button class="cn-src ${S.source === k ? 'on' : ''}" data-src="${k}"${k === 'demo' ? ' data-cn="demo"' : ''}><i>${ICON.svg(icon, 22)}</i><b>${t}</b><small>${sub}</small></button>`;
   const choices = `<div class="cn-q">ดึงราคาจากไหน?</div><div class="cn-srcs">
-      ${chip('demo', '🎓', 'Demo', 'ฝึก ไม่ต้อง login')}${chip('vcg', '🟢', 'VCG', 'บัญชี VCG Markets')}${desktopMt5 ? chip('mt5', '🔵', 'MT5', 'อ่านอย่างเดียว') : ''}</div>`;
+      ${chip('demo', 'graduation-cap', 'Demo', 'ฝึก ไม่ต้อง login')}${chip('vcg', 'globe', 'VCG', 'บัญชี VCG Markets')}${desktopMt5 ? chip('mt5', 'monitor', 'MT5', 'อ่านอย่างเดียว') : ''}</div>`;
   const status = (cls, t) => `<div class="cn-status ${cls}"><span class="cn-dot"></span>${t}</div>`;
-  const foot = `<div class="cn-links"><button class="cn-link" data-cn="guide">📘 คู่มือเริ่มต้น</button><span>·</span><button class="cn-link" data-cn="log">ดู Log</button></div>
-    <p class="cn-ro">🔒 อ่านและแสดงราคาเท่านั้น · ไม่ส่งคำสั่งซื้อขาย · ไม่ใช่คำแนะนำการลงทุน</p>`;
+  const foot = `<div class="cn-links"><button class="cn-link" data-cn="guide">${ICON.html('book-open', 14)}คู่มือเริ่มต้น</button><span>·</span><button class="cn-link" data-cn="log">ดู Log</button></div>
+    <p class="cn-ro">${ICON.html('shield-check', 14)}อ่านและแสดงราคาเท่านั้น · ไม่ส่งคำสั่งซื้อขาย · ไม่ใช่คำแนะนำการลงทุน</p>`;
   let html;
   if (web) {
-    html = `<div class="cn-card"><div class="cn-logo">📈 Price Tracker</div><h3>เวอร์ชันเว็บใช้ข้อมูล Demo</h3>
+    html = `<div class="cn-card"><div class="cn-logo">${ICON.html('chart-line', 18)}Price Tracker</div><h3>เวอร์ชันเว็บใช้ข้อมูล Demo</h3>
       <p class="cn-p">ราคาจริงจาก VCG / MT5 ใช้ได้ในแอป Mac และแอป Android · บนเว็บฝึกได้ทุกอย่างด้วยข้อมูล Demo</p>
-      <button class="cn-primary" data-cn="demo">เริ่มใช้ Demo</button><button class="cn-link" data-cn="guide">📘 วิธีติดตั้งแอป Mac / Android</button></div>`;
+      <button class="cn-primary" data-cn="demo">เริ่มใช้ Demo</button><button class="cn-link" data-cn="guide">${ICON.html('book-open', 14)}วิธีติดตั้งแอป Mac / Android</button></div>`;
   } else if (waitMt5) {
-    html = `<div class="cn-card"><div class="cn-logo">📈 Price Tracker</div>${choices}
+    html = `<div class="cn-card"><div class="cn-logo">${ICON.html('chart-line', 18)}Price Tracker</div>${choices}
       <h3>รอราคาจาก MT5</h3>
       ${status('wait', `รอ EA PriceTrackerBridge ใน MT5 (พอร์ต ${m5.port || 7788})`)}
       <ol class="cn-steps">${['เปิด MT5 และ login บัญชีโบรกเกอร์', 'อนุญาต WebRequest ให้ 127.0.0.1', 'ติด EA PriceTrackerBridge บนกราฟ'].map((t, i) => `<li><b>${i + 1}</b><span>${t}</span></li>`).join('')}</ol>
       <button class="cn-primary" data-cn="mt5guide">ตัวช่วยเชื่อมต่อ MT5</button>
-      <p class="cn-safe">🔒 รหัสผ่านบัญชีกรอกใน MT5 เท่านั้น · EA อ่านอย่างเดียว ส่งออเดอร์ไม่ได้ — ดูออเดอร์/โพซิชันของตัวเองได้</p>${foot}</div>`;
+      <p class="cn-safe">${ICON.html('lock', 14)}รหัสผ่านบัญชีกรอกใน MT5 เท่านั้น · EA อ่านอย่างเดียว ส่งออเดอร์ไม่ได้ — ดูออเดอร์/โพซิชันของตัวเองได้</p>${foot}</div>`;
   } else {
     const st1 = netBad ? status('bad', 'ไม่มีอินเทอร์เน็ต — ตรวจการเชื่อมต่อแล้วกดเชื่อมต่อใหม่')
       : st.nativeOk === false ? status('bad', 'ส่วนเชื่อมต่อของแอปไม่ทำงาน — ปิดแล้วเปิดแอปใหม่')
       : stage === 'starting' ? status('wait', 'กำลังเปิด VCG WebTrader…')
       : stage === 'login' ? status('idle', st.overlay ? 'หน้า login เปิดอยู่ — กรอกอีเมลและรหัสผ่าน' : 'ยังไม่ได้เข้าสู่ระบบ')
       : slow ? status('bad', 'login แล้วแต่ยังไม่มีราคา — ลองกดเชื่อมต่อใหม่') : status('wait', 'login แล้ว กำลังรอราคา…');
-    html = `<div class="cn-card"><div class="cn-logo">📈 Price Tracker</div>${choices}
+    html = `<div class="cn-card"><div class="cn-logo">${ICON.html('chart-line', 18)}Price Tracker</div>${choices}
       <h3>เชื่อมต่อ VCG Markets</h3>${st1}
       <ol class="cn-steps">
         ${li(0, 'เปิดหน้า VCG WebTrader', stage === 'starting' ? 'กำลังโหลด…' : '')}
         ${li(1, 'เข้าสู่ระบบด้วยอีเมล + รหัสผ่าน', stage === 'login' ? (mobile ? 'ปุ่ม Google ใช้ในแอปไม่ได้ ใช้อีเมลแทน' : 'login ครั้งเดียว แอปจำไว้ให้') : '')}
         ${li(2, 'รับราคาสด', stage === 'connecting' ? (slow ? 'นานกว่าปกติ' : 'ปกติใช้ไม่เกิน 10 วินาที') : '')}
       </ol>
-      ${stage === 'connecting' && !slow ? '' : `<button class="cn-primary" data-cn="${slow || netBad ? 'retry' : 'login'}">${slow || netBad ? '↻ เชื่อมต่อใหม่' : stage === 'connecting' ? 'เปิดหน้า VCG' : 'เข้าสู่ระบบ VCG'}</button>`}
-      <p class="cn-safe">🔒 รหัสผ่านกรอกในหน้าของ VCG เอง แอปนี้ไม่เห็นและไม่เก็บรหัสผ่าน · ${mobile ? 'login เสร็จหน้าจอจะปิดให้เอง' : 'login เสร็จปิดหน้าต่างนั้นได้เลย'}</p>
-      <div class="cn-row">${stage === 'connecting' && !slow ? '<button data-cn="login">เปิดหน้า VCG</button>' : ''}${slow || netBad ? '<button data-cn="login">เปิดหน้า VCG</button>' : '<button data-cn="retry">↻ เชื่อมต่อใหม่</button>'}</div>
+      ${stage === 'connecting' && !slow ? '' : `<button class="cn-primary" data-cn="${slow || netBad ? 'retry' : 'login'}">${slow || netBad ? `${ICON.html('refresh-cw', 16)}เชื่อมต่อใหม่` : stage === 'connecting' ? 'เปิดหน้า VCG' : 'เข้าสู่ระบบ VCG'}</button>`}
+      <p class="cn-safe">${ICON.html('lock', 14)}รหัสผ่านกรอกในหน้าของ VCG เอง แอปนี้ไม่เห็นและไม่เก็บรหัสผ่าน · ${mobile ? 'login เสร็จหน้าจอจะปิดให้เอง' : 'login เสร็จปิดหน้าต่างนั้นได้เลย'}</p>
+      <div class="cn-row">${stage === 'connecting' && !slow ? '<button data-cn="login">เปิดหน้า VCG</button>' : ''}${slow || netBad ? '<button data-cn="login">เปิดหน้า VCG</button>' : `<button data-cn="retry">${ICON.html('refresh-cw', 14)}เชื่อมต่อใหม่</button>`}</div>
       ${foot}
       <div class="cn-diag">${esc(stage)}${st.page ? ' · ' + esc(st.page) : ''}${st.overlay ? ' · login window เปิดอยู่' : ''}</div>
     </div>`;
@@ -305,7 +305,7 @@ $('reload-trader').onclick = () => { vcg.reloadTrader(); setTimeout(loadChart, 8
 function renderAlerts() {
   const ul = $('alerts');
   const list = S.alerts.filter((a) => a.symbol === S.symbol);
-  ul.innerHTML = list.length ? list.map((a) => `<li class="${a.fired ? 'fired' : ''}"><span>${a.symbol} ${a.dir === 'up' ? '≥' : '≤'} ${fmt(a.price)}</span><button data-id="${a.id}">✕</button></li>`).join('')
+  ul.innerHTML = list.length ? list.map((a) => `<li class="${a.fired ? 'fired' : ''}"><span>${a.symbol} ${a.dir === 'up' ? '≥' : '≤'} ${fmt(a.price)}</span><button data-id="${a.id}" aria-label="ลบ">${ICON.svg('x', 14)}</button></li>`).join('')
     : '<li class="muted" style="border:none">ยังไม่มีการแจ้งเตือนของ ' + S.symbol + '</li>';
   const n = $('alerts-n'); if (n) n.textContent = list.length ? String(list.length) : '';
 }

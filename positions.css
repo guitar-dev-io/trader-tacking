@@ -23,3 +23,5 @@
 #positions-panel .pos-opts select { padding: 1px 4px; font-size: 11px; }
 #positions-panel .pos-hist { margin-top: 6px; }
 #positions-panel .pos-sum { color: var(--muted); margin-bottom: 4px; }
+#positions-panel .pos-ro { display: inline-flex; align-items: center; }
+#positions-panel .pos-ro .ic { margin-right: 3px; }

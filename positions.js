@@ -1,4 +1,4 @@
-/* global S, $, esc, toast, vcg, store, main, LightweightCharts, TZ, switchSymbol, connStatus */
+/* global S, $, esc, toast, vcg, store, main, LightweightCharts, TZ, switchSymbol, connStatus, ICON */
 // "My orders" (MT5, READ-ONLY): the EA reports the user's own open positions, pending orders and deal history.
 // Shown in the ราคา tab and as lines/markers on the chart. Nothing here can place, change or close an order.
 const POSITIONS = (() => {
@@ -29,7 +29,7 @@ const POSITIONS = (() => {
     el.classList.toggle('hidden', !show);
     if (!show) return;
     const d = data, a = (d && d.acct) || {}, cur = a.currency || '';
-    const head = `<div class="pos-h"><b>ออเดอร์ของฉัน (MT5)</b><span class="pos-ro" title="แอปนี้อ่านอย่างเดียว ส่ง/แก้/ปิดออเดอร์ไม่ได้">อ่านอย่างเดียว</span>${d ? `<span class="pos-acc ${a.demo ? 'demo' : 'real'}">${a.demo ? 'DEMO' : 'REAL'}</span>` : ''}</div>`;
+    const head = `<div class="pos-h"><b>ออเดอร์ของฉัน (MT5)</b><span class="pos-ro" title="แอปนี้อ่านอย่างเดียว ส่ง/แก้/ปิดออเดอร์ไม่ได้">${ICON.html('lock', 11)}อ่านอย่างเดียว</span>${d ? `<span class="pos-acc ${a.demo ? 'demo' : 'real'}">${a.demo ? 'DEMO' : 'REAL'}</span>` : ''}</div>`;
     let body;
     if (!d) {
       const m = ((typeof connStatus !== 'undefined' && connStatus) || {}).mt5 || {};

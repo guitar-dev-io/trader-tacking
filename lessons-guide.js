@@ -34,13 +34,13 @@
   const trend = (p0, d, n, rng = 4) => Array.from({ length: n }, (_, i) => { const o = p0 + d * i, c = o + d; return { o, c, h: Math.max(o, c) + rng * 0.4, l: Math.min(o, c) - rng * 0.4 }; });
 
   window.LESSON_CATS = [
-    { id: 'basics', name: 'พื้นฐานการอ่านกราฟ', icon: '📈' },
-    { id: 'candles', name: 'แท่งเทียนแต่ละแบบ', icon: '🕯️' },
-    { id: 'structure', name: 'โครงสร้างราคา / สวิง / BOS-CHoCH', icon: '🧭' },
-    { id: 'ds', name: 'คู่มือ Demand & Supply', icon: '🏦' },
-    { id: 'liquidity', name: 'SL เม่า / Liquidity / Fibo', icon: '💰' },
-    { id: 'risk', name: 'บริหารเงิน / lot / แผนเทรด', icon: '🛡️' },
-    { id: 'app', name: 'วิธีใช้แอป Price Tracker', icon: '📱' },
+    { id: 'basics', name: 'พื้นฐานการอ่านกราฟ', icon: 'chart-line' },
+    { id: 'candles', name: 'แท่งเทียนแต่ละแบบ', icon: 'chart-candlestick' },
+    { id: 'structure', name: 'โครงสร้างราคา / สวิง / BOS-CHoCH', icon: 'compass' },
+    { id: 'ds', name: 'คู่มือ Demand & Supply', icon: 'landmark' },
+    { id: 'liquidity', name: 'SL เม่า / Liquidity / Fibo', icon: 'coins' },
+    { id: 'risk', name: 'บริหารเงิน / lot / แผนเทรด', icon: 'shield' },
+    { id: 'app', name: 'วิธีใช้แอป Price Tracker', icon: 'smartphone' },
   ];
 
   window.LESSON_CAT_OF = {

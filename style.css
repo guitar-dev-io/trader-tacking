@@ -94,6 +94,7 @@ input:focus, select:focus { border-color: var(--accent); }
 #wl tr.sel td { background: var(--info-bg); }
 #wl .x, #wl .star { background: none; border: none; padding: 0 2px; color: var(--muted); }
 #wl .star.on { color: #f5c518; }
+#wl .star svg { display: block; } #wl .star.on svg { fill: currentColor; }
 .flash-up { animation: fu .6s; } .flash-down { animation: fd .6s; }
 @keyframes fu { from { background: rgba(38,166,154,.45); } to { background: transparent; } }
 @keyframes fd { from { background: rgba(239,83,80,.45); } to { background: transparent; } }
@@ -423,7 +424,8 @@ body.mobile #toasts { bottom: 70px; }
 .cn-q { margin: 14px 0 8px; font-size: 12px; color: var(--muted); }
 .cn-srcs { display: flex; gap: 8px; }
 .cn-src { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--hover); cursor: pointer; transition: border-color .15s, background .15s; }
-.cn-src i { font-style: normal; font-size: 18px; }
+.cn-src i { font-style: normal; display: inline-flex; color: var(--accent); }
+.cn-src.on i { color: inherit; }
 .cn-src b { font-size: 13.5px; }
 .cn-src small { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .cn-src:hover { border-color: var(--accent-line); }
@@ -528,7 +530,8 @@ details.fold .chk { margin: 4px 0 6px; }
 #src-menu button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 8px 10px; border: none; background: none; border-radius: 7px; cursor: pointer; }
 #src-menu button:hover:not(:disabled) { background: var(--hover); }
 #src-menu button:disabled { opacity: .45; cursor: default; }
-#src-menu button i { font-style: normal; width: 20px; text-align: center; }
+#src-menu button i { font-style: normal; width: 20px; display: inline-flex; justify-content: center; color: var(--accent); }
+#src-menu button em { display: inline-flex; }
 #src-menu button b { display: block; font-size: 13px; } #src-menu button small { display: block; font-size: 11px; color: var(--muted); }
 #src-menu button span { flex: 1; min-width: 0; }
 #src-menu button em { font-style: normal; color: var(--accent); font-weight: 700; }
@@ -552,3 +555,23 @@ details.fold .chk { margin: 4px 0 6px; }
 .panel.foldable.folded > .panel-h:first-child { margin-bottom: 0; }
 .panel.foldable.folded > :not(.panel-h:first-child) { display: none !important; }
 .cn-ro { margin: 8px 0 0; font-size: 10.5px; color: var(--muted); text-align: center; line-height: 1.5; }
+
+/* ---------------------------------------------------------------- icons (Lucide, icons.js) */
+svg.ico { flex: none; }
+.ic { display: inline-flex; align-items: center; vertical-align: -0.2em; line-height: 0; }
+.ic, [data-icon] { margin-right: .4em; }
+[aria-label] > [data-icon]:only-child, [aria-label] > .ic:only-child, .ib > [data-icon], .ib > .ic { margin-right: 0; }
+[data-icon] { display: inline-flex; align-items: center; vertical-align: -0.2em; font-style: normal; line-height: 0; }
+button > .ic:first-child, button > [data-icon]:first-child { margin-left: -2px; }
+.ic.up { color: var(--up); } .ic.down { color: var(--down); } .ic.warn { color: var(--warn); }
+.toast { display: flex; gap: 8px; align-items: flex-start; }
+.toast .toast-ic { margin: 1px 0 0; flex: none; }
+.toast.ok .toast-ic { color: var(--up); } .toast.warn .toast-ic { color: var(--warn); } .toast.error .toast-ic { color: var(--down); } .toast.info .toast-ic { color: var(--accent); }
+.imp { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: .05em; background: #ff9800; }
+.imp.hi { background: var(--down); }
+#netbanner > [data-icon] { margin-right: 8px; }
+.bn-status .ic, .badge .ic { margin-right: .3em; }
+.cn-logo { display: flex; align-items: center; gap: 6px; } .cn-logo .ic { margin: 0; color: var(--accent); }
+#connect .cn-primary, .cn-row button { display: inline-flex; align-items: center; justify-content: center; }
+.cn-link { display: inline-flex; align-items: center; }
+.wl-tip [data-icon], .tb-btn > [data-icon], .modal-h .x [data-icon] { margin-right: 0; }

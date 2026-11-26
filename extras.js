@@ -70,7 +70,7 @@ function setSource(src) {
   if (src === S.source) return;
   S.source = src; store.set('source', src); S.quotes = {};
   if (src !== 'demo' && vcg.setSource) vcg.setSource(src);
-  if (src === 'mt5') toast('ใช้ราคาจาก MT5 — ต้องเปิด MT5 และลาก EA PriceTrackerBridge ลงกราฟ (ดูวิธีที่ ⚙ การตั้งค่า → แหล่งราคา)', 'info', 10000);
+  if (src === 'mt5') toast('ใช้ราคาจาก MT5 — ต้องเปิด MT5 และลาก EA PriceTrackerBridge ลงกราฟ (ดูวิธีที่ การตั้งค่า → แหล่งราคา)', 'info', 10000);
   if (src === 'demo') { DEMO.connect(); toast('ใช้ข้อมูล Demo จาก Binance สำหรับฝึก — XAUUSD ใช้ PAXG แทนทองคำ ราคาใกล้เคียงแต่ไม่เท่ากับโบรกเกอร์', 'info', 9000); }
   else DEMO.stop();
   renderWatchlist(); renderSourceSel(); loadChart();
@@ -147,8 +147,8 @@ const NEWS = (() => {
     const list = relevant().filter((e) => e.t > now - 3 * 3600).slice(0, 12);
     box.innerHTML = `<div class="panel-h">ข่าวสำคัญสัปดาห์นี้ (${ccyOf(S.symbol).join('/')})</div>` + (list.length ? `<table class="stat"><tbody>${list.map((e) => {
       const soon = e.t - now < 1800 && e.t > now, past = e.t < now;
-      return `<tr style="${past ? 'opacity:.45' : soon ? 'background:#5c4a1233' : ''}"><td>${e.impact === 'High' ? '🔴' : '🟠'} ${hhmm(e.t)}</td><td style="text-align:left">${esc(e.ccy)} ${esc(e.title)}</td><td class="muted">${esc(e.forecast || '')}</td></tr>`;
-    }).join('')}</tbody></table>` : '<p class="muted">ไม่มีข่าวแรงที่เกี่ยวข้อง หรือยังโหลดไม่ได้</p>') + '<p class="muted">ข้อมูลจาก Forex Factory · 🔴 = ผลกระทบสูง · เวลาตาม timezone กราฟ</p>';
+      return `<tr style="${past ? 'opacity:.45' : soon ? 'background:#5c4a1233' : ''}"><td><i class="imp ${e.impact === 'High' ? 'hi' : 'md'}"></i>${hhmm(e.t)}</td><td style="text-align:left">${esc(e.ccy)} ${esc(e.title)}</td><td class="muted">${esc(e.forecast || '')}</td></tr>`;
+    }).join('')}</tbody></table>` : '<p class="muted">ไม่มีข่าวแรงที่เกี่ยวข้อง หรือยังโหลดไม่ได้</p>') + '<p class="muted">ข้อมูลจาก Forex Factory · <i class="imp hi"></i>= ผลกระทบสูง · เวลาตาม timezone กราฟ</p>';
     dirty = true;
   }
   function check() {
@@ -158,7 +158,7 @@ const NEWS = (() => {
       const k = e.t + e.title; if (warned.has(k)) continue;
       warned.add(k); store.set('news.warned', [...warned].slice(-100));
       const msg = `ข่าวแรงใน ${Math.round((e.t - now) / 60)} นาที: ${e.ccy} ${e.title}`;
-      toast('📰 ' + msg, 'warn', 15000); desktopNotify('📰 ข่าวเศรษฐกิจ', msg); beep();
+      toast(msg, 'warn', 15000); desktopNotify('📰 ข่าวเศรษฐกิจ', msg); beep();
     }
   }
   // vertical markers on the chart (toggle in chart settings)
@@ -193,7 +193,7 @@ const UPDATE = (() => {
       const r = await fetchJSON(`https://api.github.com/repos/${REPO}/releases/latest`);
       if (cur && r.tag_name && cmp(r.tag_name, cur) > 0) {
         const t = document.createElement('div'); t.className = 'toast ok'; t.style.pointerEvents = 'auto';
-        t.innerHTML = `🆕 มีเวอร์ชันใหม่ ${esc(r.tag_name)} (ตอนนี้ ${esc(cur)}) <a href="${esc(r.html_url)}" target="_blank" style="color:#82aaff">ดาวน์โหลด</a> <button style="margin-left:6px">✕</button>`;
+        t.innerHTML = `${ICON.html('sparkles', 16, 'toast-ic')}มีเวอร์ชันใหม่ ${esc(r.tag_name)} (ตอนนี้ ${esc(cur)}) <a href="${esc(r.html_url)}" target="_blank" style="color:var(--link, #82aaff)">ดาวน์โหลด</a> <button style="margin-left:6px" aria-label="ปิด">${ICON.svg('x', 14)}</button>`;
         t.querySelector('button').onclick = () => t.remove();
         $('toasts').appendChild(t);
         vcg.log('info', `มีเวอร์ชันใหม่ ${r.tag_name}`, null, 'update');

@@ -85,7 +85,7 @@ function renderAnalysis() {
         <span class="up">TP2</span><b>${fmt(x.tp2)}</b><span>2R</span>
         ${x.tpS != null ? `<span class="up">เป้าโครงสร้าง</span><b>${fmt(x.tpS)}</b><span>${reward(x.tpS).toFixed(1)}R</span>` : ''}
       </div>
-      <div>โหมดเรียนรู้: <span class="badge ${lr}">${lr === 'good' ? '✅ สถิติผ่าน' : lr === 'bad' ? '❌ สถิติไม่ผ่าน' : '… ตัวอย่างยังน้อย'}</span>
+      <div>โหมดเรียนรู้: <span class="badge ${lr}">${lr === 'good' ? ICON.html('circle-check', 13) + 'สถิติผ่าน' : lr === 'bad' ? ICON.html('circle-x', 13) + 'สถิติไม่ผ่าน' : '… ตัวอย่างยังน้อย'}</span>
         <span class="muted"> (ก่อนหน้า ${x.prior.n} ครั้ง · TP2 ${pct(x.prior.wr2)} · ${rr(x.prior.exp)})</span></div>
       <ol class="reasons">${x.reasons.map((r) => `<li>${esc(r)}</li>`).join('')}</ol>
       ${active ? '' : `<div class="muted" style="margin-top:6px">ผล: TP1 ${resTH(x.r1)} · TP2 ${resTH(x.r2)} · ${A.n - 1 - x.idx} แท่งที่แล้ว</div>`}

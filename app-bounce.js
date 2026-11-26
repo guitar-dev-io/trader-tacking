@@ -12,7 +12,7 @@ const bnSides = () => (S.an.bounceSide === 'buy' ? ['buy'] : S.an.bounceSide ===
 function renderBounce() {
   const box = $('an-bounce'); if (!box) return;
   const B = S.B, mode = ['buy', 'sell'].includes(S.an.bounceSide) ? S.an.bounceSide : 'both', sides = bnSides(), both = mode === 'both';
-  const head = `<div class="panel-h bn-h"><span>🎯 หาจุดเด้ง · ${S.symbol} ${tf().label}</span>
+  const head = `<div class="panel-h bn-h"><span>${ICON.html('target', 16)}หาจุดเด้ง · ${S.symbol} ${tf().label}</span>
     <label class="chk" title="แสดงโซนบนกราฟ"><input type="checkbox" id="bn-show" ${S.an.bounce ? 'checked' : ''}> บนกราฟ</label></div>
     <div class="seg bn-seg"><button data-bs="both" class="${both ? 'on' : ''}">▲▼ ทั้งสองฝั่ง</button><button data-bs="buy" class="${mode === 'buy' ? 'on buy' : ''}">▲ Buy</button><button data-bs="sell" class="${mode === 'sell' ? 'on sell' : ''}">▼ Sell</button></div>`;
   if (!B) { const h = head + '<p class="muted">ต้องมีข้อมูลกราฟอย่างน้อย 60 แท่ง</p>'; if (h !== box._html) { box._html = h; box.innerHTML = h; bindBounce(box); } return; }
@@ -24,11 +24,11 @@ function renderBounce() {
     return `<div class="bn-card ${sd} ${k === 0 ? 'top' : ''}">
       <div class="bn-top"><span class="${buy ? 'up' : 'down'}"><b>${buy ? '▲ BUY' : '▼ SELL'}</b></span><span class="bn-stars">${stars(z.stars)}</span><b>${fmt(Math.min(z.lo, z.hi))} – ${fmt(Math.max(z.lo, z.hi))}</b>
         <span class="muted" data-bd="${sd}${k}"></span></div>
-      <div class="bn-status ${stCls}">${z.status === 'wait' ? (buy ? '⏳ รอราคาย่อลงมาที่โซน' : '⏳ รอราคาเด้งขึ้นมาที่โซน') : (z.status === 'in' ? '👀 ' : '✅ ') + stTxt}${z.pattern && z.status !== 'wait' ? ` · ${AN.PAT[z.pattern].name}` : ''}</div>
+      <div class="bn-status ${stCls}">${z.status === 'wait' ? ICON.html('hourglass', 14) + (buy ? 'รอราคาย่อลงมาที่โซน' : 'รอราคาเด้งขึ้นมาที่โซน') : ICON.html(z.status === 'in' ? 'eye' : 'circle-check', 14) + stTxt}${z.pattern && z.status !== 'wait' ? ` · ${AN.PAT[z.pattern].name}` : ''}</div>
       <div class="lv">
         <span>Entry</span><b>${fmt(z.entry)}</b><span>${buy ? 'Buy' : 'Sell'} Limit ขอบโซน</span>
         <span class="down">SL</span><b>${fmt(z.sl)}</b><span>${buy ? 'ใต้' : 'เหนือ'}โซน · 1R = ${fmt(Math.abs(z.entry - z.sl))}</span>
-        <span class="up">TP1</span><b>${fmt(z.tp1)}</b><span>${z.rr1.toFixed(1)}R ${z.rr1 < 1 ? '⚠️ ต่ำกว่า 1R' : 'Swing ถัดไป'}</span>
+        <span class="up">TP1</span><b>${fmt(z.tp1)}</b><span>${z.rr1.toFixed(1)}R ${z.rr1 < 1 ? ICON.html('triangle-alert', 13) + 'ต่ำกว่า 1R' : 'Swing ถัดไป'}</span>
         ${z.tp2 !== z.tp1 ? `<span class="up">TP2</span><b>${fmt(z.tp2)}</b><span>${z.rr2.toFixed(1)}R</span>` : ''}
       </div>
       <ul class="bn-why">${z.why.map((w) => `<li class="${w.neg ? 'neg' : ''}">${esc(w.txt)}</li>`).join('')}</ul>
@@ -51,7 +51,7 @@ function renderBounce() {
   };
   const order = both ? ['sell', 'buy'] : sides;   // both: sell zones (above price) on top, buy zones below — same as on the chart
   const html = head + summary + order.map(section).join('') +
-    statHtml(order) + liqHtml() + `<p class="muted bn-note">วิธีใช้: ตั้ง Limit ที่ Entry หรือรอให้สถานะเป็น ✅ (แท่งเทียนกลับตัวในโซน) แล้วค่อยเข้า · ★ มาก = เหตุผลซ้อนกันมาก + ตามเทรนด์ · ไม่ใช่คำแนะนำการลงทุน</p>`;
+    statHtml(order) + liqHtml() + `<p class="muted bn-note">วิธีใช้: ตั้ง Limit ที่ Entry หรือรอให้สถานะเป็น ${ICON.html('circle-check', 13)} (แท่งเทียนกลับตัวในโซน) แล้วค่อยเข้า · ★ มาก = เหตุผลซ้อนกันมาก + ตามเทรนด์ · ไม่ใช่คำแนะนำการลงทุน</p>`;
   if (html !== box._html) { box._html = html; box.innerHTML = html; bindBounce(box); } // unchanged → keep DOM (buttons/clicks stay stable)
   for (const sd of ['buy', 'sell']) B[sd].forEach((z, k) => { const d = box.querySelector(`[data-bd="${sd}${k}"]`); if (d) d.textContent = z.status === 'wait' ? `ห่าง ${fmt(Math.abs(z.dist))} (${Math.abs(z.distAtr).toFixed(1)} ATR)` : ''; });
 }
@@ -61,7 +61,7 @@ function statHtml(sides) {
   const rows = sides.flatMap((sd) => types.map((t) => [sd, t, B.stats[sd][t]]).filter((r) => r[2] && r[2].n >= 3));
   if (!rows.length) return '';
   const cell = (v) => `<td class="${v >= 0.55 ? 'up' : v < 0.4 ? 'down' : ''}">${pct(v)}</td>`;
-  return `<div class="panel-h bn-h" style="margin-top:12px"><span>📊 โซนแบบไหนเด้งดีในกราฟนี้</span></div>
+  return `<div class="panel-h bn-h" style="margin-top:12px"><span>${ICON.html('chart-column', 16)}โซนแบบไหนเด้งดีในกราฟนี้</span></div>
     <table class="stat bn-st"><thead><tr><th>ฝั่ง</th><th>แบบ</th><th>ครั้ง</th><th>ถึง 1R</th><th>ถึง 2R</th></tr></thead><tbody>
     ${rows.map(([sd, t, v]) => `<tr><td class="${sd === 'buy' ? 'up' : 'down'}">${sd === 'buy' ? '▲' : '▼'}</td><td>${BOUNCE.TYPE[t][sd === 'buy' ? 'name' : 'sname']}</td><td>${v.n}</td>${cell(v.wr1)}${cell(v.wr2)}</tr>`).join('')}
     </tbody></table>
@@ -71,8 +71,8 @@ function liqHtml() {
   const L = S.B && S.B.liq; if (!L) return '';
   const row = (p) => `<tr><td>${p.side === 'high' ? '<span class="down">▲</span>' : '<span class="up">▼</span>'} <b>${fmt(p.price)}</b></td><td>${BOUNCE.poolName(p, false)}</td><td>${'$'.repeat(Math.min(3, p.strength))}</td></tr>`;
   const ups = L.highs.slice(0, 3).reverse(), dns = L.lows.slice(0, 3);
-  const sw = L.sweeps.slice(0, 3).map((x) => `<li>🧹 กวาด SL ${x.side === 'low' ? 'ใต้' : 'เหนือ'} ${fmt(x.price)} แล้วปิดกลับ · ${S.B && S.A ? S.A.n - 1 - x.j : '?'} แท่งก่อน → ${x.side === 'low' ? '<span class="up">มักเด้งขึ้น</span>' : '<span class="down">มักร่วงลง</span>'}</li>`).join('');
-  return `<div class="panel-h bn-h" style="margin-top:12px"><span>💰 จุดที่มีเงิน (SL เม่ากองอยู่)</span>
+  const sw = L.sweeps.slice(0, 3).map((x) => `<li>${ICON.html('brush-cleaning', 14)}กวาด SL ${x.side === 'low' ? 'ใต้' : 'เหนือ'} ${fmt(x.price)} แล้วปิดกลับ · ${S.B && S.A ? S.A.n - 1 - x.j : '?'} แท่งก่อน → ${x.side === 'low' ? '<span class="up">มักเด้งขึ้น</span>' : '<span class="down">มักร่วงลง</span>'}</li>`).join('');
+  return `<div class="panel-h bn-h" style="margin-top:12px"><span>${ICON.html('coins', 16)}จุดที่มีเงิน (SL เม่ากองอยู่)</span>
       <label class="chk"><input type="checkbox" id="lq-show" ${S.an.liquidity ? 'checked' : ''}> บนกราฟ</label></div>
     <table class="stat lq"><tbody>${ups.map(row).join('')}<tr class="lq-now"><td colspan="3">— ราคาปัจจุบัน —</td></tr>${dns.map(row).join('')}</tbody></table>
     ${sw ? `<ul class="bn-why">${sw}</ul>` : ''}
@@ -127,7 +127,7 @@ function drawLiquidity(W) {
   for (const x of L.sweeps) {
     const xx = xIdx(x.j), y = yOf(x.price); if (xx == null || y == null) continue;
     el('line', { x1: xx - 14, y1: y, x2: xx + 14, y2: y, stroke: AMB, 'stroke-width': 2 });
-    ltxt(xx, x.side === 'low' ? y + 22 : y - 12, '🧹 กวาด', AMB, 'middle', 10, 700);
+    ltxt(xx, x.side === 'low' ? y + 22 : y - 12, 'กวาด SL', AMB, 'middle', 10, 700);
   }
 }
 // auto Fibonacci on the latest completed swing leg: retracement inside the leg + extension targets beyond it
@@ -153,7 +153,7 @@ function drawAutoFib(W) {
   const g1 = yOf(at(0.618)), g2 = yOf(at(0.786));
   if (g1 != null && g2 != null) el('rect', { x: x0, y: Math.min(g1, g2), width: Math.max(0, W - x0), height: Math.abs(g2 - g1), fill: '#08998118' });
   for (const k of [0.382, 0.5, 0.618, 0.786]) line(at(k), k, `Fibo ${(k * 100).toFixed(1)}%`, k === 0.618);
-  for (const k of [1.272, 1.618, 2.618]) line(ext(k), k, `เป้า ${(k * 100).toFixed(1)}%${k >= 1.618 ? ' 🎯' : ''}`, k === 1.618 || k === 2.618);
+  for (const k of [1.272, 1.618, 2.618]) line(ext(k), k, `เป้า ${(k * 100).toFixed(1)}%${k >= 1.618 ? ' ◎' : ''}`, k === 1.618 || k === 2.618);
 }
 let bounceTimer = 0;
 function bounceTick() { // re-evaluate status as the live price moves (throttled)

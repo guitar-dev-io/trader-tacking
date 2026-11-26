@@ -14,7 +14,7 @@
   // ------------------------------------------------------------ bottom sheet
   const sheet = document.createElement('div');
   sheet.id = 'msheet'; sheet.className = 'hidden';
-  sheet.innerHTML = '<div class="ms-back"></div><div class="ms-panel"><div class="ms-grab"></div><div class="ms-head"><b class="ms-title"></b><button class="ms-x" aria-label="ปิด">✕</button></div><div class="ms-body"></div></div>';
+  sheet.innerHTML = '<div class="ms-back"></div><div class="ms-panel"><div class="ms-grab"></div><div class="ms-head"><b class="ms-title"></b><button class="ms-x" aria-label="ปิด">' + ICON.svg('x', 20) + '</button></div><div class="ms-body"></div></div>';
   document.body.appendChild(sheet);
   let borrowed = null, borrowedHome = null, watch = null, onCloseCb = null;
   function closeSheet() {
@@ -74,7 +74,7 @@
   // ------------------------------------------------------------ chart: draw button + active-tool pill
   const wrap = $('chart-wrap');
   wrap.insertAdjacentHTML('beforeend', `<button id="m-draw" aria-label="เครื่องมือวาด">${ICON.svg('trend', 22)}</button>
-    <div id="m-pill" class="hidden"><span class="mp-ic"></span><span class="mp-t"></span><button class="mp-undo" aria-label="ย้อนกลับ">↶</button><button class="mp-x" aria-label="เลิกวาด">✕</button></div>`);
+    <div id="m-pill" class="hidden"><span class="mp-ic"></span><span class="mp-t"></span><button class="mp-undo" aria-label="ย้อนกลับ">${ICON.svg('undo-2', 18)}</button><button class="mp-x" aria-label="เลิกวาด">${ICON.svg('x', 18)}</button></div>`);
   on($('m-draw'), 'click', openTools);
   on(wrap.querySelector('.mp-x'), 'click', () => setTool('cursor'));
   on(wrap.querySelector('.mp-undo'), 'click', () => { undo(); dirty = true; });
@@ -94,7 +94,7 @@
     const body = openSheet('เครื่องมือวาด', `<div class="m-tools">${GROUPS.flat().filter((k) => TOOLS[k]).map((k) =>
       `<button data-t="${k}" class="${S.tool === k ? 'on' : ''}">${ICON.svg(TOOLS[k].icon, 22)}<span>${esc(TOOLS[k].name.split(' (')[0].split(' ·')[0])}</span></button>`).join('')}</div>
       <div class="m-row2"><label class="m-switch"><input type="checkbox" id="m-magnet" ${S.magnet ? 'checked' : ''}> Magnet (ดูดเข้าราคา)</label>
-      <button id="m-layers">รูปวาดทั้งหมด</button><button id="m-undo">↶ ย้อน</button></div>`);
+      <button id="m-layers">รูปวาดทั้งหมด</button><button id="m-undo">${ICON.html('undo-2', 16)}ย้อน</button></div>`);
     body.querySelectorAll('[data-t]').forEach((b) => (b.onclick = () => { setTool(b.dataset.t); closeSheet(); }));
     body.querySelector('#m-magnet').onchange = (e) => { S.magnet = e.target.checked; store.set('magnet', S.magnet); const m = $('magnet'); if (m) m.checked = S.magnet; };
     body.querySelector('#m-undo').onclick = () => { undo(); dirty = true; };
@@ -112,10 +112,10 @@
       <div class="m-seg">${[['auto', 'อัตโนมัติ'], ['log', 'Log'], ['pct', '%']].map(([v, n]) => `<button data-sc="${v}">${n}</button>`).join('')}</div>
       <div class="m-list">
         <label class="m-switch"><input type="checkbox" data-chk="show-ask" ${$('show-ask').checked ? 'checked' : ''}> แสดงราคา Ask</label>
-        <button data-a="replay">⏪ Bar Replay (ย้อนดูทีละแท่ง)</button>
-        <button data-a="settings">⚙️ ตั้งค่ากราฟ (สี, เส้นตาราง, Session, Fibo)</button>
-        <button data-a="shot">📷 บันทึกภาพกราฟ</button>
-        <button data-a="reset">↺ รีเซ็ตมุมมองกราฟ</button>
+        <button data-a="replay">${ICON.html('rewind', 18)}Bar Replay (ย้อนดูทีละแท่ง)</button>
+        <button data-a="settings">${ICON.html('settings', 18)}ตั้งค่ากราฟ (สี, เส้นตาราง, Session, Fibo)</button>
+        <button data-a="shot">${ICON.html('camera', 18)}บันทึกภาพกราฟ</button>
+        <button data-a="reset">${ICON.html('rotate-ccw', 18)}รีเซ็ตมุมมองกราฟ</button>
       </div>`);
     // ranges: reuse the desktop buttons' click handlers
     const rs = body.querySelector('.m-ranges');
@@ -145,15 +145,15 @@
   side.insertAdjacentHTML('afterbegin', '<div id="m-page-h"><button class="mph-back" aria-label="กลับ">‹</button><b class="mph-t"></b></div>');
   side.insertAdjacentHTML('beforeend', `<div class="tab hidden" id="tab-more"><div class="m-more">
     <button data-go="calc">${ICON.svg('calc', 22)}<span><b>คำนวณ lot / จุดเติม</b><small>ขนาดไม้จาก % ความเสี่ยง, SL เป็นจุด</small></span></button>
-    <button data-go="news">📰<span><b>ข่าวตลาด</b><small>FXStreet, Investing, Fed, ECB, BLS + ปฏิทินเศรษฐกิจ</small></span></button>
+    <button data-go="news">${ICON.svg('newspaper', 22)}<span><b>ข่าวตลาด</b><small>FXStreet, Investing, Fed, ECB, BLS + ปฏิทินเศรษฐกิจ</small></span></button>
     <button data-go="learn">${ICON.svg('book', 22)}<span><b>บทเรียน</b><small>แท่งเทียน, Demand & Supply, บริหารเงิน</small></span></button>
     <button data-go="log">${ICON.svg('logs', 22)}<span><b>Log</b><small>สถานะการเชื่อมต่อ · ส่งให้ผู้พัฒนาเมื่อมีปัญหา</small></span><i id="m-logb"></i></button>
     <button data-do="settings">${ICON.svg('gear', 22)}<span><b>การตั้งค่า</b><small>เวลา, แจ้งเตือน, Session, ข้อมูล</small></span></button>
     <div class="m-sec">การเชื่อมต่อ</div>
-    <button data-do="guide">📘<span><b>คู่มือเริ่มต้น</b><small>ติดตั้งแอป · วิธี login · เลือกแหล่งราคา</small></span></button>
+    <button data-do="guide">${ICON.svg('book-open', 22)}<span><b>คู่มือเริ่มต้น</b><small>ติดตั้งแอป · วิธี login · เลือกแหล่งราคา</small></span></button>
     <div class="m-src"></div>
-    <button data-do="login">🔐<span><b>เข้าสู่ระบบ VCG</b><small>เปิดหน้า login ของ VCG WebTrader</small></span></button>
-    <button data-do="reconnect">↻<span><b>เชื่อมต่อใหม่</b><small>โหลดหน้า VCG ใหม่</small></span></button>
+    <button data-do="login">${ICON.svg('log-in', 22)}<span><b>เข้าสู่ระบบ VCG</b><small>เปิดหน้า login ของ VCG WebTrader</small></span></button>
+    <button data-do="reconnect">${ICON.svg('refresh-cw', 22)}<span><b>เชื่อมต่อใหม่</b><small>โหลดหน้า VCG ใหม่</small></span></button>
     <p class="muted m-ver"></p></div></div>`);
   const PAGES = { market: 'ราคา', analysis: 'วิเคราะห์', practice: 'ฝึกเทรด', calc: 'คำนวณ', news: 'ข่าว', learn: 'บทเรียน', log: 'Log', more: 'เพิ่มเติม' };
   const SUB = { calc: 1, news: 1, learn: 1, log: 1 };

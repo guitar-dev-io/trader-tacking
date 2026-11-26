@@ -76,6 +76,18 @@ app.whenReady().then(async () => {
     await new Promise((r) => setTimeout(r, 2800)); await js(`renderConnect(); 1`); await new Promise((r) => setTimeout(r, 200)); await shot('connect-desktop');
     const cn = JSON.parse(await js(`JSON.stringify({ shown: !document.getElementById('connect').classList.contains('hidden'), choices: document.querySelectorAll('#connect [data-src]').length, safe: /รหัสผ่าน/.test(document.getElementById('connect').textContent), guide: !!document.querySelector('#connect [data-cn=guide]') })`));
     check('connect screen: source choices, safety note, guide link', cn.shown && cn.choices >= 2 && cn.safe && cn.guide, cn);
+    // one icon pack: no emoji left in the UI chrome (connect screen, setup start page, source menu, settings nav)
+    const emo = JSON.parse(await js(`(async () => { const w = (ms) => new Promise((r) => setTimeout(r, ms)), re = /\\p{Extended_Pictographic}/u, out = {};
+      out.connect = re.test(document.getElementById('connect').textContent); out.connectSvg = document.querySelectorAll('#connect svg.ico').length;
+      SETUP.open(); await w(100); out.setup = re.test(document.getElementById('setup').textContent); out.setupSvg = document.querySelectorAll('#setup svg.ico').length;
+      THEME.set('light'); await w(150); await window.__shot?.('icons-setup-light'); THEME.set('dark'); SETUP.close();
+      document.getElementById('src-pill').click(); await w(100); const m = document.getElementById('src-menu'); out.menu = !!m && re.test(m.textContent); out.menuSvg = m ? m.querySelectorAll('svg.ico').length : 0; document.body.click(); document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); if (m) m.classList.add('hidden');
+      out.settingsNav = re.test((document.querySelector('#modal-settings .st-nav') || {}).textContent || '');
+      out.unknown = [...document.querySelectorAll('[data-icon]')].filter((i) => !i.querySelector('svg')).map((i) => i.dataset.icon);
+      return JSON.stringify(out); })()`));
+    check('icons: no emoji in connect / setup / source menu / settings nav (Lucide only)', !emo.connect && !emo.setup && !emo.menu && !emo.settingsNav && emo.connectSvg >= 3 && emo.setupSvg >= 4 && emo.menuSvg >= 3 && !emo.unknown.length, emo);
+    await js(`THEME.set('light'); renderConnect(); 1`); await new Promise((r) => setTimeout(r, 250)); await shot('icons-connect-light'); await js(`THEME.set('dark'); 1`);
+    await js(`SETUP.open(); 1`); await new Promise((r) => setTimeout(r, 250)); await shot('icons-setup-dark'); await js(`THEME.set('light'); 1`); await new Promise((r) => setTimeout(r, 250)); await shot('icons-setup-light'); await js(`THEME.set('dark'); SETUP.close(); 1`);
     send('status', { connected: true, loggedIn: true, stage: 'connected', symbols: ['XAUUSD'], traySymbol: 'XAUUSD', source: 'vcg' });
     await new Promise((r) => setTimeout(r, 200));
     check('connect screen hides once prices flow', await js(`document.getElementById('connect').classList.contains('hidden')`));
@@ -92,7 +104,7 @@ app.whenReady().then(async () => {
       const tools = tab.querySelector('details[data-fold=tools]'), alerts = tab.querySelector('details[data-fold=alerts]');
       $('src-pill').click(); const menu = document.querySelectorAll('#src-menu [data-src]').length; document.body.click(); document.getElementById('src-menu')?.remove();
       return JSON.stringify({ inHeader: !!tab.querySelector('.wl-h #src-pill'), selVisible, tools: !!tools && !tools.open, alerts: !!alerts, positions: !!$('positions-panel'), menu,
-        legendTip: /⭐/.test(tab.querySelector('.wl-tip').title), ro: /ไม่ส่งคำสั่งซื้อขาย/.test(tab.textContent) }); })()`));
+        legendTip: /ดาว/.test(tab.querySelector('.wl-tip').title), ro: /ไม่ส่งคำสั่งซื้อขาย/.test(tab.textContent) }); })()`));
     check('panel: pill in watchlist header + source menu, no duplicate select, tools folded, read-only note', pnl.inHeader && !pnl.selVisible && pnl.tools && pnl.alerts && pnl.positions && pnl.menu >= 3 && pnl.legendTip && pnl.ro, pnl);
     await js(`THEME.set('dark')`); await new Promise((r) => setTimeout(r, 200)); await shot('panel-dark');
     // themes: light switches CSS variables and the chart background; dark restores
@@ -307,6 +319,10 @@ app.whenReady().then(async () => {
       await N.js(`document.getElementById('connect').classList.remove('hidden'); renderConnect(); 1`);
       await N.js(`document.querySelector('[data-cn=demo]').click(); 1`); await sleep(800);
       check('android: demo button hides connect screen', await N.js(`S.source === 'demo' && document.getElementById('connect').classList.contains('hidden')`));
+      const mm = JSON.parse(await N.js(`(async () => { document.querySelector('#mnav2 [data-nav=more]').click(); await new Promise((r) => setTimeout(r, 250));
+        const t = document.getElementById('tab-more'); return JSON.stringify({ emoji: /\\p{Extended_Pictographic}/u.test(t.textContent), svg: t.querySelectorAll('svg.ico').length }); })()`));
+      check('icons: mobile More page uses Lucide icons, no emoji', !mm.emoji && mm.svg >= 6, mm);
+      await N.shot('icons-mobile-more'); await N.js(`THEME.set('light'); 1`); await sleep(250); await N.shot('icons-mobile-more-light'); await N.js(`THEME.set('dark'); 1`);
       // light theme on the phone: market page + chart
       const ml = JSON.parse(await N.js(`(async () => { THEME.set('light'); await new Promise((r) => setTimeout(r, 200)); return JSON.stringify({ bg: getComputedStyle(document.body).backgroundColor, nav: getComputedStyle(document.getElementById('mnav2')).backgroundColor, chart: chart.options().layout.background.color }); })()`));
       check('mobile: light theme (page, bottom nav, chart)', ml.bg === 'rgb(255, 255, 255)' && ml.nav !== 'rgb(18, 21, 29)' && ml.chart === '#ffffff', ml);

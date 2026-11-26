@@ -8,7 +8,7 @@
 #setup .su-card { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; padding: 12px 14px; margin: 8px 0; border-radius: 10px; cursor: pointer; background: var(--surface-2); }
 #setup .su-card:hover:not(:disabled) { border-color: var(--accent); }
 #setup .su-card:disabled { opacity: .5; cursor: default; }
-#setup .su-card i { font-style: normal; font-size: 24px; width: 32px; text-align: center; }
+#setup .su-card i { font-style: normal; width: 32px; display: inline-flex; justify-content: center; color: var(--accent); }
 #setup .su-card b { display: block; }
 #setup .su-card small, #setup li small { display: block; color: var(--muted); font-size: 12px; }
 #setup .su-sec { margin: 16px 0 2px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
@@ -44,3 +44,10 @@ body.mobile #setup h2 { font-size: 17px; }
 #setup .su-card-wrap::-webkit-scrollbar { width: 6px; } #setup .su-card-wrap::-webkit-scrollbar-thumb { background: var(--hover); border-radius: 3px; }
 #connect::-webkit-scrollbar { width: 6px; } #connect::-webkit-scrollbar-thumb { background: var(--hover); border-radius: 3px; }
 #setup .su-ro { margin: 14px 0 0; padding: 8px 12px; border-radius: 8px; font-size: 12px; line-height: 1.55; color: var(--text-2); background: var(--tint); }
+#setup .su-x { display: inline-flex; align-items: center; justify-content: center; }
+#setup .su-primary { display: flex; align-items: center; justify-content: center; }
+#setup .su-dots button { display: inline-flex; align-items: center; justify-content: center; }
+#setup .su-next { display: inline-flex; align-items: center; gap: 4px; }
+#setup .su-run li { display: flex; align-items: center; gap: 6px; }
+#setup .su-now { display: flex; align-items: center; gap: 8px; }
+#setup .su-now .ic { margin: 0; }

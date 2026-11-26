@@ -63,7 +63,7 @@
     const p = $(id); if (!p) return;
     new MutationObserver(() => {
       if (p.querySelector(':scope > .pop-x')) return;
-      const x = document.createElement('button'); x.className = 'pop-x'; x.textContent = '✕'; x.title = 'ปิด (Esc)';
+      const x = document.createElement('button'); x.className = 'pop-x'; x.innerHTML = ICON.svg('x', 16); x.setAttribute('aria-label', 'ปิด'); x.title = 'ปิด (Esc)';
       x.onclick = (e) => { e.stopPropagation(); p.classList.add('hidden'); };
       p.prepend(x);
     }).observe(p, { childList: true });

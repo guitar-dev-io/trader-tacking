@@ -18,7 +18,7 @@ const MTF = (() => {
     <select id="mtf-tf" title="Timeframe ใหญ่"><option value="auto">อัตโนมัติ</option>${TFS.map((t) => `<option value="${t.type}">${t.label}</option>`).join('')}</select>
     <label class="chk" title="วาดโซนของ TF ใหญ่ลงบนกราฟหลัก"><input type="checkbox" id="mtf-zones"> โซน</label>
     <label class="chk" title="เส้น Swing High/Low ล่าสุดของ TF ใหญ่บนกราฟหลัก"><input type="checkbox" id="mtf-levels"> สวิง</label>
-    <button id="mtf-x" class="pop-x" style="position:static" title="ปิด">✕</button></div>
+    <button id="mtf-x" class="pop-x" style="position:static" title="ปิด" aria-label="ปิด">${ICON.svg('x', 16)}</button></div>
     <div id="mtf-chart-wrap"><div id="mtf-chart"></div><div id="mtf-msg" class="hidden"></div></div>`;
   row.appendChild(pane);
   $('an-btn').closest('.dropdown').insertAdjacentHTML('afterend', `<button id="mtf-btn" class="tb-btn" title="ดูหลาย Timeframe (top-down)"><i>${ICON.svg('layers', 16)}</i>MTF</button>`);

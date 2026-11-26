@@ -50,7 +50,7 @@ function refreshPriceLines() {
   alertLines.forEach((l) => main.removePriceLine(l)); alertLines = [];
   if (askLine) { main.removePriceLine(askLine); askLine = null; }
   S.alerts.filter((a) => a.symbol === S.symbol && !a.fired).forEach((a) => {
-    alertLines.push(main.createPriceLine({ price: a.price, color: '#ff9800', lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: '🔔' }));
+    alertLines.push(main.createPriceLine({ price: a.price, color: '#ff9800', lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: 'Alert' }));
   });
   const q = S.quotes[S.symbol];
   if (S.showAsk && q && q.ask != null) askLine = main.createPriceLine({ price: q.ask, color: '#ef535099', lineWidth: 1, lineStyle: LineStyle.Dotted, axisLabelVisible: true, title: 'Ask' });
@@ -179,9 +179,9 @@ function renderLegend(param) {
       const isMain = isC ? (customOut.get(ind.id)?.plots[x.key]?.pane === 'main') : def.pane === 'main';
       return `<span style="color:${col}">${v == null ? '—' : isMain ? fmt(v) : v.toFixed(2)}</span>`;
     }).join(' ');
-    const err = isC && customOut.get(ind.id)?.error ? `<span class="err" title="${esc(customOut.get(ind.id).error)}">⚠ error</span>` : '';
+    const err = isC && customOut.get(ind.id)?.error ? `<span class="err" title="${esc(customOut.get(ind.id).error)}">${ICON.html('triangle-alert', 12)}error</span>` : '';
     html += `<div class="row"><span class="ind" data-id="${ind.id}"><b style="color:${ind.color || 'var(--text)'}">${esc(indName(ind))}</b> ${vals} ${err}
-      ${isC ? '<button data-act="code" title="แก้โค้ด">{ }</button>' : ''}<button data-act="edit" title="ตั้งค่า">⚙</button><button data-act="del" title="ลบ">✕</button></span></div>`;
+      ${isC ? '<button data-act="code" title="แก้โค้ด">{ }</button>' : ''}<button data-act="edit" title="ตั้งค่า" aria-label="ตั้งค่า">${ICON.svg('settings', 14)}</button><button data-act="del" title="ลบ" aria-label="ลบ">${ICON.svg('x', 14)}</button></span></div>`;
   }
   el.innerHTML = html;
 }
@@ -227,7 +227,7 @@ function openIndicatorMenu() {
     '<div class="group">หน้าต่างแยก (Oscillators)</div>' + all.filter(([, d]) => d.pane === 'sub').map(item).join('') +
     '<div class="group">สคริปต์ของฉัน</div>' +
     S.scripts.map((s) => `<div class="item sc" data-script="${s.id}"><span>${esc(s.name)}</span><button data-edit="${s.id}">แก้โค้ด</button></div>`).join('') +
-    '<div class="item" data-new><span>✏️ เขียน indicator ใหม่…</span></div>';
+    '<div class="item" data-new><span>' + ICON.html('pencil', 14) + 'เขียน indicator ใหม่…</span></div>';
   menu.classList.remove('hidden');
   menu.querySelectorAll('[data-type]').forEach((el) => el.onclick = () => { addIndicator({ type: el.dataset.type, params: { ...IND.DEFS[el.dataset.type].params } }); closeMenus(); });
   menu.querySelectorAll('[data-script]').forEach((el) => el.onclick = (e) => {
@@ -259,8 +259,8 @@ $('sc-code').addEventListener('keydown', (e) => {
 function testScript() {
   if (!S.candles.length) { $('sc-msg').textContent = 'ยังไม่มีข้อมูลกราฟให้ทดสอบ'; return true; }
   const out = CUSTOM.run($('sc-code').value, S.candles, {});
-  if (out.error) { $('sc-msg').innerHTML = `<span class="down">❌ ${esc(out.error)}</span>`; return false; }
-  $('sc-msg').innerHTML = `<span class="up">✅ ผ่าน</span> — ${out.plots.length} plot, ${out.markers.length} marker, inputs: ${esc(JSON.stringify(out.inputs))}`;
+  if (out.error) { $('sc-msg').innerHTML = `<span class="down">${ICON.html('circle-x', 14)}${esc(out.error)}</span>`; return false; }
+  $('sc-msg').innerHTML = `<span class="up">${ICON.html('circle-check', 14)}ผ่าน</span> — ${out.plots.length} plot, ${out.markers.length} marker, inputs: ${esc(JSON.stringify(out.inputs))}`;
   return true;
 }
 function saveScript() {
