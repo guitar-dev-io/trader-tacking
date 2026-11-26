@@ -36,6 +36,8 @@ contextBridge.exposeInMainWorld('vcg', {
   mt5EASource: () => ipcRenderer.invoke('mt5-ea-source'),
   mt5Launch: (o) => ipcRenderer.invoke('mt5-launch', o),
   openSite: (url) => ipcRenderer.invoke('open-site', url),
+  onMt5Auto: (cb) => ipcRenderer.on('mt5-auto', (_e, m) => cb(m)),
+  mt5AutoNow: () => ipcRenderer.invoke('mt5-auto-now'),
   mt5UpdateEA: () => ipcRenderer.invoke('mt5-update-ea'),
   mt5EAInfo: () => ipcRenderer.invoke('mt5-ea-info'),
   mt5OpenEditor: () => ipcRenderer.invoke('mt5-open-editor'),

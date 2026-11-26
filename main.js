@@ -65,7 +65,7 @@ let settings = {
   net: { slowMs: 800, delayMs: 3000, staleSec: 45, stuckSec: 60, notify: true },
   openAtLogin: false,
   source: 'vcg',            // 'vcg' | 'mt5' (Demo is handled in the window)
-  mt5: { port: 7788, autoUpdateEA: true, eaAttempted: {} },
+  mt5: { port: 7788, autoUpdateEA: true, eaAttempted: {}, autoLaunch: true, closeOnQuit: true, eaSeen: false },
 };
 function loadSettings() {
   try {
@@ -517,6 +517,50 @@ function startMt5() {
     disconnect: () => journal().onDisconnect(),
   });
 }
+// ---------------- MT5 auto-launch: start MT5 minimized when needed, close the copy we started on quit ----------------
+const mt5Auto = require('./mt5-auto');
+const AUTO = { started: Date.now(), launchedByApp: false, launching: false, tries: [], timer: null };
+function mt5Plan(withEA) {
+  const dirs = findMt5ExpertDirs(); if (!dirs.length) return null;
+  const bundles = ['/Applications/MetaTrader 5.app', path.join(app.getPath('home'), 'Applications', 'MetaTrader 5.app')].filter((b) => fs.existsSync(b));
+  const sym = mt5.status().symbols.find((x) => /^XAUUSD/i.test(x));
+  const plan = mt5.planLaunch({ expertsDir: dirs[0], platform: process.platform, appBundles: bundles, symbol: sym, period: 'M5' });
+  if (!plan || plan.missing) return null;
+  if (withEA) { try { fs.mkdirSync(path.dirname(plan.iniPath), { recursive: true }); fs.writeFileSync(plan.iniPath, plan.ini); } catch (_) {} }
+  return plan;
+}
+function mt5IsRunning() {
+  const { execFileSync } = require('child_process');
+  try { return /terminal64/i.test(String(execFileSync(process.platform === 'win32' ? 'tasklist' : 'pgrep', process.platform === 'win32' ? ['/FI', 'IMAGENAME eq terminal64.exe'] : ['-fl', 'terminal64'], { encoding: 'utf8', timeout: 4000 }))); }
+  catch (_) { return false; }
+}
+function mt5AutoCheck() {
+  const st = mt5.status();
+  const d = mt5Auto.decide({ source: settings.source, enabled: settings.mt5.autoLaunch !== false, connected: st.connected, running: st.connected ? true : mt5IsRunning(),
+    launching: AUTO.launching, tries: AUTO.tries, now: Date.now(), sinceStart: Date.now() - AUTO.started, eaSeen: !!settings.mt5.eaSeen });
+  if (d.act !== 'launch') { if (d.why === 'gave-up' && !AUTO.gaveUp) { AUTO.gaveUp = true; log.warn('mt5', 'เปิด MT5 อัตโนมัติไม่สำเร็จ 3 ครั้งใน 1 ชม. — หยุดลองแล้ว เปิด MT5 เองได้'); } return; }
+  const plan = mt5Plan(d.withEA);
+  if (!plan) { if (!AUTO.noPlan) { AUTO.noPlan = true; log.warn('mt5', 'เปิด MT5 อัตโนมัติไม่ได้: หาโปรแกรม MT5 ไม่เจอ'); } return; }
+  const c = mt5Auto.minimized(plan, process.platform, d.withEA);
+  AUTO.tries.push(Date.now()); AUTO.launching = true; AUTO.launchedByApp = true;
+  log.info('mt5', 'เปิด MT5 ให้อัตโนมัติ (ย่อหน้าต่าง)' + (d.withEA ? ' พร้อมติด EA' : ''), { cmd: c.cmd, args: c.args });
+  try { const p = require('child_process').spawn(c.cmd, c.args, { env: { ...process.env, ...c.env }, detached: true, stdio: 'ignore', windowsHide: true, windowsVerbatimArguments: !!c.verbatim }); p.on('error', (e) => log.warn('mt5', 'เปิด MT5 ไม่ได้: ' + e.message)); p.unref(); }
+  catch (e) { log.warn('mt5', 'เปิด MT5 ไม่ได้: ' + e.message); }
+  setTimeout(() => { AUTO.launching = false; }, 60000);           // MT5 under wine can take ~30-60 s to come up
+  send('mt5-auto', { state: 'launching' });
+}
+function mt5AutoStart() {
+  // users from before this version already have the EA on a chart (MT5 restores it): don't add a second one
+  if (!settings.mt5.eaSeen && (Object.keys(settings.mt5.eaAttempted || {}).length || fs.existsSync(path.join(app.getPath('userData'), 'journal')))) { settings.mt5.eaSeen = true; saveSettings(); }
+  clearInterval(AUTO.timer); AUTO.started = Date.now(); AUTO.timer = setInterval(mt5AutoCheck, 5000); }
+function mt5AutoQuit() {
+  clearInterval(AUTO.timer);
+  if (!AUTO.launchedByApp || settings.mt5.closeOnQuit === false) return;
+  const plan = mt5Plan(false); if (!plan) return;
+  const c = mt5Auto.closeCmd(plan, process.platform);
+  try { require('child_process').spawn(c.cmd, c.args, { env: { ...process.env, ...c.env }, detached: true, stdio: 'ignore', windowsHide: true }).unref(); log.info('mt5', 'ปิด MT5 ที่แอปเปิดไว้'); } catch (_) {}
+}
+ipcMain.handle('mt5-auto-now', () => { AUTO.tries = []; AUTO.gaveUp = false; AUTO.started = 0; mt5AutoCheck(); return true; });
 // ---------------- EA auto-update: copy + compile the bundled EA when MT5 runs an older one ----------------
 const eaUpd = require('./ea-update');
 let eaUpdating = false, eaWaiter = null;
@@ -525,6 +569,7 @@ const EA_BUNDLED = eaUpd.bundledBuild(fs.readFileSync(path.join(__dirname, 'mt5'
 const mt5Bundles = () => ['/Applications/MetaTrader 5.app', path.join(app.getPath('home'), 'Applications', 'MetaTrader 5.app')].filter((b) => fs.existsSync(b));
 const fmtBuild = (b) => (b / 100).toFixed(2);
 function eaHello(info) {
+  if (!settings.mt5.eaSeen) { settings.mt5.eaSeen = true; saveSettings(); }
   if (eaWaiter && eaUpd.helloBuild(info) >= EA_BUNDLED) { eaWaiter(info); eaWaiter = null; }
   const account = String(info.server || '') + '|' + (info.login || '');
   const d = eaUpd.shouldUpdate({ info, bundled: EA_BUNDLED, enabled: settings.mt5.autoUpdateEA !== false, attempted: settings.mt5.eaAttempted || {}, account, running: eaUpdating });
@@ -591,6 +636,8 @@ ipcMain.handle('set-settings', (_e, s) => {
   settings.telegram = { ...settings.telegram, ...s.telegram };
   if (s.net) settings.net = { ...settings.net, ...s.net };
   if (s.mt5 && typeof s.mt5.autoUpdateEA === 'boolean') settings.mt5.autoUpdateEA = s.mt5.autoUpdateEA;
+  if (s.mt5 && typeof s.mt5.autoLaunch === 'boolean') settings.mt5.autoLaunch = s.mt5.autoLaunch;
+  if (s.mt5 && typeof s.mt5.closeOnQuit === 'boolean') settings.mt5.closeOnQuit = s.mt5.closeOnQuit;
   if (s.mt5 && +s.mt5.port && +s.mt5.port !== settings.mt5.port) { settings.mt5.port = Math.max(1024, Math.min(65535, +s.mt5.port)); if (settings.source === 'mt5') startMt5(); }
   if (typeof s.openAtLogin === 'boolean' && s.openAtLogin !== settings.openAtLogin) {
     settings.openAtLogin = s.openAtLogin;
@@ -713,6 +760,7 @@ app.whenReady().then(() => {
   adoptClaudeConfig();
   restartApi();
   if (settings.source === 'mt5') startMt5();
+  mt5AutoStart();
   probe();
   // start-up: check every 0.7 s until the feed is installed and the first price arrives, then every 3 s
   (function loop() { tick().finally(() => setTimeout(loop, throttled || Date.now() - BOOT > 60000 ? 3000 : 700)); })();
@@ -720,5 +768,5 @@ app.whenReady().then(() => {
 process.on('uncaughtException', (e) => log.error('app', 'uncaughtException: ' + e.stack));
 process.on('unhandledRejection', (e) => log.error('app', 'unhandledRejection: ' + (e && e.stack || e)));
 app.on('activate', showMain);
-app.on('before-quit', () => { quitting = true; if (_journal) _journal.flush(); api.stop(); mt5.stop(); log.info('app', 'ปิดโปรแกรม'); });
+app.on('before-quit', () => { quitting = true; mt5AutoQuit(); if (_journal) _journal.flush(); api.stop(); mt5.stop(); log.info('app', 'ปิดโปรแกรม'); });
 app.on('window-all-closed', () => {});

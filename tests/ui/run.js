@@ -46,7 +46,7 @@ app.whenReady().then(async () => {
   const reqs = [];
   ipcMain.handle('mt5-positions', () => null); ipcMain.handle('open-site', (_e, u) => { globalThis.__siteOpened = u; return true; }); ipcMain.handle('mt5-deals', () => []); ipcMain.handle('journal-get', () => ({ account: null, deals: [], snapshots: [], status: { state: 'ready' } })); ipcMain.handle('journal-sync', () => ({ added: 0, state: 'ok' })); ipcMain.handle('mt5-ea-info', () => ({ bundled: 103, running: null, auto: true }));
   ipcMain.handle('get-settings', () => ({ api: {}, webhook: {}, telegram: {}, net: { slowMs: 800, delayMs: 3000, staleSec: 45, stuckSec: 60, notify: false }, version: 'test', source: 'vcg' }));
-  ipcMain.handle('set-settings', () => true); ipcMain.handle('notify', () => 0); ipcMain.handle('sign-out', () => true);
+  ipcMain.handle('set-settings', (_e, v) => { globalThis.__savedSettings = v; return true; }); ipcMain.handle('notify', () => 0); ipcMain.handle('sign-out', () => true);
   ipcMain.handle('fetch-json', () => { throw new Error('offline (test)'); });
   const iso = (m) => new Date(Date.now() - m * 60000);
   const RSS = {
@@ -511,6 +511,12 @@ app.whenReady().then(async () => {
     await js(`JOURNALPAGE.close(); drawings = drawings.filter((d) => d.by !== 'journal'); dirty = true; true`);
     // EA auto-update controls in settings
     check('settings: EA auto-update toggle + buttons', await js(`!!document.getElementById('st-ea-auto') && !!document.getElementById('st-ea-update') && !!document.getElementById('st-ea-editor')`));
+    const al = JSON.parse(await js(`(async () => { document.getElementById('open-settings').click(); await new Promise((r) => setTimeout(r, 300));
+      const a = document.getElementById('st-mt5-autolaunch'), c = document.getElementById('st-mt5-closequit'); const r = { has: !!a && !!c, def: !!(a && a.checked && c.checked) };
+      if (a) a.checked = false; const save = document.getElementById('st-save'); if (save) save.click(); await new Promise((r) => setTimeout(r, 200));
+      document.getElementById('modal-settings').classList.add('hidden'); return JSON.stringify(r); })()`));
+    const sv = globalThis.__savedSettings && globalThis.__savedSettings.mt5;
+    check('settings: MT5 auto-launch toggles (on by default) are saved', al.has && al.def && sv && sv.autoLaunch === false && sv.closeOnQuit === true, { ...al, saved: sv });
     check('desktop: no console errors', A.errs.length === 0, A.errs.slice(0, 3));
     A.w.destroy();
 
