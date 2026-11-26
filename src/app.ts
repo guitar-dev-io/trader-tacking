@@ -19,7 +19,7 @@ import '../app.js';
 import '../text-tools.js';
 import '../draw.js';
 import '../planner.js';
-import '../settings.js';
+import './ui/settings/index';
 import '../extras.js';
 import '../learn.js';
 import '../news.js';

@@ -519,7 +519,7 @@ app.whenReady().then(async () => {
     check('settings: EA auto-update toggle + buttons', await js(`!!document.getElementById('st-ea-auto') && !!document.getElementById('st-ea-update') && !!document.getElementById('st-ea-editor')`));
     const al = JSON.parse(await js(`(async () => { document.getElementById('open-settings').click(); await new Promise((r) => setTimeout(r, 300));
       const a = document.getElementById('st-mt5-autolaunch'), c = document.getElementById('st-mt5-closequit'); const r = { has: !!a && !!c, def: !!(a && a.checked && c.checked) };
-      if (a) a.checked = false; const save = document.getElementById('st-save'); if (save) save.click(); await new Promise((r) => setTimeout(r, 200));
+      if (a) { a.checked = false; a.dispatchEvent(new Event('change', { bubbles: true })); } const save = document.getElementById('st-save'); if (save) save.click(); await new Promise((r) => setTimeout(r, 200));
       document.getElementById('modal-settings').classList.add('hidden'); return JSON.stringify(r); })()`));
     const sv = globalThis.__savedSettings && globalThis.__savedSettings.mt5;
     check('settings: MT5 auto-launch toggles (on by default) are saved', al.has && al.def && sv && sv.autoLaunch === false && sv.closeOnQuit === true, { ...al, saved: sv });

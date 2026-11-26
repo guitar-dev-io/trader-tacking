@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { ui } from './src/ui/registry.ts';
 import { view } from './src/state.ts';
 import { ICON } from './icons.js';
 import { $, DOWN, FIB, FIBX, FIBX_DEF, FIB_DEF, FIB_PRESETS, FIB_PRESET_REVERSE, FIB_REVERSE, S, TC, THEME, TZ, UP, digits, drawings, drawingsKey, esc, fibColor, fmt, saveDrawings, store, tf, zoneOffsetSec } from './app-core.js';
@@ -588,7 +589,7 @@ $('sess-status').onclick = (e) => {
       return `<div class="item"><span style="color:${s.color}">● ${s.name}</span><span>${hm(x.a)}–${hm(x.b)} ${isOpen ? '<b class="up">เปิดอยู่</b>' : `<small>เปิดอีก ${fmtDur(x.a - now)}</small>`}</span></div>`; }).join('') +
     `<div class="item muted" style="display:block;line-height:1.5">ช่วง London+New York ซ้อนกันมักผันผวนสูงสุด · เวลาปรับตามเวลาฤดูร้อน (DST) อัตโนมัติ</div>
     <div class="item"><button id="sess-edit">${ICON.html('settings', 14)}แก้ไขช่วงเวลา…</button></div>`;
-  $('sess-edit').onclick = () => { p.classList.add('hidden'); PT.openSettings('sess'); };
+  $('sess-edit').onclick = () => { p.classList.add('hidden'); ui.settings?.open('sess'); };
   p.classList.remove('hidden'); p.style.left = 'auto'; p.style.right = '10px'; p.style.top = 'auto'; p.style.bottom = '6px';
   setTimeout(() => { p.style.left = ''; }, 0);
 };
