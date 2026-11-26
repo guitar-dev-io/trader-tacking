@@ -603,6 +603,8 @@ setInterval(() => { if (pendingLogs.length) { send('logs', pendingLogs); pending
 // ---------------- app ----------------
 app.whenReady().then(() => {
   log.init(path.join(app.getPath('userData'), 'logs'));
+  app.setAboutPanelOptions({ applicationName: 'Price Tracker', applicationVersion: app.getVersion(), authors: ['guiar-dev'],
+    credits: 'พัฒนาโดย guiar-dev · อ่านราคาอย่างเดียว ไม่ส่งคำสั่งซื้อขาย', copyright: '© guiar-dev', website: 'https://github.com/guitar-dev-io/trader-tacking' });
   loadSettings();
   log.info('app', `เริ่มโปรแกรม v${app.getVersion()} (Electron ${process.versions.electron}, ${process.platform}/${process.arch})`);
   if (app.runningUnderARM64Translation) log.warn('app', 'แอปนี้เป็นรุ่น Intel (x64) แต่ Mac เป็นชิป Apple (M1/M2/M3/M4) — ทำงานผ่าน Rosetta จะช้ากว่า ให้ติดตั้งไฟล์ Price-Tracker-mac-arm64.zip แทน');
