@@ -3,6 +3,7 @@
   // the main-process settings are read on open / written on save with the same set-settings payload as before.
   import { flushSync } from 'svelte';
   import Icon from '../Icon.svelte';
+  import About from '../about/About.svelte';
   import { S, store, THEME, setMainCfg } from '../../state';
   import { toast } from '../toast';
   import { PT } from '../../pt';
@@ -412,6 +413,7 @@
           </ul>
           <p class="muted">ผลวิเคราะห์ สัญญาณ และบทเรียนมีไว้เพื่อการเรียนรู้ ไม่ใช่คำแนะนำการลงทุน — การเทรดมีความเสี่ยง ตัดสินใจด้วยตัวเองเสมอ</p>
         </div>
+        <About />
         <p class="muted" id="st-about-ver">{ver.app ? `เวอร์ชัน ${ver.app}` : ''}</p>
       </section>
     </div>
