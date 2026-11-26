@@ -189,6 +189,83 @@ app.whenReady().then(async () => {
       drawings.pop(); FIB = save; main.priceScale('right').applyOptions({ autoScale: true }); dirty = true; return JSON.stringify(t); })()`));
     check('drawing: reversed Fibo targets 1.272 / 1.618 / 2 / 2.618 beyond the low', ['1.272 (3586.66)', '1.618 (3581.62)', '2 (3576.07)', '2.618 (3567.08)'].every((x) => fr.includes(x)), fr);
 
+    // text tools: styled multi-line text, double-click edit, callout, labels, context menu, notes, old format
+    const tt = JSON.parse(await js(`(async () => {
+      const w = (ms) => new Promise((r) => setTimeout(r, ms)), c = S.candles, n = c.length, r = {};
+      const save = drawings.slice(); setTool('cursor'); drawings.length = 0; S.selected = null;
+      const rect = document.getElementById('chart').getBoundingClientRect();
+      const fire = (type, x, y, target, extra = {}) => (target || document.getElementById('chart')).dispatchEvent(new (type.startsWith('pointer') ? PointerEvent : MouseEvent)(type, { bubbles: true, cancelable: true, clientX: rect.left + x, clientY: rect.top + y, button: 0, pointerId: 1, pointerType: 'mouse', ...extra }));
+      const texts = () => [...svg.querySelectorAll('text')].map((t) => t.textContent);
+      // old format still renders
+      drawings.push({ id: 11, type: 'text', pts: [{ time: c[n - 70].time, price: c[n - 70].high }], text: 'ข้อความเก่า', color: '#ffffff' }); dirty = true; redraw();
+      r.old = texts().includes('ข้อความเก่า');
+      // new multi-line styled text through the editor
+      const p1 = { time: c[n - 40].time, price: c[n - 40].close };
+      TXT.edit({ kind: 'text', pt: p1, x: xOfT(p1.time), y: yOf(p1.price) });
+      let box = document.querySelector('.txe'); box.querySelector('[data-sz="18"]').click(); box.querySelector('[data-tg="bold"]').click(); box.querySelector('[data-col="#f5a623"]').click();
+      let ta = box.querySelector('textarea'); ta.value = 'แนวรับสำคัญ\\nรอดูแท่งกลับตัว'; ta.dispatchEvent(new Event('input'));
+      ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true }));
+      const t = drawings.find((d) => d.type === 'text' && d.size === 18);
+      r.multi = !!t && t.bold === true && t.color === '#f5a623' && t.text.split('\\n').length === 2 && !document.querySelector('.txe');
+      dirty = true; redraw(); r.lines = texts().filter((s) => s === 'แนวรับสำคัญ' || s === 'รอดูแท่งกลับตัว').length;
+      const P = { x: xOfT(t.pts[0].time), y: yOf(t.pts[0].price) }, b = TXT.boxOf(t, P);
+      r.hitWide = hitTest(b.x + b.w - 4, b.y + b.h - 4) === drawings.indexOf(t) && hitTest(b.x + b.w + 30, b.y + 4) !== drawings.indexOf(t);
+      // double-click → edit
+      fire('dblclick', b.x + 10, b.y + 8, document.getElementById('chart'));
+      box = document.querySelector('.txe'); r.dblOpens = !!box && box.querySelector('textarea').value.startsWith('แนวรับสำคัญ');
+      if (box) { ta = box.querySelector('textarea'); ta.value = 'แนวรับ (แก้แล้ว)'; box.querySelector('.txe-ok').click(); }
+      r.edited = t.text === 'แนวรับ (แก้แล้ว)';
+      // callout: drag the text box, the anchor stays
+      const p2 = { time: c[n - 25].time, price: c[n - 25].low };
+      TXT.edit({ kind: 'callout', pt: p2, x: xOfT(p2.time), y: yOf(p2.price) });
+      box = document.querySelector('.txe'); box.querySelector('textarea').value = 'Entry ตรงนี้'; box.querySelector('.txe-ok').click();
+      const co = drawings.find((d) => d.type === 'callout'); dirty = true; redraw();
+      const A = { x: xOfT(co.pts[0].time), y: yOf(co.pts[0].price) }, cb = TXT.boxOf(co, A), before = JSON.stringify(co.pts), off0 = { ...co.off };
+      fire('pointerdown', cb.x + cb.w / 2, cb.y + cb.h / 2, document.getElementById('chart')); fire('pointermove', cb.x + cb.w / 2 + 60, cb.y + cb.h / 2 - 30, window); fire('pointerup', cb.x + cb.w / 2 + 60, cb.y + cb.h / 2 - 30, window);
+      r.calloutDrag = JSON.stringify(co.pts) === before && co.off.dx === off0.dx + 60 && co.off.dy === off0.dy - 30;
+      dirty = true; redraw(); r.calloutDrawn = texts().includes('Entry ตรงนี้');
+      // label on a trend line
+      drawings.push({ id: 12, type: 'trend', pts: [{ time: c[n - 90].time, price: c[n - 90].low }, { time: c[n - 10].time, price: c[n - 10].high }], color: '#2962ff', label: 'เทรนด์ขาขึ้น' }); dirty = true; redraw();
+      r.label = texts().includes('เทรนด์ขาขึ้น');
+      // selecting a text shows the style toolbar; changing size through it updates the drawing
+      S.selected = drawings.indexOf(t); dirty = true; redraw(); const bar = document.querySelector('.txt-bar:not(.hidden)');
+      r.bar = !!bar; if (bar) { bar.querySelector('[data-sz="24"]').click(); r.barSize = t.size === 24; }
+      S.selected = null; dirty = true; redraw();
+      // right-click menu → add text here
+      const before2 = drawings.length;
+      fire('contextmenu', 200, 120, document.getElementById('chart'));
+      const menu = document.querySelector('.ctx-menu:not(.hidden)'); r.menu = !!menu && menu.querySelectorAll('[data-c]').length >= 4;
+      if (menu) { menu.querySelector('[data-c=text]').click(); box = document.querySelector('.txe'); if (box) { box.querySelector('textarea').value = 'จากเมนู'; box.querySelector('.txe-ok').click(); } }
+      r.menuText = drawings.length === before2 + 1 && drawings.at(-1).text === 'จากเมนู';
+      // undo removes the last text
+      undo(); r.undo = !drawings.some((d) => d.text === 'จากเมนู'); redo();
+      // notes per symbol
+      TXT.NOTES.open(); const nt = document.querySelector('#notes-pop textarea'); nt.value = 'แผน: รอ pullback'; nt.dispatchEvent(new Event('input')); await w(500); TXT.NOTES.close();
+      r.notes = (store.get('note.' + S.symbol.toUpperCase()) || {}).text === 'แผน: รอ pullback' && !store.get('note.ZZZTEST') && document.getElementById('notes-btn').classList.contains('has');
+      r._shot = true; window.__ttSave = save;
+      return JSON.stringify(r); })()`));
+    check('text: old {type:text} drawings still render', tt.old, tt);
+    check('text: multi-line styled text from the editor (size/bold/color), Thai width hit-test', tt.multi && tt.lines === 2 && tt.hitWide, tt);
+    check('text: double-click edits the text', tt.dblOpens && tt.edited, tt);
+    check('text: callout — dragging the box keeps the anchor', tt.calloutDrag && tt.calloutDrawn, tt);
+    check('text: label on a trend line renders', tt.label, tt);
+    check('text: style toolbar on the selected text', tt.bar && tt.barSize, tt);
+    check('text: right-click menu adds text here + undo', tt.menu && tt.menuText && tt.undo, tt);
+    check('text: notes saved per symbol', tt.notes, tt);
+    // screenshot: several texts + callout + label + the style toolbar on a selected text
+    await js(`(() => { const t = drawings.find((d) => d.type === 'text' && d.size); S.selected = drawings.indexOf(t); dirty = true; redraw(); return 1; })()`); await sleep(250); await shot('text-tools');
+    await js(`THEME.set('light'); dirty = true; true`); await sleep(300); await shot('text-light'); await js(`THEME.set('dark'); dirty = true; true`);
+    await js(`TXT.NOTES.open(); true`); await sleep(200); await shot('notes-panel'); await js(`TXT.NOTES.close(); S.selected = null; drawings = window.__ttSave; saveDrawings(); dirty = true; true`);
+    // dashboard: new layout name without window.prompt()
+    const dn = JSON.parse(await js(`(async () => { const w = (ms) => new Promise((r) => setTimeout(r, ms)); DASH.open(); await w(300);
+      const sel = document.querySelector('.dash-layout'); if (!sel) return JSON.stringify({ err: 'no select' });
+      sel.value = '__new'; sel.dispatchEvent(new Event('change')); await w(50);
+      const f = document.querySelector('.dash-newname'); const r = { form: !!f };
+      if (f) { f.querySelector('input').value = 'ทดสอบชุดใหม่'; f.querySelector('button.primary').click(); await w(100); }
+      r.saved = Object.keys((store.get('dash.layout') || {}).layouts || {}).includes('ทดสอบชุดใหม่') && !document.querySelector('.dash-newname');
+      DASH.close(); return JSON.stringify(r); })()`));
+    check('dashboard: new layout name asked inline (no prompt())', dn.form && dn.saved, dn);
+
     // MTF pane + replay must not leak the future
     await js(`document.getElementById('mtf-btn').click(); 'ok'`); await sleep(300);
     send('chart', { type: 'chart', slot: 'mtf', data: { history: { candles: candles(500, 14400, 9) } } });
@@ -252,11 +329,11 @@ app.whenReady().then(async () => {
       const d2 = await cmd('draw', { type: 'hline', points: [{ price: last.close + 4 }] });
       const bad = await cmd('draw', { type: 'rect', points: [{ price: 1 }] });
       const drawn = JSON.parse(await js(`JSON.stringify({ n: drawings.filter((d) => d.by === 'claude').length, labels: [...svg.querySelectorAll('text')].some((t) => /Claude/.test(t.textContent)) })`));
-      check('claude: draw rect + label + hline', d1.data && d2.data && drawn.n === 3, drawn);
+      check('claude: draw rect + label + hline', d1.data && d2.data && drawn.n === 2 && JSON.parse(await js(`JSON.stringify(drawings.some((d) => d.by === 'claude' && d.type === 'rect' && /Demand/.test(d.label || '')))`)), drawn);
       check('claude: draw validates points', !!bad.error, bad.error);
       const pl = await cmd('plan', { side: 'buy', entry: 3586.31, sl: 3570, balance: 10000, riskPct: 1 });   // $100 risk / 16.31 → 0.06 lot
       check('claude: lot calculator', pl.data && Math.abs(pl.data.totalLot - 0.06) < 1e-9 && Math.abs(pl.data.maxLossAtSL) <= 100, pl.data && { lot: pl.data.totalLot, loss: pl.data.maxLossAtSL, warn: pl.data.warnings, inp: pl.data.input });
-      const cl = await cmd('clear_drawings'); check('claude: clear only Claude drawings', cl.data && cl.data.removed === 3, cl.data);
+      const cl = await cmd('clear_drawings'); check('claude: clear only Claude drawings', cl.data && cl.data.removed === 2, cl.data);
       reqs.length = 0;
       const oc = cmd('open_chart', { timeframe: '4H' });
       for (let i = 0; i < 40 && !reqs.find((r) => r.candleType === 4); i++) await sleep(100);
@@ -496,6 +573,16 @@ app.whenReady().then(async () => {
       await N.js(`document.getElementById('connect').classList.remove('hidden'); renderConnect(); 1`);
       await N.js(`document.querySelector('[data-cn=demo]').click(); 1`); await sleep(800);
       check('android: demo button hides connect screen', await N.js(`S.source === 'demo' && document.getElementById('connect').classList.contains('hidden')`));
+      // phone: text editor is a bottom sheet with the style bar; long-press menu exists
+      const mt = JSON.parse(await N.js(`(async () => { const w = (ms) => new Promise((r) => setTimeout(r, ms));
+        TXT.edit({ kind: 'text', pt: { time: 1, price: 1 }, x: 120, y: 300 }); await w(150);
+        const b = document.querySelector('.txe'); const r = { sheet: !!b && b.classList.contains('txe-sheet'), style: !!b && b.querySelectorAll('.txs [data-sz]').length === 4,
+          bottom: !!b && Math.abs(b.getBoundingClientRect().bottom - innerHeight) < 2, focus: document.activeElement && document.activeElement.tagName === 'TEXTAREA' };
+        if (b) { const ta = b.querySelector('textarea'); ta.value = 'โซน Demand H1\\nรอแท่งยืนยัน'; ta.dispatchEvent(new Event('input')); }
+        return JSON.stringify(r); })()`));
+      await sleep(200); await N.shot('text-mobile-editor');
+      await N.js(`TXT.close(); 1`);
+      check('mobile: text editor opens as a bottom sheet with style options', mt.sheet && mt.style && mt.bottom, mt);
       const mm = JSON.parse(await N.js(`(async () => { document.querySelector('#mnav2 [data-nav=more]').click(); await new Promise((r) => setTimeout(r, 250));
         const t = document.getElementById('tab-more'); return JSON.stringify({ emoji: /\\p{Extended_Pictographic}/u.test(t.textContent), svg: t.querySelectorAll('svg.ico').length }); })()`));
       check('icons: mobile More page uses Lucide icons, no emoji', !mm.emoji && mm.svg >= 6, mm);

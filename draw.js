@@ -18,13 +18,15 @@ const TOOLS = {
   long: { icon: 'long', name: 'Long position (Entry → SL)', n: 2, key: 'L' },
   short: { icon: 'short', name: 'Short position (Entry → SL)', n: 2, key: 'S' },
   text: { icon: 'text', name: 'ข้อความ', n: 1, key: 'X' },
+  callout: { icon: 'callout', name: 'โน้ตชี้จุด (Callout)', n: 1, key: 'N' },
   arrowUp: { icon: 'arrowUp', name: 'ลูกศรขึ้น', n: 1 },
   arrowDown: { icon: 'arrowDown', name: 'ลูกศรลง', n: 1 },
   measure: { icon: 'measure', name: 'วัดระยะ (Measure)', n: 2, key: 'M' },
   alert: { icon: 'alert', name: 'ตั้งแจ้งเตือนราคา', n: 1, key: 'A' },
 };
-const GROUPS = [['cursor'], ['trend', 'ray', 'hline', 'vline', 'channel'], ['fib', 'fibext'], ['rect', 'brush'], ['long', 'short'], ['text', 'arrowUp', 'arrowDown'], ['measure'], ['alert']];
+const GROUPS = [['cursor'], ['trend', 'ray', 'hline', 'vline', 'channel'], ['fib', 'fibext'], ['rect', 'brush'], ['long', 'short'], ['text', 'callout', 'arrowUp', 'arrowDown'], ['measure'], ['alert']];
 const groupSel = store.get('groupSel', GROUPS.map((g) => g[0]));
+GROUPS.forEach((g, i) => { if (!g.includes(groupSel[i])) groupSel[i] = g[0]; });
 S.locked = store.get('locked', false);
 S.hidden = false;
 S.pts = [];          // points collected for the drawing in progress
@@ -87,7 +89,7 @@ function closeFly() { document.querySelectorAll('#tools .fly').forEach((f) => f.
 document.addEventListener('click', (e) => { if (!e.target.closest('#tools')) closeFly(); if (!e.target.closest('#layers-pop') && !e.target.closest('#t-layers')) $('layers-pop').classList.add('hidden'); });
 
 function setTool(t) {
-  S.tool = t; S.pending = null; S.pts = []; S.measure = null; removeTextInput();
+  S.tool = t; S.pending = null; S.pts = []; S.measure = null; TXT.close();
   const gi = GROUPS.findIndex((g) => g.includes(t)); if (gi >= 0 && groupSel[gi] !== t) { groupSel[gi] = t; store.set('groupSel', groupSel); }
   buildToolbar();
   const drawing = t !== 'cursor';
@@ -97,7 +99,7 @@ function setTool(t) {
   const hints = { hline: 'คลิกที่ราคาเพื่อวางเส้นแนวนอน', vline: 'คลิกเพื่อวางเส้นแนวตั้ง', trend: 'คลิก 2 จุดเพื่อวาดเส้นเทรนด์', ray: 'คลิก 2 จุด เส้นจะยืดไปทางขวา',
     channel: 'คลิก 2 จุดเป็นเส้นหลัก แล้วคลิกจุดที่ 3 เพื่อกำหนดความกว้างช่อง', fib: 'คลิกจุดเริ่ม (100%) แล้วจุดจบ (0%)', fibext: 'คลิก 3 จุด: ① จุดเริ่มขา ② ปลายขา ③ จุดย่อ → ได้เป้า 100% / 161.8% / 261.8% จากจุดย่อ', rect: 'คลิก 2 มุมเพื่อวาดกรอบโซน',
     brush: 'กดค้างแล้วลากเพื่อวาด', long: 'คลิกจุด Entry แล้วคลิกระดับ SL (TP ตั้งที่ 2R ลากปรับได้)', short: 'คลิกจุด Entry แล้วคลิกระดับ SL (TP ตั้งที่ 2R ลากปรับได้)',
-    text: 'คลิกตรงที่ต้องการแล้วพิมพ์ข้อความ (Enter = บันทึก)', arrowUp: 'คลิกเพื่อวางลูกศร', arrowDown: 'คลิกเพื่อวางลูกศร',
+    text: 'คลิกตรงที่ต้องการแล้วพิมพ์ข้อความ (Enter = ขึ้นบรรทัดใหม่ · Ctrl/⌘+Enter = บันทึก)', callout: 'คลิกจุดที่ต้องการชี้ แล้วพิมพ์ข้อความ — ลากกล่องข้อความไปวางที่อื่นได้', arrowUp: 'คลิกเพื่อวางลูกศร', arrowDown: 'คลิกเพื่อวางลูกศร',
     measure: 'คลิก 2 จุดเพื่อวัดระยะ', alert: 'คลิกที่ราคาเพื่อตั้งแจ้งเตือน',
     cursor: S.locked ? 'รูปวาดถูกล็อกอยู่' : 'คลิกรูปวาดเพื่อเลือก · ลากเพื่อย้าย · ลากจุดปลายเพื่อปรับ · Delete = ลบ' };
   $('hint').textContent = hints[t] || '';
@@ -198,7 +200,8 @@ function renderDrawing(d, sel, W, H) {
       break;
     }
     case 'brush': { const pts = P.filter((p) => p.x != null && p.y != null).map((p) => `${p.x},${p.y}`).join(' '); if (pts) el('polyline', { points: pts, fill: 'none', stroke: col, 'stroke-width': sel ? 3 : 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }); break; }
-    case 'text': { if (bad) return; const t = d.text || ''; const w = t.length * 7.5 + 10; el('rect', { x: P[0].x - 2, y: P[0].y - 15, width: w, height: 20, rx: 3, fill: TC().box, stroke: sel ? TC().sel : 'none' }); txt(P[0].x + 3, P[0].y, t, inkColor(d.color), 'start', 13, 500); break; }
+    case 'text': if (bad) return; TXT.renderText(d, P, sel); break;
+    case 'callout': if (bad) return; TXT.renderCallout(d, P, sel); break;
     case 'arrowUp': case 'arrowDown': {
       if (bad) return; const up = d.type === 'arrowUp', x = P[0].x, y = P[0].y, c = sel ? TC().sel : d.color || DEFAULT_COLOR[d.type];
       el('path', { d: up ? `M${x} ${y} l9 12 h-5 v10 h-8 v-10 h-5 z` : `M${x} ${y} l9 -12 h-5 v-10 h-8 v10 h-5 z`, fill: c }); break;
@@ -219,7 +222,8 @@ function renderDrawing(d, sel, W, H) {
       break;
     }
   }
-  if (sel) handles(d).forEach((h) => el('circle', { cx: h.x, cy: h.y, r: 4.5, fill: TC().handle, stroke: TC().sel, 'stroke-width': 2 }));
+  if (d.label) TXT.renderLabel(d, P, W, H, sel);
+  if (sel && d.type !== 'text') handles(d).forEach((h) => el('circle', { cx: h.x, cy: h.y, r: 4.5, fill: TC().handle, stroke: TC().sel, 'stroke-width': 2 }));
 }
 function measureShape(a, b) {
   const x1 = xOfT(a.time), y1 = yOf(a.price), x2 = xOfT(b.time), y2 = yOf(b.price);
@@ -252,6 +256,7 @@ function redraw() {
   if (S.measure) measureShape(S.measure.a, S.measure.b);
   if (typeof SIM !== 'undefined') SIM.draw(W);
   if (typeof drawPlanner === 'function') drawPlanner(W, H);
+  TXT.sync();
 }
 (function loop() { redraw(); requestAnimationFrame(loop); })();
 ['wheel', 'mousedown', 'mouseup'].forEach((ev) => $('chart-wrap').addEventListener(ev, () => { dirty = true; }, { passive: true }));
@@ -285,7 +290,7 @@ function hitTest(x, y) {
         break;
       }
       case 'brush': for (let k = 1; k < P.length; k++) if (distToSeg(x, y, P[k - 1].x, P[k - 1].y, P[k].x, P[k].y) < 6) return i; break;
-      case 'text': if (x >= P[0].x - 4 && x <= P[0].x + (d.text || '').length * 7.5 + 10 && y >= P[0].y - 16 && y <= P[0].y + 6) return i; break;
+      case 'text': case 'callout': if (TXT.hit(d, P, x, y)) return i; break;
       case 'arrowUp': if (Math.abs(x - P[0].x) < 10 && y >= P[0].y - 2 && y <= P[0].y + 24) return i; break;
       case 'arrowDown': if (Math.abs(x - P[0].x) < 10 && y <= P[0].y + 2 && y >= P[0].y - 24) return i; break;
     }
@@ -296,7 +301,7 @@ function hitTest(x, y) {
 // ---------------------------------------------------------------- mouse: select / drag / create
 let drag = null;
 $('chart-wrap').addEventListener('pointerdown', (ev) => {
-  if (ev.button !== 0 || ev.target.closest('#legend, #zoombar, #layers-pop, .txt-input')) return;
+  if (ev.button !== 0 || ev.target.closest('#legend, #zoombar, #layers-pop, .txe, .txt-bar, #notes-pop')) return;
   const { x, y } = mousePos(ev);
   if (S.tool === 'brush') {
     const p = pointAt(x, y, false); if (!p) return;
@@ -314,6 +319,8 @@ $('chart-wrap').addEventListener('pointerdown', (ev) => {
   const d = drawings[hit];
   const h = handles(d).find((q) => Math.hypot(q.x - x, q.y - y) < 8);
   const p = pointAt(x, y, false);
+  const P0 = d.pts.map((q) => ({ x: xOfT(q.time), y: yOf(q.price) }));
+  if (!h && TXT.hitCalloutBox(d, P0, x, y)) { const o = d.off || { dx: 24, dy: -56 }; drag = { i: hit, box: { dx: o.dx, dy: o.dy, x0: x, y0: y }, moved: false }; return; }
   drag = { i: hit, k: h ? h.k : null, l0: chart.timeScale().coordinateToLogical(x), p0: p ? p.price : 0, orig: JSON.parse(JSON.stringify(d.pts)), rr0: d.rr, moved: false };
 }, true);
 window.addEventListener('pointermove', (ev) => {
@@ -325,6 +332,7 @@ window.addEventListener('pointermove', (ev) => {
   if (drag) {
     const d = drawings[drag.i]; if (!d) { drag = null; return; }
     if (!drag.moved) { pushHistory(); drag.moved = true; }
+    if (drag.box) { d.off = { dx: Math.round(drag.box.dx + x - drag.box.x0), dy: Math.round(drag.box.dy + y - drag.box.y0) }; dirty = true; return; }
     if (drag.k === -1) { const p = pointAt(x, y, false); if (p) { const e = d.pts[0].price, sl = d.pts[1].price; d.rr = Math.max(0.1, Math.abs(p.price - e) / Math.abs(e - sl)); } }
     else if (drag.k != null) {
       const p = pointAt(x, y, true); if (!p) return;
@@ -347,13 +355,13 @@ window.addEventListener('pointerup', () => {
   if (drag) { if (drag.moved) saveDrawings(); drag = null; }
 });
 $('chart-wrap').addEventListener('click', (ev) => {
-  if (S.tool === 'cursor' || S.tool === 'brush' || ev.target.closest('#legend, #zoombar, #layers-pop, .txt-input')) return;
+  if (S.tool === 'cursor' || S.tool === 'brush' || ev.target.closest('#legend, #zoombar, #layers-pop, .txe, .txt-bar, #notes-pop')) return;
   const { x, y } = mousePos(ev);
   const p = pointAt(x, y, true); if (!p) return;
   const pt = { time: p.time, price: p.price };
   const t = S.tool, n = TOOLS[t].n;
   if (t === 'alert') { addAlert(+p.price.toFixed(digits())); setTool('cursor'); return; }
-  if (t === 'text') { showTextInput(x, y, pt); return; }
+  if (t === 'text' || t === 'callout') { TXT.edit({ kind: t, pt, x, y }); return; }
   if (t === 'measure' && S.measure) { S.measure = null; }
   S.pts.push(pt);
   if (S.pts.length < n) { S.mouse = p; dirty = true; return; }
@@ -368,39 +376,23 @@ $('chart-wrap').addEventListener('click', (ev) => {
     }
   }
   drawings.push(d); saveDrawings(); renderLayers(); dirty = true;
-  if (!ev.shiftKey && ['long', 'short', 'text', 'arrowUp', 'arrowDown'].includes(t)) setTool('cursor');
+  if (!ev.shiftKey && ['long', 'short', 'text', 'callout', 'arrowUp', 'arrowDown'].includes(t)) setTool('cursor');
 });
 $('chart-wrap').addEventListener('dblclick', (ev) => {
   if (S.tool !== 'cursor' || S.locked) return;
   const { x, y } = mousePos(ev); const i = hitTest(x, y); if (i == null) return;
   const d = drawings[i];
-  if (d.type === 'text') { const P = { x: xOfT(d.pts[0].time), y: yOf(d.pts[0].price) }; showTextInput(P.x, P.y - 14, d.pts[0], d); }
-  else if ((d.type === 'long' || d.type === 'short') && typeof plannerFrom === 'function') plannerFrom(d);
+  if ((d.type === 'long' || d.type === 'short') && typeof plannerFrom === 'function') plannerFrom(d);
+  else TXT.openEditor(i);   // text / callout: edit the text · other shapes: their label
 });
 
-// text input
-let textInput = null;
-function removeTextInput() { if (textInput) { textInput.remove(); textInput = null; } }
-function showTextInput(x, y, pt, existing) {
-  removeTextInput();
-  const inp = document.createElement('input'); inp.className = 'txt-input'; inp.placeholder = 'พิมพ์ข้อความ แล้วกด Enter';
-  inp.style.left = x + 'px'; inp.style.top = y + 'px'; inp.value = existing ? existing.text : '';
-  $('chart-wrap').appendChild(inp); textInput = inp; setTimeout(() => inp.focus(), 0);
-  const commit = () => {
-    const v = inp.value.trim(); removeTextInput();
-    if (existing) { pushHistory(); if (v) existing.text = v; else drawings.splice(drawings.indexOf(existing), 1); }
-    else if (v) { pushHistory(); drawings.push({ id: uid(), type: 'text', pts: [pt], text: v, color: '#ffffff' }); }
-    saveDrawings(); renderLayers(); dirty = true; setTool('cursor');
-  };
-  inp.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') commit(); if (e.key === 'Escape') { removeTextInput(); setTool('cursor'); } };
-  inp.onblur = () => { if (textInput === inp) commit(); };
-}
+// text editing: text-tools.js (TXT)
 
 // ---------------------------------------------------------------- layers (object tree)
 function toggleLayers() { const p = $('layers-pop'); p.classList.toggle('hidden'); renderLayers(); }
 function renderLayers() {
   const p = $('layers-pop'); if (p.classList.contains('hidden')) return;
-  const desc = (d) => d.type === 'hline' ? fmt(d.pts[0].price) : d.type === 'text' ? esc(d.text) : d.type === 'vline' ? fmtTime(d.pts[0].time) : d.pts[0] ? fmt(d.pts[0].price) : '';
+  const desc = (d) => d.type === 'hline' ? fmt(d.pts[0].price) : (d.type === 'text' || d.type === 'callout') ? esc(String(d.text || '').split('\n')[0]) : d.label ? esc(d.label.split('\n')[0]) : d.type === 'vline' ? fmtTime(d.pts[0].time) : d.pts[0] ? fmt(d.pts[0].price) : '';
   p.innerHTML = `<div class="group">รูปวาดบน ${S.symbol} (${drawings.length})</div>` + (drawings.map((d, i) =>
     `<div class="item ${S.selected === i ? 'sel' : ''}" data-i="${i}"><span>${ICON.svg(TOOLS[d.type]?.icon || 'trend', 16)} ${TOOLS[d.type]?.name.split(' (')[0] || d.type} <small>${desc(d)}</small></span>
      <span><input type="color" data-c="${i}" value="${(d.color || '#2962ff').slice(0, 7)}" style="width:22px;height:18px;padding:0;border:none;background:none"> <button data-del="${i}" aria-label="ลบ">${ICON.svg('x', 14)}</button></span></div>`).join('') || '<div class="item muted">ยังไม่มีรูปวาด</div>');

@@ -277,9 +277,24 @@ const DASH = (() => {
       + Object.keys(PRESETS).map((n) => `<option value="__p:${esc(n)}">ชุดสำเร็จรูป: ${esc(n)}</option>`).join('')
       + (Object.keys(cfg.layouts).length > 1 ? '<option value="__del">ลบชุดนี้</option>' : '');
   }
+  // inline "name the new layout" field next to the layout picker
+  function askLayoutName() {
+    const sel = root.querySelector('.dash-layout'); if (root.querySelector('.dash-newname')) return root.querySelector('.dash-newname input').focus();
+    const f = document.createElement('form'); f.className = 'dash-newname';
+    f.innerHTML = '<input maxlength="40" placeholder="ชื่อชุดเลย์เอาต์ใหม่" value="ชุดของฉัน"><button class="primary">บันทึก</button><button type="button" data-x>ยกเลิก</button>';
+    sel.after(f); sel.classList.add('hidden');
+    const inp = f.querySelector('input'); inp.focus(); inp.select();
+    const done = () => { f.remove(); sel.classList.remove('hidden'); };
+    inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Escape') done(); });
+    f.querySelector('[data-x]').onclick = done;
+    f.onsubmit = (e) => {
+      e.preventDefault(); const n = inp.value.trim(); if (!n) return inp.focus();
+      cfg.layouts[n] = layout().map((x) => ({ ...x, id: uid(), opts: { ...x.opts } })); cfg.cur = n; done(); save(); renderLayoutSel(); build();
+    };
+  }
   root.querySelector('.dash-layout').onchange = (e) => {
     const v = e.target.value;
-    if (v === '__new') { const n = (prompt('ชื่อชุดเลย์เอาต์ใหม่', 'ชุดของฉัน') || '').trim(); if (n) { cfg.layouts[n] = layout().map((x) => ({ ...x, id: uid(), opts: { ...x.opts } })); cfg.cur = n; } }
+    if (v === '__new') { renderLayoutSel(); askLayoutName(); return; }   // window.prompt() does not exist in the desktop app: ask inline
     else if (v === '__del') { if (confirm(`ลบชุด "${cfg.cur}"?`)) { delete cfg.layouts[cfg.cur]; cfg.cur = Object.keys(cfg.layouts)[0]; } }
     else if (v.startsWith('__p:')) { const n = v.slice(4); cfg.layouts[n] = PRESETS[n](); cfg.cur = n; }
     else cfg.cur = v;

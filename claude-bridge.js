@@ -69,23 +69,24 @@
         recentSweeps: B.liq.sweeps.map((s) => ({ side: s.side, price: s.price, barsAgo: S.A ? S.A.n - 1 - s.j : null })) },
       statsByZoneType: B.stats };
   }
-  const TYPES = ['hline', 'trend', 'ray', 'rect', 'text', 'arrowUp', 'arrowDown', 'fib', 'fibext', 'long', 'short'];
+  const TYPES = ['hline', 'trend', 'ray', 'rect', 'text', 'callout', 'arrowUp', 'arrowDown', 'fib', 'fibext', 'long', 'short'];
   function draw(a) {
     const type = a.type; if (!TYPES.includes(type)) throw new Error('type ต้องเป็นหนึ่งใน ' + TYPES.join(', '));
     const c = S.candles; if (!c.length) throw new Error('ยังไม่มีกราฟ');
     const last = c[c.length - 1].time, span = tf().sec;
     const pts = (a.points || []).map((p, i) => ({ time: toChart(p.time) ?? (last - (((a.points.length - 1 - i) * 30) * span)), price: +p.price }));
-    const need = { hline: 1, text: 1, arrowUp: 1, arrowDown: 1, fibext: 3 }[type] || 2;
+    const need = { hline: 1, text: 1, callout: 1, arrowUp: 1, arrowDown: 1, fibext: 3 }[type] || 2;
     if (pts.length < need || pts.some((p) => !isFinite(p.price))) throw new Error(`${type} ต้องมี ${need} จุด {time?, price}`);
     const d = { id: uid(), type, pts: pts.slice(0, need === 1 ? 1 : need), color: a.color || ({ rect: '#2962ff', hline: '#f6c343' }[type] || '#ab47bc'), by: 'claude' };
-    if (a.text) d.text = String(a.text).slice(0, 120);
-    if (type === 'fib' && a.reverse != null) d.reverse = !!a.reverse;
-    if (type === 'text' && !d.text) throw new Error('text ต้องมีข้อความ');
-    drawings.push(d); saveDrawings(); dirty = true;
-    if (a.label && type !== 'text') {   // a caption next to the drawing
-      drawings.push({ id: uid(), type: 'text', pts: [{ time: d.pts[0].time, price: Math.max(...d.pts.map((p) => p.price)) }], text: String(a.label).slice(0, 120), color: d.color, by: 'claude' });
-      saveDrawings();
+    if (a.text) d.text = String(a.text).slice(0, 500);
+    if (type === 'text' || type === 'callout') {   // optional style: fontSize 12-24, bg (bool), bold, border
+      d.size = Math.max(10, Math.min(28, +a.fontSize || 14)); d.bg = a.bg !== false; d.bold = !!a.bold; d.border = a.border ?? (type === 'callout');
+      if (type === 'callout') d.off = { dx: +a.offsetX || 24, dy: +a.offsetY || -56 };
     }
+    if (type === 'fib' && a.reverse != null) d.reverse = !!a.reverse;
+    if ((type === 'text' || type === 'callout') && !d.text) throw new Error(type + ' ต้องมีข้อความ');
+    drawings.push(d); saveDrawings(); dirty = true;
+    if (a.label && type !== 'text' && type !== 'callout') { d.label = String(a.label).slice(0, 200); saveDrawings(); }   // caption drawn on the shape
     toast('Claude วาด ' + type + (a.label ? ': ' + a.label : ''), 'info', 2500);
     return { ok: true, id: d.id, claudeDrawings: drawings.filter((x) => x.by === 'claude').length };
   }

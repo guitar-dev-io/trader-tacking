@@ -134,3 +134,8 @@
 .dash.m-full .dash-cat { position: absolute; inset: 0; width: auto; z-index: 55; border: none; }
 .dash.m-full .wd-set { opacity: 1; }
 .dash.m-full .wd-pop { left: 10px !important; right: 10px; width: auto; }
+.dash-newname { display: inline-flex; gap: 6px; align-items: center; }
+.dash-newname input { padding: 5px 8px; border-radius: 7px; min-width: 150px; }
+.dash-newname button { padding: 5px 10px; border-radius: 7px; cursor: pointer; }
+.dash-newname .primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.dash-layout.hidden { display: none; }
