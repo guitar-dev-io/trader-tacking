@@ -5,19 +5,19 @@
 //|                                                                   |
 //| Setup (once):                                                     |
 //|  1. Tools > Options > Expert Advisors:                            |
-//|       ✔ Allow algorithmic trading is NOT needed (read-only EA)    |
-//|       ✔ Allow WebRequest for listed URL → add  127.0.0.1          |
+//|       - Allow algorithmic trading is NOT needed (read-only EA)    |
+//|       - Allow WebRequest for listed URL: add 127.0.0.1            |
 //|  2. In Price Tracker choose data source "MT5"                     |
 //|  3. Drag this EA onto any chart (keep that chart open)            |
 //|                                                                   |
 //| The EA never places or changes orders. It only reads prices.      |
 //+------------------------------------------------------------------+
 #property copyright "Price Tracker"
-#property version   "1.00"
+#property version   "1.01"
 #property description "Sends ticks and candles to Price Tracker (127.0.0.1). Read-only: it never trades."
 
 input string InpHost    = "127.0.0.1"; // Price Tracker address
-input int    InpPort    = 7788;        // Price Tracker MT5 port (Settings > การเชื่อมต่อ)
+input int    InpPort    = 7788;        // Price Tracker MT5 port
 input int    InpTimerMs = 100;         // How often to send prices (ms)
 
 struct SubInfo
@@ -41,10 +41,23 @@ long     g_offset = 0;           // broker server time - GMT (seconds)
 datetime g_lastTry = 0;
 bool     g_warned4014 = false;
 
+// forward declarations (older MetaEditor builds want them)
+bool   EnsureConnected();
+void   ReadCommands();
+void   SendTicks();
+void   SendSubscriptions();
+void   HandleCommand(string line);
+void   SendHistory(string id, string sym, string tfName, int count, long toUnix);
+bool   SendLine(string s);
+string Esc(string s);
+string BarJson(const MqlRates &r, int digits);
+long   ServerOffset();
+string MarketWatchJson();
+ENUM_TIMEFRAMES TfFrom(string s);
 //+------------------------------------------------------------------+
 int OnInit()
   {
-   EventSetMillisecondTimer(MathMax(20, InpTimerMs));
+   EventSetMillisecondTimer((int)MathMax(20, InpTimerMs));
    Print("PriceTrackerBridge: started, connecting to ", InpHost, ":", InpPort);
    return(INIT_SUCCEEDED);
   }
@@ -90,7 +103,7 @@ bool SendLine(string s)
    int sent = SocketSend(g_sock, buf, (uint)n);
    if(sent < 0)
      {
-      Print("PriceTrackerBridge: send failed (", GetLastError(), ") — reconnecting");
+      Print("PriceTrackerBridge: send failed (", GetLastError(), ") - reconnecting");
       SocketClose(g_sock);
       g_sock = INVALID_HANDLE;
       return false;
@@ -101,7 +114,7 @@ bool SendLine(string s)
 string MarketWatchJson()
   {
    string s = "";
-   int n = MathMin(SymbolsTotal(true), 300);
+   int n = (int)MathMin(SymbolsTotal(true), 300);
    for(int i = 0; i < n; i++)
      {
       if(i > 0)
@@ -129,7 +142,7 @@ bool EnsureConnected()
       Print("PriceTrackerBridge: SocketCreate failed ", GetLastError());
       return false;
      }
-   if(!SocketConnect(g_sock, InpHost, InpPort, 1000))
+   if(!SocketConnect(g_sock, InpHost, (uint)InpPort, 1000))
      {
       int err = GetLastError();
       if(err == 4014 && !g_warned4014)
@@ -176,9 +189,9 @@ void ReadCommands()
    if(avail > 0)
      {
       uchar buf[];
-      int r = SocketRead(g_sock, buf, avail, 20);
-      if(r > 0)
-         g_rx += CharArrayToString(buf, 0, r, CP_UTF8);
+      int got = SocketRead(g_sock, buf, avail, 20);
+      if(got > 0)
+         g_rx += CharArrayToString(buf, 0, got, CP_UTF8);
      }
    int p = StringFind(g_rx, "\n");
    while(p >= 0)
@@ -271,11 +284,11 @@ void SendHistory(string id, string sym, string tfName, int count, long toUnix)
       SendLine(StringFormat("{\"t\":\"err\",\"id\":%s,\"msg\":\"unknown symbol %s\"}", id, Esc(sym)));
       return;
      }
-   count = MathMax(10, MathMin(count, 5000));
-   datetime to = (toUnix > 0) ? (datetime)(toUnix + g_offset) : TimeTradeServer();
+   count = (int)MathMax(10, MathMin(count, 5000));
+   datetime toTime = (toUnix > 0) ? (datetime)(toUnix + g_offset) : TimeTradeServer();
    MqlRates r[];
    ArraySetAsSeries(r, false);
-   int got = CopyRates(sym, tf, to, count, r);
+   int got = CopyRates(sym, tf, toTime, count, r);
    if(got <= 0)
      {
       SendLine(StringFormat("{\"t\":\"err\",\"id\":%s,\"retry\":1,\"msg\":\"history not ready (%d)\"}", id, GetLastError()));
@@ -300,14 +313,14 @@ void SendTicks()
       MqlTick t;
       if(!SymbolInfoTick(g_watch[i], t))
          continue;
-      if(t.time_msc == g_lastMsc[i])
+      if((long)t.time_msc == g_lastMsc[i])
          continue;
-      g_lastMsc[i] = t.time_msc;
+      g_lastMsc[i] = (long)t.time_msc;
       int digits = (int)SymbolInfoInteger(g_watch[i], SYMBOL_DIGITS);
       double dayOpen = iOpen(g_watch[i], PERIOD_D1, 0);
       SendLine(StringFormat("{\"t\":\"tick\",\"s\":\"%s\",\"bid\":%s,\"ask\":%s,\"ms\":%I64d,\"dg\":%d,\"open\":%s}",
                             Esc(g_watch[i]), DoubleToString(t.bid, digits), DoubleToString(t.ask, digits),
-                            t.time_msc - g_offset * 1000, digits, DoubleToString(dayOpen, digits)));
+                            (long)t.time_msc - g_offset * 1000, digits, DoubleToString(dayOpen, digits)));
      }
   }
 //+------------------------------------------------------------------+
