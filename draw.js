@@ -170,7 +170,9 @@ function renderDrawing(d, sel, W, H) {
     case 'fib': {
       if (bad) return;
       const L = Math.min(P[0].x, P[1].x), R = Math.max(P[0].x, P[1].x, W - 70);
-      const lv = [...FIB].sort((x, y) => x - y), at = (k) => d.pts[1].price + (d.pts[0].price - d.pts[1].price) * k;
+      const rev = d.reverse ?? FIB_REVERSE, lv = [...FIB].sort((x, y) => x - y);
+      // normal: start = 1, end = 0 (retracement) · reverse: start = 0, end = 1, levels > 1 continue past the end point (targets)
+      const at = (k) => (rev ? d.pts[0].price + (d.pts[1].price - d.pts[0].price) * k : d.pts[1].price + (d.pts[0].price - d.pts[1].price) * k);
       lv.forEach((k, i) => {
         const y = yOf(at(k)); if (y == null) return;
         if (i < lv.length - 1) { const yn = yOf(at(lv[i + 1])); if (yn != null) el('rect', { x: L, y: Math.min(y, yn), width: R - L, height: Math.abs(yn - y), fill: fibColor(lv[i + 1]) + '14' }); }
@@ -454,6 +456,7 @@ $('cs-btn').onclick = (e) => {
     <label class="item"><input type="checkbox" id="cs-news" ${S.chartCfg.news ? 'checked' : ''}> แสดงเวลาข่าวสำคัญบนกราฟ</label>
     <div class="group">ระดับ Fibonacci (คั่นด้วย ,)</div>
     <div class="item fibrow"><span>ย่อตัว</span><input id="cs-fib" value="${FIB.join(', ')}"></div>
+    <label class="item"><input type="checkbox" id="cs-fibrev" ${FIB_REVERSE ? 'checked' : ''}> Fibo กลับด้าน: จุดแรก = 0, จุดที่สอง = 1 (ระดับ 1.272 / 1.618 / 2 / 2.618 ต่อเลยจุดที่สอง เป็นเป้า)</label>
     <div class="item fibrow"><span>เป้า (Extension)</span><input id="cs-fibx" value="${FIBX.join(', ')}"></div>
     <div class="item fibpre" style="gap:6px;justify-content:flex-start;flex-wrap:wrap">${Object.keys(FIB_PRESETS).map((k) => `<button data-fp="${k}" title="${FIB_PRESETS[k].join(', ')}">${k}</button>`).join('')}<button id="cs-fib-reset">ค่าเริ่มต้น</button></div>`;
   m.classList.remove('hidden');
@@ -466,8 +469,10 @@ $('cs-btn').onclick = (e) => {
   const parseLv = (v) => [...new Set(String(v).split(/[,\s]+/).map(Number).filter((x) => isFinite(x) && x >= -5 && x <= 10))];
   $('cs-fib').onchange = () => { const a = parseLv($('cs-fib').value); if (a.length) { FIB = a; store.set('fibLevels', FIB); } $('cs-fib').value = FIB.join(', '); dirty = true; };
   $('cs-fibx').onchange = () => { const a = parseLv($('cs-fibx').value); if (a.length) { FIBX = a; store.set('fibExtLevels', FIBX); } $('cs-fibx').value = FIBX.join(', '); dirty = true; };
-  $('cs-menu').querySelectorAll('[data-fp]').forEach((b) => (b.onclick = () => { FIB = FIB_PRESETS[b.dataset.fp].slice(); store.set('fibLevels', FIB); $('cs-fib').value = FIB.join(', '); dirty = true; }));
-  $('cs-fib-reset').onclick = () => { FIB = FIB_DEF.slice(); FIBX = FIBX_DEF.slice(); store.set('fibLevels', FIB); store.set('fibExtLevels', FIBX); $('cs-fib').value = FIB.join(', '); $('cs-fibx').value = FIBX.join(', '); dirty = true; };
+  const setRev = (v) => { FIB_REVERSE = !!v; store.set('fibReverse', FIB_REVERSE); $('cs-fibrev').checked = FIB_REVERSE; dirty = true; };
+  $('cs-fibrev').onchange = (e) => setRev(e.target.checked);
+  $('cs-menu').querySelectorAll('[data-fp]').forEach((b) => (b.onclick = () => { FIB = FIB_PRESETS[b.dataset.fp].slice(); store.set('fibLevels', FIB); $('cs-fib').value = FIB.join(', '); setRev(!!FIB_PRESET_REVERSE[b.dataset.fp]); }));
+  $('cs-fib-reset').onclick = () => { FIB = FIB_DEF.slice(); FIBX = FIBX_DEF.slice(); store.set('fibLevels', FIB); store.set('fibExtLevels', FIBX); $('cs-fib').value = FIB.join(', '); $('cs-fibx').value = FIBX.join(', '); setRev(false); };
   $('cs-sess').onchange = () => { S.showSessions = $('cs-sess').checked; store.set('sessions', S.showSessions); dirty = true; };
 };
 document.addEventListener('click', (e) => { if (!e.target.closest('#cs-menu') && !e.target.closest('#cs-btn')) $('cs-menu').classList.add('hidden'); });

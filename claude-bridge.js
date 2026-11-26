@@ -79,6 +79,7 @@
     if (pts.length < need || pts.some((p) => !isFinite(p.price))) throw new Error(`${type} ต้องมี ${need} จุด {time?, price}`);
     const d = { id: uid(), type, pts: pts.slice(0, need === 1 ? 1 : need), color: a.color || ({ rect: '#2962ff', hline: '#f6c343' }[type] || '#ab47bc'), by: 'claude' };
     if (a.text) d.text = String(a.text).slice(0, 120);
+    if (type === 'fib' && a.reverse != null) d.reverse = !!a.reverse;
     if (type === 'text' && !d.text) throw new Error('text ต้องมีข้อความ');
     drawings.push(d); saveDrawings(); dirty = true;
     if (a.label && type !== 'text') {   // a caption next to the drawing

@@ -115,6 +115,13 @@ app.whenReady().then(async () => {
       drawings.push({ type: 'fibext', pts: [{ time: t(n - 80), price: c[n - 80].low }, { time: t(n - 40), price: c[n - 40].high }, { time: t(n - 20), price: c[n - 20].low }] });
       dirty = true; redraw(); const labels = [...svg.querySelectorAll('text')].map((e) => e.textContent).filter((s) => /161\\.8%|261\\.8%/.test(s)).length; drawings.pop(); dirty = true; return JSON.stringify({ labels }); })()`));
     check('drawing: Fibo extension shows 161.8 / 261.8', fib.labels >= 2, fib);
+    // reversed Fibo with the 1.127–2.618 target preset (numbers from a real XAUUSD example: high 3605.15 → low 3590.61)
+    const fr = JSON.parse(await js(`(() => { const c = S.candles, n = c.length; const save = FIB.slice(); FIB = FIB_PRESETS['เป้าต่อขา 1.127–2.618'].slice();
+      main.priceScale('right').applyOptions({ autoScale: false }); main.applyOptions({}); 
+      drawings.push({ type: 'fib', reverse: true, pts: [{ time: c[n - 40].time, price: 3605.15 }, { time: c[n - 20].time, price: 3590.61 }] });
+      dirty = true; redraw(); const t = [...svg.querySelectorAll('text')].map((e) => e.textContent).filter((s) => ['1.272 (', '1.618 (', '2 (', '2.618 ('].some((p) => s.startsWith(p)));
+      drawings.pop(); FIB = save; main.priceScale('right').applyOptions({ autoScale: true }); dirty = true; return JSON.stringify(t); })()`));
+    check('drawing: reversed Fibo targets 1.272 / 1.618 / 2 / 2.618 beyond the low', ['1.272 (3586.66)', '1.618 (3581.62)', '2 (3576.07)', '2.618 (3567.08)'].every((x) => fr.includes(x)), fr);
 
     // MTF pane + replay must not leak the future
     await js(`document.getElementById('mtf-btn').click(); 'ok'`); await sleep(300);

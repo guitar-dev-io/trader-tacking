@@ -55,7 +55,8 @@ const TOOLS = [
     inputSchema: { type: 'object', properties: {
       type: { type: 'string', enum: ['hline', 'trend', 'ray', 'rect', 'fib', 'fibext', 'text', 'arrowUp', 'arrowDown', 'long', 'short'] },
       points: { type: 'array', items: POINT }, text: { type: 'string', description: 'for type=text' },
-      label: { type: 'string', description: 'optional caption shown next to the drawing' }, color: { type: 'string', description: 'hex colour, e.g. #26a69a' } }, required: ['type', 'points'] },
+      label: { type: 'string', description: 'optional caption shown next to the drawing' },
+      reverse: { type: 'boolean', description: 'fib only: true = first point is 0 and second is 1, so levels 1.272/1.618/2/2.618 project beyond the second point (targets)' }, color: { type: 'string', description: 'hex colour, e.g. #26a69a' } }, required: ['type', 'points'] },
     run: (a) => cmd('draw', a) },
   { name: 'clear_claude_drawings', description: 'Remove the drawings Claude added (the user\'s own drawings stay).', inputSchema: { type: 'object', properties: {} },
     run: () => cmd('clear_drawings', {}) },
