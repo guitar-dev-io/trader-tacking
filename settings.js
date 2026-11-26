@@ -1,4 +1,4 @@
-/* global S, store, $, esc, vcg, ICON, ZONES, TZ:writable, zoneOffsetSec, loadChart, runAnalysis, PREF_DEFAULT, SETUP */
+/* global S, store, $, esc, vcg, ICON, ZONES, TZ:writable, zoneOffsetSec, loadChart, runAnalysis, PREF_DEFAULT, SETUP, osKeys, setSource */
 // Toasts, network status, the Settings window, backup / restore / reset.
 
 // ---------------------------------------------------------------- toasts
@@ -73,6 +73,7 @@ async function openSettings(section) {
 function showSection(k) {
   document.querySelectorAll('.st-nav button').forEach((b) => b.classList.toggle('active', b.dataset.st === k));
   document.querySelectorAll('.st-body section').forEach((s) => s.classList.toggle('hidden', s.dataset.sec !== k));
+  if (k === 'source') renderMt5Info();
 }
 document.querySelectorAll('.st-nav button').forEach((b) => (b.onclick = () => showSection(b.dataset.st)));
 $('settings-btn').onclick = () => openSettings();
@@ -158,12 +159,18 @@ let lastStatus = null;
 vcg.onStatus((st) => { lastStatus = st; if (!$('modal-settings').classList.contains('hidden')) renderMt5Info(); });
 function renderMt5Info() {
   const box = $('st-mt5-info'); if (!box) return;
-  if (!vcg.capabilities?.mt5) { box.textContent = 'ใช้ได้เฉพาะแอปบนคอม (Mac)'; return; }
-  const m = (lastStatus && lastStatus.mt5) || {}, src = lastStatus && lastStatus.source;
-  box.innerHTML = src !== 'mt5' ? 'ยังไม่ได้เลือก MT5 เป็นแหล่งข้อมูล (เลือกได้ที่แท็บราคา → แหล่งข้อมูล)'
-    : m.connected ? `✅ EA เชื่อมต่อแล้ว: <b>${esc(m.broker || '')}</b> (${esc(m.server || '')}) · ${(m.symbols || []).length} symbol ใน Market Watch${(m.unknown || []).length ? `<br>⚠️ ไม่พบใน MT5: ${esc(m.unknown.join(', '))}` : ''}`
-    : `⏳ รอ EA เชื่อมต่อที่ 127.0.0.1:${m.port || 7788}`;
+  const st = lastStatus || {}, m = st.mt5 || {}, pill = (id, cls, t) => { const e = $(id); if (e) { e.className = 'src-pill ' + cls; e.textContent = t; } };
+  ['vcg', 'mt5', 'demo'].forEach((k) => $('st-src-' + k) && $('st-src-' + k).classList.toggle('on', S.source === k));
+  ['vcg', 'mt5', 'demo'].forEach((k) => { const b = $('st-use-' + k); if (b) { b.disabled = S.source === k; b.textContent = S.source === k ? '✓ ใช้อยู่' : 'ใช้ ' + { vcg: 'VCG', mt5: 'MT5', demo: 'Demo' }[k]; b.classList.toggle('primary', S.source !== k && k !== 'demo'); } });
+  if (!vcg.capabilities?.vcg) { pill('st-vcg-pill', '', 'ใช้ไม่ได้ในเบราว์เซอร์'); $('st-use-vcg') && ($('st-use-vcg').disabled = true); }
+  else pill('st-vcg-pill', st.connected && S.source === 'vcg' ? 'ok' : st.loggedIn ? 'wait' : 'bad', st.connected && S.source === 'vcg' ? 'เชื่อมต่อแล้ว' : st.loggedIn ? 'login แล้ว' : 'ยังไม่ได้ login');
+  if (!vcg.capabilities?.mt5) { box.textContent = 'ใช้ได้เฉพาะแอปบนคอม (Mac / Windows)'; pill('st-mt5-pill', '', 'เฉพาะบนคอม'); $('st-use-mt5') && ($('st-use-mt5').disabled = true); return; }
+  pill('st-mt5-pill', m.connected ? 'ok' : S.source === 'mt5' ? 'wait' : '', m.connected ? 'EA เชื่อมต่อแล้ว' : S.source === 'mt5' ? 'รอ EA' : 'ไม่ได้ใช้');
+  box.innerHTML = m.connected ? `✅ <b>${esc(m.broker || '')}</b> (${esc(m.server || '')}) · ${(m.symbols || []).length} symbol ใน Market Watch${(m.unknown || []).length ? `<br>⚠️ ไม่พบใน MT5: ${esc(m.unknown.join(', '))}` : ''}`
+    : S.source === 'mt5' ? `⏳ รอ EA เชื่อมต่อที่ 127.0.0.1:${m.port || 7788} — เปิด MT5 แล้วติด EA บนกราฟ` : 'ยังไม่ได้เลือก MT5 เป็นแหล่งราคา';
 }
+['vcg', 'mt5', 'demo'].forEach((k) => { const b = $('st-use-' + k); if (b) b.onclick = () => { setSource(k); renderMt5Info(); if (k === 'mt5' && !(lastStatus && lastStatus.mt5 && lastStatus.mt5.connected)) { $('modal-settings').classList.add('hidden'); SETUP.open('mt5', 0); } }; });
+if ($('st-open-guide')) $('st-open-guide').onclick = () => { $('modal-settings').classList.add('hidden'); SETUP.open(); };
 if ($('st-install-ea')) {
   if ($('st-mt5-guide')) $('st-mt5-guide').onclick = () => { $('modal-settings').classList.add('hidden'); SETUP.open('mt5', 0); };
   if (!vcg.mt5InstallEA) { $('st-install-ea').disabled = $('st-copy-ea').disabled = true; }
@@ -179,7 +186,7 @@ if ($('st-install-ea')) {
     const code = await vcg.mt5EASource();
     try { await navigator.clipboard.writeText(code); toast('คัดลอกโค้ด EA แล้ว — ไปวางใน MetaEditor', 'ok', 5000); } catch (e) { toast('คัดลอกไม่ได้: ' + e.message, 'error'); }
     const out = $('st-ea-out'); out.classList.remove('hidden');
-    out.textContent = 'คัดลอกแล้ว: MetaEditor → File → New → Expert Advisor (template) → ชื่อ PriceTrackerBridge → Finish → กด ⌘A ลบโค้ดเดิม → ⌘V วาง → Compile (F7)';
+    out.textContent = osKeys('คัดลอกแล้ว: MetaEditor → File → New → Expert Advisor (template) → ชื่อ PriceTrackerBridge → Finish → กด ⌘A ลบโค้ดเดิม → ⌘V วาง → Compile (F7)');
   };
 }
 if ($('st-save-ea')) $('st-save-ea').onclick = async () => { const f = vcg.saveEA && (await vcg.saveEA()); if (f) toast('บันทึก EA แล้ว: ' + f, 'ok'); };

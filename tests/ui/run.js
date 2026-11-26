@@ -70,6 +70,21 @@ app.whenReady().then(async () => {
       document.querySelector('#setup [data-nav=back]').click(); document.querySelector('#setup [data-nav=back]').click();
       document.querySelector('#setup [data-path=vcg]').click(); const vcgBtn = !!document.querySelector('#setup [data-act=vcg-login]') || document.querySelectorAll('#setup .su-dots button').length === 3;
       SETUP.close(true); return JSON.stringify({ cards, steps, h, vcgBtn, closed: !SETUP.isOpen() }); })()`));
+    // connect screen (VCG not logged in) + settings → source tab
+    send('status', { connected: false, loggedIn: false, stage: 'login', symbols: ['XAUUSD'], traySymbol: 'XAUUSD', source: 'vcg' });
+    await new Promise((r) => setTimeout(r, 2800)); await js(`renderConnect(); 1`); await new Promise((r) => setTimeout(r, 200)); await shot('connect-desktop');
+    const cn = JSON.parse(await js(`JSON.stringify({ shown: !document.getElementById('connect').classList.contains('hidden'), choices: document.querySelectorAll('#connect [data-src]').length, safe: /รหัสผ่าน/.test(document.getElementById('connect').textContent), guide: !!document.querySelector('#connect [data-cn=guide]') })`));
+    check('connect screen: source choices, safety note, guide link', cn.shown && cn.choices >= 2 && cn.safe && cn.guide, cn);
+    send('status', { connected: true, loggedIn: true, stage: 'connected', symbols: ['XAUUSD'], traySymbol: 'XAUUSD', source: 'vcg' });
+    await new Promise((r) => setTimeout(r, 200));
+    check('connect screen hides once prices flow', await js(`document.getElementById('connect').classList.contains('hidden')`));
+    await js(`openSettings(); 1`); await new Promise((r) => setTimeout(r, 300));
+    await js(`document.querySelector('.st-nav [data-st=source]') && document.querySelector('.st-nav [data-st=source]').click(); 1`); await new Promise((r) => setTimeout(r, 200)); await shot('settings-source');
+    check('settings: source tab with VCG + MT5 status', await js(`!!document.querySelector('[data-sec=source]:not(.hidden) #st-mt5-info') && !!document.querySelector('[data-sec=source] .src-pill')`));
+    await js(`document.getElementById('modal-settings').classList.add('hidden'); 1`);
+    const winTxt = await js(`(() => { document.documentElement.classList.add('os-win32'); SETUP.open('mt5', 2); const t = document.querySelector('#setup .su-body').textContent; SETUP.open('install', 0); document.querySelector('#setup [data-nav=back]').click(); document.querySelector('#setup [data-path=install]').click(); const w = document.querySelector('#setup h3').textContent; SETUP.close(); document.documentElement.classList.remove('os-win32'); return JSON.stringify({ ctrl: /Ctrl/.test(t) && !/⌘/.test(t), w }); })()`);
+    check('windows: Ctrl shortcuts in MT5 guide, install opens on Windows step', JSON.parse(winTxt).ctrl && /Windows/.test(JSON.parse(winTxt).w), winTxt);
+    check('watchlist: source pill shown', await js(`!!document.querySelector('#src-pill') && /VCG/.test(document.querySelector('#src-pill').textContent)`));
     await js(`SETUP.open()`); await new Promise((r) => setTimeout(r, 300)); await shot('setup-start');
     await js(`SETUP.open('mt5', 3)`); await new Promise((r) => setTimeout(r, 300)); await shot('setup-mt5'); await js(`SETUP.open('install', 0)`); await new Promise((r) => setTimeout(r, 300)); await shot('setup-install'); await js(`SETUP.close(true)`);
     check('setup guide: start cards, MT5 5 steps, navigation, close', su.cards === 4 && su.steps === 5 && /Login/.test(su.h) && su.vcgBtn && su.closed, su);
@@ -219,6 +234,7 @@ app.whenReady().then(async () => {
       await sleep(1500);
       const mb = JSON.parse(await M.js(`JSON.stringify({ mobile: document.body.classList.contains('mobile'), nav: !!document.querySelector('#mnav2'), platform: vcg.platform })`));
       check('mobile: boots in mobile layout', mb.mobile && mb.nav, mb);
+      await M.js(`SETUP.open('mt5', 1)`); await sleep(300); await M.shot('setup-mobile'); await M.js(`SETUP.close()`);
       await M.shot('mobile');
       const real = M.errs.filter((e) => !/net::|Failed to fetch|WebSocket|offline/i.test(e));
       check('mobile: no console errors', real.length === 0, real.slice(0, 3));

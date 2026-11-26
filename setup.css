@@ -35,3 +35,11 @@
 #setup details { margin-top: 10px; } #setup summary { cursor: pointer; color: var(--muted); }
 body.mobile #setup { padding: 0; align-items: stretch; }
 body.mobile #setup .su-card-wrap { max-width: none; max-height: none; height: 100%; border-radius: 0; border: none; padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)); }
+#setup .su-tag { display: inline-block; padding: 0 7px; border-radius: 999px; font-size: 11px; background: #18234a; color: #8ab4ff; border: 1px solid #2f4a9a; vertical-align: 1px; }
+body.mobile #setup .su-card-wrap { display: flex; flex-direction: column; }
+body.mobile #setup .su-body { flex: 1; }
+body.mobile #setup .su-nav { position: sticky; bottom: 0; background: linear-gradient(transparent, #151924 30%); padding-top: 14px; }
+body.mobile #setup .su-nav button { flex: 1; padding: 12px; }
+body.mobile #setup h2 { font-size: 17px; }
+#setup .su-card-wrap::-webkit-scrollbar { width: 6px; } #setup .su-card-wrap::-webkit-scrollbar-thumb { background: #2a3042; border-radius: 3px; }
+#connect::-webkit-scrollbar { width: 6px; } #connect::-webkit-scrollbar-thumb { background: #2a3042; border-radius: 3px; }

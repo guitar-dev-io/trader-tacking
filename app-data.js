@@ -193,46 +193,75 @@ let lastConnected = null;
 // ---------------------------------------------------------------- connect screen (shown until VCG prices flow)
 const BOOT_AT = Date.now();
 let connStatus = {};
+let connectingSince = 0;
 function renderConnect(st = connStatus) {
   const box = $('connect'); if (!box) return;
-  const show = S.source === 'vcg' && !st.connected && !S.replay && (Date.now() - BOOT_AT > 2500 || st.stage === 'login');
+  const m5 = st.mt5 || {}, desktopMt5 = !!(vcg.capabilities && vcg.capabilities.mt5);
+  const waitVcg = S.source === 'vcg' && !st.connected, waitMt5 = S.source === 'mt5' && desktopMt5 && st.mt5 && !m5.connected;
+  const show = (waitVcg || waitMt5) && !S.replay && (Date.now() - BOOT_AT > 2500 || st.stage === 'login');
   box.classList.toggle('hidden', !show);
-  if (!show) return;
+  if (!show) { connectingSince = 0; return; }
   $('loading').classList.add('hidden');
   const web = st.platform === 'web' || st.stage === 'web', mobile = document.body.classList.contains('mobile');
   const stage = web ? 'web' : st.stage || (st.loggedIn ? 'connecting' : 'login');
+  if (stage === 'connecting') connectingSince = connectingSince || Date.now(); else connectingSince = 0;
+  const slow = connectingSince && Date.now() - connectingSince > 45000;
+  const netBad = st.net && /down|offline|error|lost/i.test(st.net.level || '');
   const step = { starting: 0, login: 1, connecting: 2 }[stage] ?? 1;
-  const li = (i, t, sub) => `<li class="${i < step ? 'done' : i === step ? 'now' : ''}"><b>${i < step ? '✓' : i + 1}</b><span>${t}<small>${sub}</small></span></li>`;
-  const html = web ? `<div class="cn-card"><div class="cn-logo">📈 Price Tracker</div><h3>เวอร์ชันเว็บเชื่อมต่อ VCG ไม่ได้</h3>
-      <p class="muted">ราคาจาก VCG ใช้ได้ในแอป Mac และแอป Android · ในเบราว์เซอร์ใช้ข้อมูล Demo ฝึกได้ทุกอย่าง</p>
-      <button class="cn-primary" data-cn="demo">ใช้ข้อมูล Demo</button><button class="cn-link" data-cn="guide">📘 วิธีติดตั้งแอป Mac / Android</button></div>`
-    : `<div class="cn-card"><div class="cn-logo">📈 Price Tracker</div>
-      <h3>เชื่อมต่อราคาจาก VCG Markets</h3>
+  const li = (i, t, sub) => `<li class="${i < step ? 'done' : i === step ? 'now' : ''}"><b>${i < step ? '✓' : i + 1}</b><span>${t}${sub ? `<small>${sub}</small>` : ''}</span></li>`;
+  const chip = (k, icon, t, sub) => `<button class="cn-src ${S.source === k ? 'on' : ''}" data-src="${k}"${k === 'demo' ? ' data-cn="demo"' : ''}><i>${icon}</i><b>${t}</b><small>${sub}</small></button>`;
+  const choices = `<div class="cn-q">ดึงราคาจากไหน?</div><div class="cn-srcs">
+      ${chip('demo', '🎓', 'Demo', 'ฝึก ไม่ต้อง login')}${chip('vcg', '🟢', 'VCG', 'บัญชี VCG Markets')}${desktopMt5 ? chip('mt5', '🔵', 'MT5', 'โบรกเกอร์ของฉัน') : ''}</div>`;
+  const status = (cls, t) => `<div class="cn-status ${cls}"><span class="cn-dot"></span>${t}</div>`;
+  const foot = `<div class="cn-links"><button class="cn-link" data-cn="guide">📘 คู่มือเริ่มต้น</button><span>·</span><button class="cn-link" data-cn="log">ดู Log</button></div>`;
+  let html;
+  if (web) {
+    html = `<div class="cn-card"><div class="cn-logo">📈 Price Tracker</div><h3>เวอร์ชันเว็บใช้ข้อมูล Demo</h3>
+      <p class="cn-p">ราคาจริงจาก VCG / MT5 ใช้ได้ในแอป Mac และแอป Android · บนเว็บฝึกได้ทุกอย่างด้วยข้อมูล Demo</p>
+      <button class="cn-primary" data-cn="demo">เริ่มใช้ Demo</button><button class="cn-link" data-cn="guide">📘 วิธีติดตั้งแอป Mac / Android</button></div>`;
+  } else if (waitMt5) {
+    html = `<div class="cn-card"><div class="cn-logo">📈 Price Tracker</div>${choices}
+      <h3>รอราคาจาก MT5</h3>
+      ${status('wait', `รอ EA PriceTrackerBridge ใน MT5 (พอร์ต ${m5.port || 7788})`)}
+      <ol class="cn-steps">${['เปิด MT5 และ login บัญชีโบรกเกอร์', 'อนุญาต WebRequest ให้ 127.0.0.1', 'ติด EA PriceTrackerBridge บนกราฟ'].map((t, i) => `<li><b>${i + 1}</b><span>${t}</span></li>`).join('')}</ol>
+      <button class="cn-primary" data-cn="mt5guide">ตัวช่วยเชื่อมต่อ MT5</button>
+      <p class="cn-safe">🔒 รหัสผ่านบัญชีกรอกใน MT5 เท่านั้น · EA อ่านราคาอย่างเดียว ไม่ส่งออเดอร์</p>${foot}</div>`;
+  } else {
+    const st1 = netBad ? status('bad', 'ไม่มีอินเทอร์เน็ต — ตรวจการเชื่อมต่อแล้วกดเชื่อมต่อใหม่')
+      : st.nativeOk === false ? status('bad', 'ส่วนเชื่อมต่อของแอปไม่ทำงาน — ปิดแล้วเปิดแอปใหม่')
+      : stage === 'starting' ? status('wait', 'กำลังเปิด VCG WebTrader…')
+      : stage === 'login' ? status('idle', st.overlay ? 'หน้า login เปิดอยู่ — กรอกอีเมลและรหัสผ่าน' : 'ยังไม่ได้เข้าสู่ระบบ')
+      : slow ? status('bad', 'login แล้วแต่ยังไม่มีราคา — ลองกดเชื่อมต่อใหม่') : status('wait', 'login แล้ว กำลังรอราคา…');
+    html = `<div class="cn-card"><div class="cn-logo">📈 Price Tracker</div>${choices}
+      <h3>เชื่อมต่อ VCG Markets</h3>${st1}
       <ol class="cn-steps">
-        ${li(0, 'เปิดหน้า VCG WebTrader', stage === 'starting' ? 'กำลังโหลด…' : 'โหลดแล้ว')}
-        ${li(1, 'เข้าสู่ระบบบัญชี VCG', stage === 'login' ? (st.overlay ? 'หน้า login เปิดอยู่ — กรอกอีเมล/รหัสผ่านของ VCG' : 'กดปุ่มด้านล่างเพื่อเปิดหน้า login') : 'login ครั้งเดียว แอปจำไว้ให้')}
-        ${li(2, 'รับราคาสด', stage === 'connecting' ? 'กำลังเชื่อมต่อ… (ถ้านานเกิน 1 นาที กดเชื่อมต่อใหม่)' : '')}
+        ${li(0, 'เปิดหน้า VCG WebTrader', stage === 'starting' ? 'กำลังโหลด…' : '')}
+        ${li(1, 'เข้าสู่ระบบด้วยอีเมล + รหัสผ่าน', stage === 'login' ? (mobile ? 'ปุ่ม Google ใช้ในแอปไม่ได้ ใช้อีเมลแทน' : 'login ครั้งเดียว แอปจำไว้ให้') : '')}
+        ${li(2, 'รับราคาสด', stage === 'connecting' ? (slow ? 'นานกว่าปกติ' : 'ปกติใช้ไม่เกิน 10 วินาที') : '')}
       </ol>
-      <button class="cn-primary" data-cn="login">🔐 ${stage === 'connecting' ? 'เปิดหน้า VCG' : 'เข้าสู่ระบบ VCG'}</button>
-      <p class="muted cn-hint">${mobile ? 'หน้า login จะเปิดเต็มจอ · ใช้ <b>อีเมล + รหัสผ่าน</b> (Google ไม่อนุญาตให้ login ด้วยบัญชี Google ในแอป) · login เสร็จแอปจะปิดให้เอง' : 'จะเปิดหน้าต่าง VCG WebTrader · login แล้วปิดหน้าต่างได้เลย แอปยังรับราคาต่อ'}</p>
-      <div class="cn-row"><button data-cn="demo">ลองด้วยข้อมูล Demo<small>ไม่ต้อง login</small></button><button data-cn="retry">↻ เชื่อมต่อใหม่</button></div>
-      <button class="cn-link" data-cn="guide">📘 คู่มือเริ่มต้น — ติดตั้ง, login, เชื่อม MT5</button>
-      <button class="cn-link" data-cn="log">ดู Log — ถ้ามีปัญหาส่งภาพหน้านี้ให้ผู้พัฒนา</button>
-      <div class="cn-diag">${esc(stage)}${st.page ? ' · ' + esc(st.page) : ''}${st.nativeOk === false ? ' · ⚠️ native bridge ไม่ทำงาน' : ''}${st.overlay ? ' · login window เปิดอยู่' : ''}</div>
+      ${stage === 'connecting' && !slow ? '' : `<button class="cn-primary" data-cn="${slow || netBad ? 'retry' : 'login'}">${slow || netBad ? '↻ เชื่อมต่อใหม่' : stage === 'connecting' ? 'เปิดหน้า VCG' : 'เข้าสู่ระบบ VCG'}</button>`}
+      <p class="cn-safe">🔒 รหัสผ่านกรอกในหน้าของ VCG เอง แอปนี้ไม่เห็นและไม่เก็บรหัสผ่าน · ${mobile ? 'login เสร็จหน้าจอจะปิดให้เอง' : 'login เสร็จปิดหน้าต่างนั้นได้เลย'}</p>
+      <div class="cn-row">${stage === 'connecting' && !slow ? '<button data-cn="login">เปิดหน้า VCG</button>' : ''}${slow || netBad ? '<button data-cn="login">เปิดหน้า VCG</button>' : '<button data-cn="retry">↻ เชื่อมต่อใหม่</button>'}</div>
+      ${foot}
+      <div class="cn-diag">${esc(stage)}${st.page ? ' · ' + esc(st.page) : ''}${st.overlay ? ' · login window เปิดอยู่' : ''}</div>
     </div>`;
+  }
   if (html !== box._html) {
     box._html = html; box.innerHTML = html;
-    box.querySelectorAll('[data-cn]').forEach((b) => (b.onclick = () => {
-      const k = b.dataset.cn;
+    box.querySelectorAll('[data-cn],[data-src]').forEach((b) => (b.onclick = () => {
+      const k = b.dataset.cn, src = b.dataset.src;
       if (k === 'login') { const ok = vcg.showTrader(); vcg.log('info', 'ผู้ใช้กดเข้าสู่ระบบ VCG จากหน้าเชื่อมต่อ', null, 'auth'); if (ok === false) toast('เปิดหน้า login ไม่ได้ — ดูแท็บ Log', 'error'); }
       else if (k === 'demo') setSource('demo');
       else if (k === 'retry') { vcg.reloadTrader(); toast('กำลังเชื่อมต่อใหม่…', 'info'); setTimeout(loadChart, 8000); }
       else if (k === 'guide') SETUP.open();
-      else if (k === 'log') document.querySelector('#tabs [data-tab="log"]').click();
+      else if (k === 'mt5guide') SETUP.open('mt5', 0);
+      else if (k === 'log') { box.classList.add('hidden'); document.querySelector('#tabs [data-tab="log"]').click(); }
+      else if (src === 'vcg' || src === 'mt5') { if (S.source !== src) setSource(src); if (src === 'mt5') SETUP.open('mt5', 0); }
     }));
   }
 }
 setTimeout(() => renderConnect(), 2600);
+setInterval(() => { if (connectingSince) renderConnect(); }, 5000);   // flips to the "taking long" hint
 vcg.onStatus((st) => {
   connStatus = st; renderConnect(st);
   const symChanged = JSON.stringify(st.symbols) !== JSON.stringify(S.symbols) || st.traySymbol !== S.traySymbol;

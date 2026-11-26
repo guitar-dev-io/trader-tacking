@@ -70,7 +70,7 @@ function setSource(src) {
   if (src === S.source) return;
   S.source = src; store.set('source', src); S.quotes = {};
   if (src !== 'demo' && vcg.setSource) vcg.setSource(src);
-  if (src === 'mt5') toast('ใช้ราคาจาก MT5 — ต้องเปิด MT5 และลาก EA PriceTrackerBridge ลงกราฟ (ดูวิธีที่ ⚙ การตั้งค่า → การเชื่อมต่อ)', 'info', 10000);
+  if (src === 'mt5') toast('ใช้ราคาจาก MT5 — ต้องเปิด MT5 และลาก EA PriceTrackerBridge ลงกราฟ (ดูวิธีที่ ⚙ การตั้งค่า → แหล่งราคา)', 'info', 10000);
   if (src === 'demo') { DEMO.connect(); toast('ใช้ข้อมูล Demo จาก Binance สำหรับฝึก — XAUUSD ใช้ PAXG แทนทองคำ ราคาใกล้เคียงแต่ไม่เท่ากับโบรกเกอร์', 'info', 9000); }
   else DEMO.stop();
   renderWatchlist(); renderSourceSel(); loadChart();

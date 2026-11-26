@@ -1,5 +1,11 @@
 /* global $, esc, toast, vcg, store, setSource, connStatus, S */
 // Setup guide: install the app, pick a price source, log in (VCG or MT5) — with live checks.
+// Windows or macOS? (the desktop preload tags <html> with os-win32 / os-darwin)
+function isWin() { const c = document.documentElement.classList; return (typeof vcg !== 'undefined' && vcg.os === 'win32') || c.contains('os-win32') || (!c.contains('os-darwin') && /^Win/i.test(navigator.platform || '')); }
+// "⌘," → "Ctrl+," on Windows, for shortcut hints in UI text
+function osKeys(t) { return isWin() ? String(t).replace(/⇧⌘/g, 'Ctrl+Shift+').replace(/⌘/g, 'Ctrl+') : t; }
+window.isWin = isWin; window.osKeys = osKeys;
+
 const SETUP = (() => {
   const REL = 'https://github.com/guitar-dev-io/trader-tacking/releases';
   const MT5_DL = 'https://www.metatrader5.com/en/download';
@@ -18,6 +24,8 @@ const SETUP = (() => {
 
   const link = (u, t) => `<a href="${u}" target="_blank" rel="noopener">${t}</a>`;
   const kbd = (t) => `<kbd>${t}</kbd>`;
+  const keys = (...k) => k.map(kbd).join(' + ');
+  const win = () => isWin();
 
   // ------------------------------------------------------------ content
   const PATHS = {
@@ -34,6 +42,17 @@ const SETUP = (() => {
               <small>ถ้าขึ้นว่า "ไม่สามารถตรวจสอบผู้พัฒนาได้" ไปที่ System Settings → Privacy &amp; Security → เลื่อนลงกด <b>Open Anyway</b></small></li>
             <li>อัปเดตเวอร์ชันใหม่: โหลด zip ใหม่แล้วลากทับของเดิม (การตั้งค่าและ watchlist ยังอยู่)</li>
           </ol>` },
+        { h: 'Windows 10 / 11', body: () => `
+          <p>เปิด ${link(REL, 'หน้าดาวน์โหลด')} แล้วเลือก 1 แบบ:</p>
+          <ul>
+            <li><b>Price-Tracker-Setup-&lt;เวอร์ชัน&gt;.exe</b> — ตัวติดตั้ง <span class="su-tag">แนะนำ</span>
+              <small>มีไอคอนในเมนู Start และเลือกให้เปิดอัตโนมัติเมื่อเปิดเครื่องได้</small></li>
+            <li><b>Price-Tracker-portable-&lt;เวอร์ชัน&gt;.exe</b> — ไฟล์เดียว ไม่ต้องติดตั้ง
+              <small>เก็บการตั้งค่าในโฟลเดอร์ <code>Price Tracker Data</code> ข้างไฟล์ exe · พกใส่ USB ได้</small></li>
+            <li><b>…-win-x64.zip</b> — แตกไฟล์แล้วเปิด Price Tracker.exe</li>
+          </ul>
+          <p>ถ้าขึ้น <b>"Windows protected your PC"</b> (SmartScreen): กด <b>More info → Run anyway</b>
+            <small class="muted">แอปยังไม่ได้ซื้อใบรับรอง Windows จึงขึ้นเตือน</small></p>` },
         { h: 'Android', body: () => `
           <ol>
             <li>เปิด ${link(REL, 'หน้าดาวน์โหลด')} บนมือถือ แล้วโหลดไฟล์ <b>.apk</b></li>
@@ -80,7 +99,7 @@ const SETUP = (() => {
         { h: 'ติดตั้ง MetaTrader 5', body: () => `
           <ol>
             <li>โหลด MT5 จาก ${link(MT5_DL, 'metatrader5.com')} หรือจากเว็บโบรกเกอร์ของคุณ</li>
-            <li>Mac: เปิดไฟล์ .pkg ติดตั้งตามขั้นตอน (MT5 บน Mac รันผ่าน Wine ครั้งแรกจะช้าหน่อย)</li>
+            <li>${win() ? 'Windows: เปิดไฟล์ติดตั้ง mt5setup.exe ตามขั้นตอน (ใช้ MT5 แบบ portable ก็ได้)' : 'Mac: เปิดไฟล์ .pkg ติดตั้งตามขั้นตอน (MT5 บน Mac รันผ่าน Wine ครั้งแรกจะช้าหน่อย)'}</li>
             <li><b>เปิด MT5 อย่างน้อย 1 ครั้ง</b> ให้มันสร้างโฟลเดอร์ข้อมูลก่อน</li>
           </ol>
           <p class="muted">แอปของเราอ่านราคาจาก MT5 ในเครื่องคุณ — ใช้ได้ทุกโบรกเกอร์ที่มี MT5 (ไม่ใช่ MT4)</p>` },
@@ -94,20 +113,20 @@ const SETUP = (() => {
           <p class="su-safe">🔒 ใช้ <b>รหัสผ่านนักลงทุน (investor password)</b> ได้ — ดูราคาได้แต่ส่งออเดอร์ไม่ได้ ปลอดภัยกว่า · รหัสผ่านกรอกใน MT5 เท่านั้น แอปนี้ไม่เห็น</p>` },
         { h: 'อนุญาตให้ EA ส่งราคาให้แอป', body: () => `
           <ol>
-            <li>ใน MT5 กด ${kbd('⌘')} + ${kbd(',')} หรือเมนู <b>Tools → Options</b> → แท็บ <b>Expert Advisors</b></li>
+            <li>ใน MT5 กด ${win() ? keys('Ctrl', 'O') : keys('⌘', ',')} หรือเมนู <b>Tools → Options</b> → แท็บ <b>Expert Advisors</b></li>
             <li>ติ๊ก <b>Allow WebRequest for listed URL</b></li>
             <li>ดับเบิลคลิกช่อง "add new URL" แล้วพิมพ์ <code>http://127.0.0.1</code> → OK</li>
           </ol>
           <p class="muted">ไม่ต้องเปิด "Allow algorithmic trading" — EA นี้อ่านราคาอย่างเดียว ไม่ส่งออเดอร์</p>` },
         { h: 'ติด EA (อัตโนมัติ)', body: () => `
           <p>แอปจะคัดลอก EA, compile ให้ และเปิด MT5 พร้อม EA บนกราฟ</p>
-          <ol><li><b>ปิด MT5 ก่อน</b> (${kbd('⌘')} + ${kbd('Q')})</li><li>กดปุ่มด้านล่าง แล้วรอ MT5 เปิดขึ้นมา (10–30 วินาที)</li></ol>
+          <ol><li><b>ปิด MT5 ก่อน</b> (${win() ? keys('Alt', 'F4') : keys('⌘', 'Q')})</li><li>กดปุ่มด้านล่าง แล้วรอ MT5 เปิดขึ้นมา (10–30 วินาที)</li></ol>
           <button class="su-primary" data-act="mt5-launch" ${busy ? 'disabled' : ''}>${busy ? 'กำลังทำ…' : '🚀 เปิด MT5 พร้อม EA'}</button>
           ${lastRun ? `<ul class="su-run">${lastRun.steps.map((x) => `<li class="${x.ok ? 'ok' : 'bad'}">${x.ok ? '✓' : '✗'} ${esc(x.t)}</li>`).join('')}</ul>` : ''}
           <details ${lastRun && !lastRun.ok ? 'open' : ''}><summary>ทำเอง (ถ้าปุ่มอัตโนมัติไม่ได้ผล)</summary>
             <ol>
               <li><button data-act="mt5-install">คัดลอก EA ลง MT5</button></li>
-              <li>ใน MT5: Navigator (${kbd('⌘')} + ${kbd('N')}) → คลิกขวา <b>Expert Advisors → Refresh</b></li>
+              <li>ใน MT5: Navigator (${keys(win() ? 'Ctrl' : '⌘', 'N')}) → คลิกขวา <b>Expert Advisors → Refresh</b></li>
               <li>ถ้าไม่เห็น PriceTrackerBridge: ดับเบิลคลิกไฟล์ใน MetaEditor แล้วกด <b>Compile</b> (F7)</li>
               <li>ลาก <b>PriceTrackerBridge</b> ไปวางบนกราฟไหนก็ได้ → OK (ห้ามปิดกราฟนั้น)</li>
             </ol></details>`, check: 'mt5' },
@@ -175,7 +194,7 @@ const SETUP = (() => {
   }
   function onClick(e) {
     const b = e.target.closest('button,[data-path]'); if (!b || b.disabled) return;
-    if (b.dataset.path) { path = b.dataset.path; step = 0; lastRun = null; }
+    if (b.dataset.path) { path = b.dataset.path; step = path === 'install' ? (document.body.classList.contains('mobile') ? 2 : isWin() ? 1 : 0) : 0; lastRun = null; }
     else if (b.dataset.step) step = +b.dataset.step;
     else if (b.dataset.nav === 'close') return close(true);
     else if (b.dataset.nav === 'done') return close(true);
@@ -210,3 +229,42 @@ const SETUP = (() => {
   return { open, close, isOpen, PATHS };
 })();
 window.SETUP = SETUP;
+
+// ------------------------------------------------------------ source pill in the watchlist panel + ⌘ → Ctrl on Windows
+const SRC_UI = (() => {
+  const st = () => (typeof connStatus !== 'undefined' && connStatus) || {};
+  function info() {
+    const s = st(), m = s.mt5 || {}, nq = Object.keys(S.quotes || {}).length;
+    if (S.source === 'demo') return { cls: 'ok', t: 'Demo · Binance (ฝึก)', hint: '' };
+    if (S.source === 'mt5') {
+      if (!m.connected) return { cls: 'wait', t: 'MT5 · รอ EA เชื่อมต่อ', hint: 'เปิด MT5 แล้วติด EA PriceTrackerBridge บนกราฟ — กดที่ป้ายนี้เพื่อดูวิธี' };
+      const unk = (m.unknown || []);
+      return { cls: nq ? 'ok' : 'wait', t: 'MT5 · ' + (m.broker || 'เชื่อมต่อแล้ว'),
+        hint: unk.length ? `⚠️ ไม่พบใน MT5: ${unk.join(', ')} — โบรกเกอร์นี้ใช้ชื่อเช่น ${(m.symbols || [])[0] || 'XAUUSD.m'} (แอปจับคู่ให้เองในเวอร์ชันใหม่)` : nq ? '' : 'Bid / Ask จะขึ้นเมื่อมี tick แรก · ช่วงตลาดปิดจะเป็น —' };
+    }
+    if (s.connected) return { cls: nq ? 'ok' : 'wait', t: 'VCG · ' + (nq ? 'ราคาสด' : 'รอ tick แรก'), hint: nq ? '' : 'Bid / Ask จะขึ้นเมื่อมี tick แรก · ช่วงตลาดปิดจะเป็น —' };
+    return { cls: s.loggedIn ? 'wait' : 'bad', t: 'VCG · ' + (s.loggedIn ? 'กำลังเชื่อมต่อ…' : 'ยังไม่ได้ login'), hint: s.loggedIn ? '' : 'กดที่ป้ายนี้เพื่อ login' };
+  }
+  function render() {
+    const sel = document.getElementById('src-sel'); if (!sel) return;
+    let pill = document.getElementById('src-pill');
+    if (!pill) {
+      const row = sel.closest('.row') || sel.parentElement;
+      row.insertAdjacentHTML('afterend', '<button id="src-pill" class="src-pill" title="สถานะแหล่งราคา — กดเพื่อดูวิธีเชื่อมต่อ"></button><div id="src-hint"></div>');
+      pill = document.getElementById('src-pill');
+      pill.onclick = () => SETUP.open(S.source === 'mt5' ? 'mt5' : S.source === 'demo' ? 'start' : 'vcg', S.source === 'vcg' ? 1 : 0);
+    }
+    const i = info(), cls = 'src-pill ' + i.cls;
+    if (pill.className !== cls) pill.className = cls;
+    if (pill.textContent !== i.t) pill.textContent = i.t;
+    const h = document.getElementById('src-hint'); if (h.textContent !== i.hint) h.textContent = i.hint;
+  }
+  function osText() {
+    if (!isWin()) return;
+    document.querySelectorAll('[title*="⌘"]').forEach((e) => { e.title = osKeys(e.title); });
+  }
+  setTimeout(() => { render(); osText(); }, 0);
+  setInterval(render, 1000);
+  return { render, info };
+})();
+window.SRC_UI = SRC_UI;

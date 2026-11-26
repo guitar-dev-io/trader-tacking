@@ -181,7 +181,8 @@
     <div class="st-wrap">
       <div class="st-nav">
         <button data-st="general" class="active">ทั่วไป</button>
-        <button data-st="conn">การเชื่อมต่อ</button>
+        <button data-st="source">แหล่งราคา / บัญชี</button>
+        <button data-st="conn">เน็ต / ความเสถียร</button>
         <button data-st="notif">แจ้งเตือน</button>
         <button data-st="sess">ช่วงเวลาตลาด</button>
         <button data-st="an">การวิเคราะห์</button>
@@ -209,6 +210,36 @@
           <label class="chk"><input type="checkbox" id="st-autoupd"> ตรวจหาเวอร์ชันใหม่อัตโนมัติ</label>
           <div class="row"><button id="st-checkupd">ตรวจหาเวอร์ชันใหม่ตอนนี้</button></div>
         </section>
+        <section data-sec="source" class="hidden">
+          <div class="src-cards">
+            <div class="src-card" id="st-src-vcg">
+              <div class="src-card-h"><b>🟢 VCG Markets</b><span id="st-vcg-pill" class="src-pill">—</span></div>
+              <p>login ด้วยอีเมล + รหัสผ่านของ VCG ในหน้าเว็บของ VCG เอง · แอปไม่เห็นและไม่เก็บรหัสผ่าน · ใช้ได้ทั้ง Mac / Windows / Android</p>
+              <div class="btns"><button id="st-use-vcg">ใช้ VCG</button><button id="st-trader">เปิด WebTrader / Login</button><button id="st-reconnect">↻ เชื่อมต่อใหม่</button><button id="st-signout" class="danger">ออกจากระบบ VCG</button></div>
+            </div>
+            <div class="src-card" id="st-src-mt5">
+              <div class="src-card-h"><b>🔵 MT5 — โบรกเกอร์ของฉัน</b><span id="st-mt5-pill" class="src-pill">—</span></div>
+              <div id="st-mt5-info" class="net-now"></div>
+              <p>ใช้ได้ทุกโบรกเกอร์ที่มี MetaTrader 5 (Exness, XM, Brex ฯลฯ) · EA อ่านราคาอย่างเดียว ไม่ส่งออเดอร์ · รหัสผ่านกรอกใน MT5 เท่านั้น</p>
+              <div class="btns"><button id="st-use-mt5">ใช้ MT5</button><button id="st-mt5-guide">📘 ตัวช่วยเชื่อมต่อ MT5</button></div>
+              <details><summary>ขั้นสูง: ติดตั้ง EA เอง / เปลี่ยนพอร์ต</summary>
+                <div class="row"><label>พอร์ต MT5</label><input id="st-mt5-port" type="number" min="1024" max="65535"><button id="st-save-ea">⬇ บันทึกไฟล์ EA</button></div>
+                <div class="btns" style="margin:6px 0"><button id="st-install-ea">ติดตั้ง EA ลง MT5</button><button id="st-copy-ea">คัดลอกโค้ด EA</button></div>
+                <pre id="st-ea-out" class="hidden" style="white-space:pre-wrap;word-break:break-all;font-size:11.5px"></pre>
+                <ol class="mt5-steps">
+                  <li>กด "บันทึกไฟล์ EA" แล้วใน MT5 เปิด <b>File › Open Data Folder › MQL5 › Experts</b> วางไฟล์ <code>PriceTrackerBridge.mq5</code></li>
+                  <li>ใน MT5: <b>Tools › Options › Expert Advisors</b> ติ๊ก <i>Allow WebRequest for listed URL</i> แล้วเพิ่ม <code>http://127.0.0.1</code></li>
+                  <li>Navigator › Expert Advisors › คลิกขวา Refresh › ลาก <b>PriceTrackerBridge</b> ลงกราฟใดก็ได้ (พอร์ตต้องตรงกับช่องด้านบน)</li>
+                </ol>
+              </details>
+            </div>
+            <div class="src-card" id="st-src-demo">
+              <div class="src-card-h"><b>🎓 Demo</b><span class="src-pill ok">ไม่ต้อง login</span></div>
+              <p>ราคาจาก Binance สำหรับฝึก · XAUUSD ใช้ PAXG แทนทองคำ ราคาใกล้เคียงแต่ไม่เท่ากับโบรกเกอร์</p>
+              <div class="btns"><button id="st-use-demo">ใช้ Demo</button><button id="st-open-guide">📘 คู่มือเริ่มต้น</button></div>
+            </div>
+          </div>
+        </section>
         <section data-sec="conn" class="hidden">
           <div id="st-net-now" class="net-now"></div>
           <h4>เกณฑ์แจ้งเตือนเน็ตช้า</h4>
@@ -217,19 +248,6 @@
           <div class="row"><label>ไม่มีราคาเกิน</label><input id="st-stale" type="number" min="10" step="5"><span class="muted">วินาที → เตือน "ราคาค้าง"</span></div>
           <div class="row"><label>หลุดนานเกิน</label><input id="st-stuck" type="number" min="20" step="10"><span class="muted">วินาที → โหลด WebTrader ใหม่อัตโนมัติ</span></div>
           <label class="chk"><input type="checkbox" id="st-netnotify"> แจ้งเตือนบน macOS เมื่อการเชื่อมต่อแย่ลง</label>
-          <h4>MT5 (โบรกเกอร์ที่ใช้ MetaTrader 5 เช่น Brex Capital)</h4>
-          <div id="st-mt5-info" class="net-now"></div>
-          <div class="row"><label>พอร์ต MT5</label><input id="st-mt5-port" type="number" min="1024" max="65535"><button id="st-save-ea">⬇ บันทึกไฟล์ EA</button></div>
-          <div class="btns" style="margin:6px 0"><button id="st-install-ea" class="primary">ติดตั้ง EA ลง MT5 ให้อัตโนมัติ</button><button id="st-copy-ea">คัดลอกโค้ด EA</button><button id="st-mt5-guide">📘 ตัวช่วยเชื่อมต่อ MT5</button></div>
-          <pre id="st-ea-out" class="hidden" style="white-space:pre-wrap;word-break:break-all;font-size:11.5px"></pre>
-          <ol class="mt5-steps">
-            <li>กด "บันทึกไฟล์ EA" แล้วใน MT5 เปิด <b>File › Open Data Folder › MQL5 › Experts</b> วางไฟล์ <code>PriceTrackerBridge.mq5</code></li>
-            <li>ใน MT5: <b>Tools › Options › Expert Advisors</b> ติ๊ก <i>Allow WebRequest for listed URL</i> แล้วเพิ่ม <code>127.0.0.1</code></li>
-            <li>เปิด Navigator (Ctrl+N) › Expert Advisors › คลิกขวา Refresh › ลาก <b>PriceTrackerBridge</b> ลงกราฟใดก็ได้ (พอร์ตต้องตรงกับช่องด้านบน)</li>
-            <li>ใน Price Tracker เลือกแหล่งข้อมูล <b>MT5</b> · ชื่อ symbol ต้องตรงกับใน MT5 (บางโบรกมีคำต่อท้าย เช่น XAUUSD.m)</li>
-          </ol>
-          <p class="muted">EA นี้อ่านราคาอย่างเดียว ไม่ส่งคำสั่งซื้อขาย · ใช้ได้กับ MT5 บนคอม (Mac/Windows) — MT5 บนมือถือรัน EA ไม่ได้</p>
-          <div class="row end"><button id="st-reconnect">เชื่อมต่อใหม่</button><button id="st-trader">เปิด WebTrader</button><button id="st-signout" class="danger">ออกจากระบบ VCG</button></div>
         </section>
         <section data-sec="notif" class="hidden">
           <label class="chk"><input type="checkbox" id="st-sound"> เสียงแจ้งเตือน</label>
