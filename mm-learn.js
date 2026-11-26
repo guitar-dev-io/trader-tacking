@@ -5,6 +5,7 @@ import { LESSONS_EXTRA, LESSON_CATS } from './lessons-guide.js';
 import { ICON } from './icons.js';
 import { MM } from './src/legacy/core.ts';
 import { esc, store } from './app-core.js';
+import { pages } from './src/pages/registry.ts';
 let MM_LEARN; // set below; exported (was window.MM_LEARN)
 // Money Management (MM) lessons, the "MM plan by account size" table and random calculation practice.
 // Loaded after lessons-guide.js (adds a lesson category) and before app.js renders the lesson book.
@@ -247,7 +248,7 @@ ${bars([100, 500, 2000].map((lv) => ({ label: `1:${lv}`, v: MM.margin('XAUUSD', 
     e.preventDefault();
     if (b.dataset.mmPractice !== Q.kind) { Q.kind = b.dataset.mmPractice; saveQ(); }
     // practice lives in the learning center (src/pages/learn)
-    if (PT.LEARN) PT.LEARN.open('p:mmquiz');
+    if (pages.learn) pages.learn.open('p:mmquiz');
     if (typeof toast === 'function') toast('ฝึกโจทย์: ' + (MM.KIND_NAME[Q.kind] || 'ทุกหัวข้อ'), 'info', 2500);
   });
   MM_LEARN = { mount, planWidget, quizWidget };

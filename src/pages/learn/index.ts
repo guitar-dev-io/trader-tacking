@@ -4,7 +4,7 @@ import { mount, flushSync } from 'svelte';
 import { PT, def } from '../../pt';
 import { toast } from '../../ui/toast';
 import { S, store } from '../../state';
-import { pages, type PageApi } from '../registry';
+import { pages, lazyMount, type PageApi } from '../registry';
 import { ICON } from '../../../icons.js';
 import { $ } from '../../../app-core.js';
 import { MM_LEARN } from '../../../mm-learn.js';
@@ -21,11 +21,22 @@ export const LEARN: PageApi = (() => {
   let shownView: string | null = null;            // the view whose scroll position main.scrollTop belongs to
 
   const back = () => { lc.mListMode = true; flushSync(); root.classList.remove('m-reading'); };
-  mount(LearnCenter, { target: root, props: { mobile, refs, onclose: () => close(), onback: back } });
-  flushSync();                                   // refs (bind:this) are set now
+  // the component mounts on first idle / first use (see lazyMount); everything that needs its DOM goes in here
+  const ensure = lazyMount(() => {
+    mount(LearnCenter, { target: root, props: { mobile, refs, onclose: () => close(), onback: back } });
+    flushSync();                                 // refs (bind:this) are set now
+    const q = refs.q!;
+    q.addEventListener('input', () => { lc.term = q.value.trim().toLowerCase(); flushSync(); });
+    q.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { const f = refs.nav!.querySelector<HTMLElement>('.lc-les'); if (f) { lc.mListMode = false; go(f.dataset.v!, { reader: true }); } }
+      if (e.key === 'Escape') { q.value = ''; lc.term = ''; flushSync(); q.blur(); }
+    });
+    render();
+  });
 
   // after a render: mount the MM widgets, restore the scroll position, keep the current nav item in view
   function render() {
+    ensure();
     if (shownView && refs.main) scrolls[shownView] = refs.main.scrollTop;
     flushSync();
     if (refs.nav && !mobile) { const on = refs.nav.querySelector('.lc-item.on'); if (on) on.scrollIntoView({ block: 'nearest' }); }
@@ -52,17 +63,11 @@ export const LEARN: PageApi = (() => {
     if (d.readnext) mark(d.readnext, true);
     if (d.v) go(d.v, { reader: true });
   });
-  const q = refs.q!;
-  q.addEventListener('input', () => { lc.term = q.value.trim().toLowerCase(); flushSync(); });
-  q.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { const f = refs.nav!.querySelector<HTMLElement>('.lc-les'); if (f) { lc.mListMode = false; go(f.dataset.v!, { reader: true }); } }
-    if (e.key === 'Escape') { q.value = ''; lc.term = ''; flushSync(); q.blur(); }
-  });
   const visible = () => (mobile ? !root.classList.contains('hidden') : PAGES.active() === 'learn');
   document.addEventListener('keydown', (e) => {
     if (!visible() || e.metaKey || e.ctrlKey || e.altKey) return;
     const typing = /INPUT|TEXTAREA|SELECT/.test((document.activeElement as HTMLElement).tagName);
-    if (e.key === '/' && !typing) { e.preventDefault(); q.focus(); q.select(); return; }
+    if (e.key === '/' && !typing && refs.q) { e.preventDefault(); refs.q.focus(); refs.q.select(); return; }
     if (typing) return;
     const l = byId.get(lc.view); if (!l) return;
     const i = all.indexOf(l);
@@ -114,7 +119,6 @@ export const LEARN: PageApi = (() => {
       else if (k === 'chart' && sideWas !== null) { if (sideWas) PT.setUI('side', true); sideWas = null; }
     });
   }
-  render();
   return {
     open, close, go: (v: string) => open(v), render,
     lessons: () => all.map((l) => ({ id: l.id, cat: l.c, title: l.title, read: read.has(l.id) })),

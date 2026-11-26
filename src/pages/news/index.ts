@@ -2,7 +2,7 @@
 // Phone: a full-screen page from the More page. The ราคา tab keeps a small "ข่าวล่าสุด" teaser.
 import { mount } from 'svelte';
 import { PT, def } from '../../pt';
-import { pages, type PageApi } from '../registry';
+import { pages, lazyMount, type PageApi } from '../registry';
 import { ICON } from '../../../icons.js';
 import { $ } from '../../../app-core.js';
 import { HEADLINES } from '../../../news.js';
@@ -15,7 +15,9 @@ export const NEWSPAGE: PageApi = (() => {
   // the old side tab's feed element moves into the page
   const oldTab = $('tab-news'), feed: HTMLElement = $('newsfeed') || Object.assign(document.createElement('div'), { id: 'newsfeed' });
   const root = document.createElement('div'); root.id = 'news-page'; root.className = 'np' + (mobile ? ' m-full hidden' : '');
-  const view = mount(NewsPage, { target: root, props: { mobile, feed, onclose: () => close() } }) as unknown as { refresh(): void };
+  let view: { refresh(): void } | null = null;
+  const ensure = lazyMount(() => { view = mount(NewsPage, { target: root, props: { mobile, feed, onclose: () => close() } }) as unknown as { refresh(): void }; });
+  const refresh = () => { ensure(); view!.refresh(); };
   if (oldTab) oldTab.remove();
 
   // ---- teaser in the ราคา tab
@@ -29,12 +31,12 @@ export const NEWSPAGE: PageApi = (() => {
     } else teaserView.refresh();
   }
 
-  function render() { HEADLINES.render(); view.refresh(); }
+  function render() { HEADLINES.render(); refresh(); }
   const visible = () => (mobile ? !root.classList.contains('hidden') : PAGES.active() === 'news');
   function open() {
     if (mobile) { root.classList.remove('hidden'); document.body.classList.add('np-open'); }
     else PAGES.open('news');
-    HEADLINES.show(); view.refresh();
+    HEADLINES.show(); refresh();
   }
   function close() {
     if (mobile) { root.classList.add('hidden'); document.body.classList.remove('np-open'); return; }
@@ -51,10 +53,10 @@ export const NEWSPAGE: PageApi = (() => {
     btn.innerHTML = `${ICON.html('newspaper', 16)}<span id="news-badge"></span>`;
     btn.onclick = () => (visible() ? close() : open());
     const anchor = $('learn-btn') || $('dash-btn') || $('theme-btn'); if (anchor) anchor.before(btn);
-    window.addEventListener('pagechange', (e) => { const k = (e as CustomEvent).detail; if (k === 'news') { HEADLINES.show(); view.refresh(); } btn.classList.toggle('on', k === 'news'); });
+    window.addEventListener('pagechange', (e) => { const k = (e as CustomEvent).detail; if (k === 'news') { HEADLINES.show(); refresh(); } btn.classList.toggle('on', k === 'news'); });
     PAGES.register('news', 'ข่าว', root, inner('newspaper'));
   }
-  teaser(); setInterval(() => { teaser(); if (visible()) view.refresh(); }, 30000);
+  teaser(); setInterval(() => { teaser(); if (visible()) refresh(); }, 30000);
   setTimeout(teaser, 6000);
   return { open, close, render, isOpen: visible };
 })();

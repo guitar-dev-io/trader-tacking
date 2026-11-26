@@ -5,7 +5,7 @@ import { mount, flushSync } from 'svelte';
 import { PT, def } from '../../pt';
 import { toast } from '../../ui/toast';
 import { S } from '../../state';
-import { pages, type PageApi } from '../registry';
+import { pages, lazyMount, type PageApi } from '../registry';
 import { $ } from '../../../app-core.js';
 import { switchSymbol } from '../../../app-data.js';
 import { PAGES } from '../../../pages.js';
@@ -18,7 +18,7 @@ export const DASH: PageApi = (() => {
   const root = document.createElement('div'); root.id = 'dashboard'; root.className = 'dash' + (mobile ? ' m-full hidden' : '');
 
   function add(type: string, opts?: Record<string, any>) {
-    const w = mk(type, undefined, undefined, opts); layout().push(w); save(); flushSync();
+    ensure(); const w = mk(type, undefined, undefined, opts); layout().push(w); save(); flushSync();
     const el = root.querySelector<HTMLElement>(`.wd[data-id="${w.id}"]`);
     if (el) { el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 1200); }
     toast(`เพิ่ม ${TYPES[type].name} แล้ว`, 'ok', 1800);
@@ -26,7 +26,7 @@ export const DASH: PageApi = (() => {
   }
   function remove(id: string) {
     const L = layout(), i = L.findIndex((x) => x.id === id); if (i < 0) return;
-    const [w] = L.splice(i, 1); try { localStorage.removeItem('dash.note.' + id); } catch (_) { /* private mode */ }
+    ensure(); const [w] = L.splice(i, 1); try { localStorage.removeItem('dash.note.' + id); } catch (_) { /* private mode */ }
     save(); flushSync(); return w;
   }
   function duplicate(id: string) { const L = layout(), i = L.findIndex((x) => x.id === id); if (i < 0) return; L.splice(i + 1, 0, { ...L[i], id: uid(), opts: { ...L[i].opts } }); save(); flushSync(); }
@@ -39,9 +39,9 @@ export const DASH: PageApi = (() => {
     if (tf != null) { const b = document.querySelector<HTMLElement>(`#tfs button[data-t="${tf}"]`); if (b && !b.classList.contains('active')) b.click(); }
     if (mobile) close(); else PAGES.activate('chart');
   }
-  function setEdit(on: boolean) { dash.editing = on; if (!on) dash.catOpen = false; flushSync(); }
+  function setEdit(on: boolean) { ensure(); dash.editing = on; if (!on) dash.catOpen = false; flushSync(); }
 
-  mount(Dashboard, { target: root, props: { rootEl: root, onclose: () => close(), onsym: openMain, onadd: (t: string) => { add(t); }, onrm: (id: string) => { remove(id); }, ondup: duplicate, onmove: move } });
+  const ensure = lazyMount(() => mount(Dashboard, { target: root, props: { rootEl: root, onclose: () => close(), onsym: openMain, onadd: (t: string) => { add(t); }, onrm: (id: string) => { remove(id); }, ondup: duplicate, onmove: move } }));
 
   // live refresh: feeds + list widgets, only while the dashboard is visible
   setInterval(() => {
@@ -56,7 +56,7 @@ export const DASH: PageApi = (() => {
   // ------------------------------------------------------------ open / close (desktop page tab, mobile overlay)
   let sideWas: boolean | null = null;
   function setActive(on: boolean) {
-    if (on === dash.active) return; dash.active = on;
+    if (on === dash.active) return; if (on) ensure(); dash.active = on;
     // give the widgets the whole width: fold the side panel while the dashboard is open, restore it after
     if (!mobile && PT.setUI && S.ui) {
       if (on) { sideWas = !!S.ui.side; if (sideWas) PT.setUI('side', false); }

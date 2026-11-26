@@ -8,3 +8,13 @@ export interface PageApi {
   [extra: string]: any;
 }
 export const pages: { news?: PageApi; learn?: PageApi; dash?: PageApi; journal?: PageApi } = {};
+
+// Mount a page's component off the startup path: on the first idle moment, or earlier when the page is
+// first used (call the returned function before touching the page's DOM). Keeps time-to-chart unchanged.
+export function lazyMount(mountFn: () => void): () => void {
+  let done = false;
+  const run = () => { if (!done) { done = true; mountFn(); } };
+  if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(run, { timeout: 2000 });
+  else setTimeout(run, 200);
+  return run;
+}

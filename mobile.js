@@ -9,6 +9,7 @@ import { switchSymbol } from './app-data.js';
 import { GROUPS, TOOLS, setTool, undo } from './draw.js';
 import { REPLAY } from './learn.js';
 import { SETUP } from './setup.js';
+import { pages } from './src/pages/registry.ts';
 // Phone layout (Android app / narrow windows). The desktop UI is a TradingView-style workstation; on a phone we
 // re-arrange the same parts into a mobile shell instead of shrinking the desktop:
 //   header: symbol (tap → symbol sheet) · price · change · status dot
@@ -185,12 +186,12 @@ import { SETUP } from './setup.js';
   side.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => showPage(b.dataset.go)));
   on(side.querySelector('[data-do=settings]'), 'click', () => $('open-settings').click());
   on(side.querySelector('[data-do=guide]'), 'click', () => SETUP.open());
-  on(side.querySelector('[data-do=dash]'), 'click', () => PT.DASH && PT.DASH.open());
-  on(side.querySelector('[data-do=journal]'), 'click', () => PT.JOURNALPAGE && PT.JOURNALPAGE.open());
-  on(side.querySelector('[data-do=learn]'), 'click', () => PT.LEARN && PT.LEARN.open());
-  on(side.querySelector('[data-do=news]'), 'click', () => PT.NEWSPAGE && PT.NEWSPAGE.open());
+  on(side.querySelector('[data-do=dash]'), 'click', () => pages.dash && pages.dash.open());
+  on(side.querySelector('[data-do=journal]'), 'click', () => pages.journal && pages.journal.open());
+  on(side.querySelector('[data-do=learn]'), 'click', () => pages.learn && pages.learn.open());
+  on(side.querySelector('[data-do=news]'), 'click', () => pages.news && pages.news.open());
   // full-screen pages (learning center, news, dashboard) sit above the side panel: close them when the bottom nav is used
-  const closeOverlays = () => { if (PT.JOURNALPAGE && PT.JOURNALPAGE.isOpen()) PT.JOURNALPAGE.close(); if (PT.LEARN) PT.LEARN.close(); if (PT.NEWSPAGE) PT.NEWSPAGE.close(); if (PT.DASH && document.body.classList.contains('dash-open')) PT.DASH.close(); };
+  const closeOverlays = () => { if (pages.journal && pages.journal.isOpen()) pages.journal.close(); if (pages.learn) pages.learn.close(); if (pages.news) pages.news.close(); if (pages.dash && document.body.classList.contains('dash-open')) pages.dash.close(); };
   on(side.querySelector('[data-do=login]'), 'click', () => { vcg.showTrader(); });
   on(side.querySelector('[data-do=reconnect]'), 'click', () => { vcg.reloadTrader(); toast('กำลังเชื่อมต่อใหม่…', 'info'); });
   side.querySelector('.m-ver').textContent = 'Price Tracker ' + (window.APP_VERSION || '');
@@ -203,7 +204,7 @@ import { SETUP } from './setup.js';
   document.body.appendChild(nav);
   nav.querySelectorAll('[data-nav]').forEach((b) => (b.onclick = () => {
     closeSheet();
-    if (b.dataset.nav === 'learn') { if (PT.NEWSPAGE) PT.NEWSPAGE.close(); if (PT.DASH && document.body.classList.contains('dash-open')) PT.DASH.close(); if (PT.LEARN) PT.LEARN.open(); syncNav(); return; }
+    if (b.dataset.nav === 'learn') { if (pages.news) pages.news.close(); if (pages.dash && document.body.classList.contains('dash-open')) pages.dash.close(); if (pages.learn) pages.learn.open(); syncNav(); return; }
     closeOverlays();
     b.dataset.nav === 'chart' ? goChart() : showPage(b.dataset.nav);
   }));

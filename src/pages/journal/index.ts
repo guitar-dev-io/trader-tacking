@@ -4,7 +4,7 @@ import { mount, flushSync } from 'svelte';
 import { PT, def } from '../../pt';
 import { toast } from '../../ui/toast';
 import { S, store, view } from '../../state';
-import { pages, type PageApi } from '../registry';
+import { pages, lazyMount, type PageApi } from '../registry';
 import type { Trade } from '../../core/journal';
 import { JOURNAL } from '../../legacy/core';
 import { ICON } from '../../../icons.js';
@@ -22,7 +22,7 @@ export const JOURNALPAGE: PageApi = (() => {
   const inner = (n: string) => (ICON.svg(n, 14) || '').replace(/^<svg[^>]*>|<\/svg>$/g, '');
   const root = document.createElement('div'); root.id = 'journal-page'; root.className = 'jr' + (mobile ? ' m-full hidden' : '');
   let shown = false;
-  const render = () => flushSync();
+  const render = () => { ensure(); flushSync(); };
   const reload = () => load().then(render);
 
   async function act(a: string) {
@@ -62,10 +62,11 @@ export const JOURNALPAGE: PageApi = (() => {
     })();
   }
 
-  mount(Journal, { target: root, props: { mobile, onclose: () => close(), onact: (a: string) => { void act(a); }, ontrade: showOnChart } });
+  const ensure = lazyMount(() => mount(Journal, { target: root, props: { mobile, onclose: () => close(), onact: (a: string) => { void act(a); }, ontrade: showOnChart } }));
 
   // ------------------------------------------------------------ page plumbing
   async function open() {
+    ensure();
     if (mobile) {
       if (pages.learn && pages.learn.isOpen()) pages.learn.close();
       if (pages.news && pages.news.isOpen()) pages.news.close();

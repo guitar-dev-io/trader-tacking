@@ -7,6 +7,7 @@ import { $, S, TZ, esc, fmt, store, tf } from './app-core.js';
 import { askLine, buildIndicators, chart, displayData, main, priceFormat, refreshPriceLines, renderLegend, updateIndicators } from './app-chart.js';
 import { renderAnalysis, runAnalysis } from './app-analysis.js';
 import { bounceTick } from './app-bounce.js';
+import { pages } from './src/pages/registry.ts';
 def({ loadTimeout: [() => loadTimeout, (v) => { loadTimeout = v; }], loadChart: [() => loadChart, (v) => { loadChart = v; }], loadMore: [() => loadMore, (v) => { loadMore = v; }], num: [() => num], toCandle: [() => toCandle], valid: [() => valid], dedupe: [() => dedupe, (v) => { dedupe = v; }], setAllData: [() => setAllData, (v) => { setAllData = v; }], pushChartTimer: [() => pushChartTimer, (v) => { pushChartTimer = v; }], pushChartData: [() => pushChartData, (v) => { pushChartData = v; }], onChartMsg: [() => onChartMsg, (v) => { onChartMsg = v; }], upsert: [() => upsert, (v) => { upsert = v; }], pushLast: [() => pushLast, (v) => { pushLast = v; }], tickToCandle: [() => tickToCandle, (v) => { tickToCandle = v; }], onQuotesMsg: [() => onQuotesMsg, (v) => { onQuotesMsg = v; }], updateHeader: [() => updateHeader, (v) => { updateHeader = v; }], renderWatchlist: [() => renderWatchlist, (v) => { renderWatchlist = v; }], updateRow: [() => updateRow, (v) => { updateRow = v; }], switchSymbol: [() => switchSymbol, (v) => { switchSymbol = v; }], lastConnected: [() => lastConnected, (v) => { lastConnected = v; }], BOOT_AT: [() => BOOT_AT], connectingSince: [() => connectingSince, (v) => { connectingSince = v; }], renderConnect: [() => renderConnect, (v) => { renderConnect = v; }], renderAlerts: [() => renderAlerts, (v) => { renderAlerts = v; }], addAlert: [() => addAlert, (v) => { addAlert = v; }], desktopNotify: [() => desktopNotify, (v) => { desktopNotify = v; }], beep: [() => beep, (v) => { beep = v; }], checkAlerts: [() => checkAlerts, (v) => { checkAlerts = v; }] });
 // Price Tracker renderer · data: chart loading, live quotes/watchlist, status, price alerts
 // ---------------------------------------------------------------- data loading
@@ -86,7 +87,7 @@ function onChartMsg(m) {
   }
   if (d.updates && d.updates.candles && !S.pendingHistory) d.updates.candles.map(toCandle).filter(valid).forEach(upsert);
 }
-vcg.onChart((m) => { if (S.source === 'demo') return; if (m.slot === 'mtf') { if (typeof PT.MTF !== 'undefined') PT.MTF.onMsg(m); } else if (m.slot && /^w\d/.test(m.slot)) { if (typeof PT.DASH !== 'undefined') PT.DASH.onMsg(m); } else onChartMsg(m); });
+vcg.onChart((m) => { if (S.source === 'demo') return; if (m.slot === 'mtf') { if (typeof PT.MTF !== 'undefined') PT.MTF.onMsg(m); } else if (m.slot && /^w\d/.test(m.slot)) { if (pages.dash) pages.dash.onMsg(m); } else onChartMsg(m); });
 
 function upsert(c) {
   if (S.replay) return;

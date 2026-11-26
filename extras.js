@@ -6,6 +6,7 @@ import { $, S, TZ, esc, store, tf } from './app-core.js';
 import { chart } from './app-chart.js';
 import { beep, desktopNotify, loadChart, onChartMsg, onQuotesMsg, renderConnect, renderWatchlist, setAllData } from './app-data.js';
 import { el, lToX, timeToLogical, txt } from './app-overlay.js';
+import { pages } from './src/pages/registry.ts';
 
 def({ fetchJSON: [() => fetchJSON], DEMO: [() => DEMO], setSource: [() => setSource, (v) => { setSource = v; }], renderSourceSel: [() => renderSourceSel, (v) => { renderSourceSel = v; }], CACHE: [() => CACHE], NEWS: [() => NEWS], UPDATE: [() => UPDATE] });
 // Extras: Demo data source (Binance public market data), local candle cache, economic calendar, update checker.
@@ -27,7 +28,7 @@ const DEMO = (() => {
   async function requestChart(o, handler) {
     if (o.slot === 'mtf') handler = (m) => PT.MTF.onMsg({ ...m, slot: 'mtf' });
     const extra = o.slot && o.slot !== 'main';          // MTF / dashboard widgets: never replace the main request
-    if (extra && !handler && typeof PT.DASH !== 'undefined') handler = (m) => PT.DASH.onMsg({ ...m, slot: o.slot });
+    if (extra && !handler && pages.dash) handler = (m) => pages.dash.onMsg({ ...m, slot: o.slot });
     handler = handler || onChartMsg;
     if (!extra) cur = o;
     try {
