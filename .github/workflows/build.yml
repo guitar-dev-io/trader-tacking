@@ -1,6 +1,6 @@
 name: Build apps
 
-# Builds the macOS app (arm64 + x64) and the Android APK.
+# Builds the macOS app (arm64 + x64), Windows and the Android APK. The renderer is built with Vite (vite.config.mjs).
 #  • push a tag like v2.1.0  → full GitHub Release (used by the in-app update checker)
 #  • push to a feat/* branch or run manually → pre-release "build-<run>" for testing
 on:
@@ -25,6 +25,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
+      - name: Type check (TypeScript)
+        run: npm run typecheck
       - name: Unit tests (analysis, bounce finder, injected scripts, MT5 bridge)
         run: npm test
       - name: UI tests (Electron, headless)
@@ -128,6 +130,8 @@ jobs:
   # Website (GitHub Pages, "Deploy from a branch: gh-pages"): download page + installable web app at /app/
   site:
     needs: test
+    # the live download page/web app is published from the app branch only — never from the framework branch
+    if: ${{ !contains(github.ref_name, 'framework') }}
     runs-on: ubuntu-latest
     permissions: { contents: write }
     steps:
@@ -147,6 +151,9 @@ jobs:
 
   release:
     needs: [android, mac, windows]
+    # framework-migration builds stay as workflow artifacts (Actions → run → Artifacts): a pre-release here would
+    # become the newest file on the public download page
+    if: ${{ !contains(github.ref_name, 'framework') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
