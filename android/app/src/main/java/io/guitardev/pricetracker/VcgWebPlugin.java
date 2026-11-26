@@ -133,10 +133,21 @@ public class VcgWebPlugin extends Plugin {
         overlay.setVisibility(View.INVISIBLE);
         // keep the login page clear of the status bar, gesture bar and on-screen keyboard
         ViewCompat.setOnApplyWindowInsetsListener(overlay, (v, insets) -> {
-            Insets b = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout() | WindowInsetsCompat.Type.ime());
-            v.setPadding(b.left, b.top, b.right, b.bottom);
+            Insets b = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+            int ime = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom;
+            // If the activity window already shrank for the keyboard (adjustResize), the overlay ends above the
+            // keyboard and adding the IME inset again squeezed the login page to a thin strip. Only pad by the part
+            // of the keyboard that still covers the overlay.
+            int[] loc = new int[2];
+            v.getLocationOnScreen(loc);
+            int screenH = v.getRootView().getHeight();
+            int gapBelow = Math.max(0, screenH - (loc[1] + v.getHeight()));
+            int bottom = Math.max(b.bottom, ime - gapBelow);
+            v.setPadding(b.left, b.top, b.right, Math.max(0, bottom));
             return WindowInsetsCompat.CONSUMED;
         });
+        // window resized (keyboard opened/closed with adjustResize) → recompute the padding above
+        overlay.addOnLayoutChangeListener((v, l, t, r, bt, ol, ot, or, ob) -> { if (bt - t != ob - ot) ViewCompat.requestApplyInsets(v); });
         ViewGroup root = getActivity().findViewById(android.R.id.content);
         root.addView(overlay, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     }
