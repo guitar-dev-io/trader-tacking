@@ -1,11 +1,12 @@
 import { PT, def } from './src/pt.ts';
+import { mainCfg, setMainCfg } from './src/state.ts';
 import { toast } from './src/ui/toast.ts';
 import { ICON } from './icons.js';
 import { $, S, THEME, esc, store, zoneOffsetSec } from './app-core.js';
 import { runAnalysis } from './app-analysis.js';
 import { loadChart } from './app-data.js';
 import { DEFAULT_SESSIONS, SESSIONS_ALL, ZONES, _sessionWindow, setSessions } from './draw.js';
-def({ NET_TH: [() => NET_TH], lastNet: [() => lastNet, (v) => { lastNet = v; }], lastNetLevel: [() => lastNetLevel, (v) => { lastNetLevel = v; }], bannerDismissed: [() => bannerDismissed, (v) => { bannerDismissed = v; }], renderNetNow: [() => renderNetNow, (v) => { renderNetNow = v; }], mainCfg: [() => mainCfg, (v) => { mainCfg = v; }], v: [() => v], chk: [() => chk], openSettings: [() => openSettings, (v) => { openSettings = v; }], showSection: [() => showSection, (v) => { showSection = v; }], clampNum: [() => clampNum], saveSettingsUI: [() => saveSettingsUI, (v) => { saveSettingsUI = v; }], renderClaude: [() => renderClaude, (v) => { renderClaude = v; }], signOutArmed: [() => signOutArmed, (v) => { signOutArmed = v; }], lastStatus: [() => lastStatus, (v) => { lastStatus = v; }], renderMt5Info: [() => renderMt5Info, (v) => { renderMt5Info = v; }], SESS_ZONES: [() => SESS_ZONES], SESS_PRESETS: [() => SESS_PRESETS], sessDraft: [() => sessDraft, (v) => { sessDraft = v; }], bkkHM: [() => bkkHM, (v) => { bkkHM = v; }], sessPreview: [() => sessPreview, (v) => { sessPreview = v; }], renderSessRows: [() => renderSessRows, (v) => { renderSessRows = v; }], SCHEMA: [() => SCHEMA], resetArmed: [() => resetArmed, (v) => { resetArmed = v; }], syncThemeUI: [() => syncThemeUI, (v) => { syncThemeUI = v; }], eaInfo: [() => eaInfo, (v) => { eaInfo = v; }] });
+def({ NET_TH: [() => NET_TH], lastNet: [() => lastNet, (v) => { lastNet = v; }], lastNetLevel: [() => lastNetLevel, (v) => { lastNetLevel = v; }], bannerDismissed: [() => bannerDismissed, (v) => { bannerDismissed = v; }], renderNetNow: [() => renderNetNow, (v) => { renderNetNow = v; }], v: [() => v], chk: [() => chk], openSettings: [() => openSettings, (v) => { openSettings = v; }], showSection: [() => showSection, (v) => { showSection = v; }], clampNum: [() => clampNum], saveSettingsUI: [() => saveSettingsUI, (v) => { saveSettingsUI = v; }], renderClaude: [() => renderClaude, (v) => { renderClaude = v; }], signOutArmed: [() => signOutArmed, (v) => { signOutArmed = v; }], lastStatus: [() => lastStatus, (v) => { lastStatus = v; }], renderMt5Info: [() => renderMt5Info, (v) => { renderMt5Info = v; }], SESS_ZONES: [() => SESS_ZONES], SESS_PRESETS: [() => SESS_PRESETS], sessDraft: [() => sessDraft, (v) => { sessDraft = v; }], bkkHM: [() => bkkHM, (v) => { bkkHM = v; }], sessPreview: [() => sessPreview, (v) => { sessPreview = v; }], renderSessRows: [() => renderSessRows, (v) => { renderSessRows = v; }], SCHEMA: [() => SCHEMA], resetArmed: [() => resetArmed, (v) => { resetArmed = v; }], syncThemeUI: [() => syncThemeUI, (v) => { syncThemeUI = v; }], eaInfo: [() => eaInfo, (v) => { eaInfo = v; }] });
 // Toasts, network status, the Settings window, backup / restore / reset.
 
 // ---------------------------------------------------------------- toasts
@@ -44,10 +45,9 @@ function renderNetNow() {
 
 // ---------------------------------------------------------------- settings window
 $('settings-btn').innerHTML = ICON.svg('gear', 18);
-let mainCfg = null;
 const v = (id) => $(id).value, chk = (id) => $(id).checked;
 async function openSettings(section) {
-  mainCfg = await vcg.getSettings();
+  setMainCfg(await vcg.getSettings());
   const P = S.prefs;
   $('st-tz').innerHTML = ZONES.map(([z, n]) => `<option value="${z}">${n}</option>`).join(''); $('st-tz').value = store.get('tz', 'local');
   $('st-autoupd').checked = store.get('autoUpdateCheck', true);

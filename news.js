@@ -100,7 +100,7 @@ const HEADLINES = (() => {
     $('nw-refresh').onclick = () => refresh(true);
   }
   function markSeen() { seenAt = Date.now(); store.set('headlines.seenAt', seenAt); const b = $('news-badge'); if (b) b.textContent = ''; }
-  // the news page (news-page.js) calls show() when it opens
+  // the news page (src/pages/news) calls show() when it opens
   function show() { render(); setTimeout(markSeen, 4000); refresh(false); }
   setTimeout(() => refresh(false), 4000);
   timer = setInterval(() => refresh(true), 5 * 60e3);

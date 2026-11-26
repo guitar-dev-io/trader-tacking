@@ -33,6 +33,6 @@ import '../about.js';
 import '../journal-page.js';
 import '../dashboard.js';
 import '../learn-center.js';
-import '../news-page.js';
+import './pages/news/index';
 import '../claude-bridge.js';
 import '../pwa.js';

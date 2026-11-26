@@ -6,7 +6,7 @@ def({ PAGES: [() => PAGES] });
 // puts it back into the side panel.
 const PAGES = (() => {
   if (document.body.classList.contains('mobile')) return { open() {}, close() {}, activate() {}, register() {}, list: () => [], active: () => 'chart' };
-  const NAMES = { market: 'ราคา', analysis: 'วิเคราะห์', practice: 'ฝึกเทรด', calc: 'คำนวณ', log: 'Log' };   // learn + news are pages of their own (learn-center.js, news-page.js)
+  const NAMES = { market: 'ราคา', analysis: 'วิเคราะห์', practice: 'ฝึกเทรด', calc: 'คำนวณ', log: 'Log' };   // learn + news are pages of their own (learn-center.js, src/pages/news)
   // Lucide icons (ISC license): maximize-2, x, chart-candlestick
   const svg = (d, s = 14) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
   const IC = {

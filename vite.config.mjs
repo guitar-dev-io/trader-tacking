@@ -4,6 +4,7 @@
 // `npm run dev` serves the desktop target with Vite's dev server and starts Electron against it.
 import { defineConfig } from 'vite';
 import { createRequire } from 'node:module';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
 import legacyScripts from './vite/legacy-plugin.mjs';
 
 const pkg = createRequire(import.meta.url)('./package.json');
@@ -15,7 +16,7 @@ export default defineConfig(({ mode }) => {
     base: './',                       // file:// (Electron), https://localhost (Capacitor) and a sub-path on GitHub Pages
     publicDir: false,                 // static files are copied by the legacy plugin (assets/, icon, lib licence)
     clearScreen: false,
-    plugins: [legacyScripts({ root: process.cwd(), web, version: pkg.version })],
+    plugins: [svelte(), legacyScripts({ root: process.cwd(), web, version: pkg.version })],
     define: { __APP_VERSION__: JSON.stringify(pkg.version), __WEB__: JSON.stringify(web) },
     server: { port: 5173, strictPort: true },
     build: {

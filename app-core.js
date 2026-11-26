@@ -1,5 +1,6 @@
 import { PT, def } from './src/pt.ts';
 import { ICON } from './icons.js';
+import { store, THEME, TC, S, AN_DEFAULT, AN_VIEW_KEYS, PREF_DEFAULT, CHART_THEME } from './src/state.ts';
 def({ createChart: [() => createChart], CandlestickSeries: [() => CandlestickSeries], BarSeries: [() => BarSeries], LineSeries: [() => LineSeries], AreaSeries: [() => AreaSeries], HistogramSeries: [() => HistogramSeries], LineStyle: [() => LineStyle], CrosshairMode: [() => CrosshairMode], TFS: [() => TFS], store: [() => store], _dtf: [() => _dtf], zoneOffsetSec: [() => zoneOffsetSec, (v) => { zoneOffsetSec = v; }], TZ: [() => TZ, (v) => { TZ = v; }], FIB_DEF: [() => FIB_DEF], FIBX_DEF: [() => FIBX_DEF], FIB: [() => FIB, (v) => { FIB = v; }], FIBX: [() => FIBX, (v) => { FIBX = v; }], FIB_REVERSE: [() => FIB_REVERSE, (v) => { FIB_REVERSE = v; }], FIB_PRESETS: [() => FIB_PRESETS], FIB_PRESET_REVERSE: [() => FIB_PRESET_REVERSE], fibColor: [() => fibColor], IND_COLORS: [() => IND_COLORS], UP: [() => UP, (v) => { UP = v; }], DOWN: [() => DOWN, (v) => { DOWN = v; }], CHART_THEME: [() => CHART_THEME], THEME: [() => THEME], TC: [() => TC], AN_DEFAULT: [() => AN_DEFAULT], AN_VIEW_KEYS: [() => AN_VIEW_KEYS], S: [() => S], PREF_DEFAULT: [() => PREF_DEFAULT], tf: [() => tf], drawingsKey: [() => drawingsKey], drawings: [() => drawings, (v) => { drawings = v; }], saveDrawings: [() => saveDrawings], digits: [() => digits], fmt: [() => fmt], $: [() => $], esc: [() => esc] });
 // Price Tracker renderer · core: constants, storage, shared state (S), formatting helpers
 const { createChart, CandlestickSeries, BarSeries, LineSeries, AreaSeries, HistogramSeries, LineStyle, CrosshairMode } = LightweightCharts;
@@ -10,10 +11,6 @@ const TFS = [
   { label: '1H', type: 3, sec: 3600 }, { label: '4H', type: 4, sec: 14400 }, { label: '1D', type: 5, sec: 86400 },
   { label: '1W', type: 6, sec: 604800 },
 ];
-const store = {
-  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (_) { return d; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} },
-};
 
 // Timezone of the chart: 'local' or an IANA zone. Candle times are shifted by this offset.
 const _dtf = new Map();
@@ -41,72 +38,10 @@ const fibColor = (lv) => ({ 1.127: '#4caf50',  '-1.618': '#e91e63', '-1': '#ff98
 const IND_COLORS = ['#f5a623', '#2962ff', '#e040fb', '#00bcd4', '#ff5252', '#8bc34a', '#ffeb3b'];
 let UP = '#26a69a', DOWN = '#ef5350';
 
-// ---------------------------------------------------------------- themes: 'dark' | 'light' | 'contrast' (+ 'auto' = follow the OS)
-// CSS colors live in variables on <html data-theme>; the chart and SVG overlays read CHART_THEME[THEME.get()].
-const CHART_THEME = {
-  dark: { bg: '#0f1115', text: '#9aa0ad', grid: '#1a1d27', border: '#232734', fg: '#d6d9e0', sel: '#ffffff', muted: '#b2b5be', box: '#0f1115cc', handle: '#0f1115', cross: '#758696' },
-  light: { bg: '#ffffff', text: '#4a4f5c', grid: '#eef0f4', border: '#d9dce3', fg: '#1f2330', sel: '#131722', muted: '#7a7f8c', box: '#ffffffd9', handle: '#ffffff', cross: '#9598a1' },
-  contrast: { bg: '#000000', text: '#e6e6e6', grid: '#1c1c1c', border: '#5a5f6e', fg: '#ffffff', sel: '#ffff00', muted: '#d0d3da', box: '#000000d9', handle: '#000000', cross: '#bbbbbb' },
-};
-const THEME = (() => {
-  const NAMES = { auto: 'ตามระบบ', dark: 'มืด', light: 'สว่าง', contrast: 'คอนทราสต์สูง' };
-  const mq = window.matchMedia ? matchMedia('(prefers-color-scheme: light)') : null;
-  let pref = store.get('theme', 'auto');
-  const subs = [];
-  const resolve = () => (pref === 'auto' ? (mq && mq.matches ? 'light' : 'dark') : pref);
-  let cur = null;
-  function apply() {
-    const t = resolve(); if (t === cur) return; cur = t;
-    document.documentElement.dataset.theme = t;
-    document.documentElement.style.colorScheme = t === 'light' ? 'light' : 'dark';
-    subs.forEach((cb) => { try { cb(t); } catch (_) {} });
-  }
-  if (mq && mq.addEventListener) mq.addEventListener('change', apply);
-  apply();
-  return {
-    NAMES,
-    get: () => cur,                       // resolved theme: dark | light | contrast
-    pref: () => pref,                     // user choice incl. 'auto'
-    set(name) { if (!NAMES[name]) return; pref = name; store.set('theme', name); apply(); subs.forEach((cb) => { try { cb(cur, true); } catch (_) {} }); },
-    next() { const order = ['dark', 'light', 'contrast']; this.set(order[(order.indexOf(cur) + 1) % order.length]); },
-    onChange(cb) { subs.push(cb); },
-    colors: () => CHART_THEME[cur] || CHART_THEME.dark,
-  };
-})();
-const TC = () => THEME.colors();
 
 
 
-// Clean chart by default: analysis overlays are opt-in from the 🧠 menu.
-const AN_DEFAULT = { autofib: false, bounce: false, liquidity: false, bounceSide: 'both', swing: false, legs: false, structure: false, zones: false, patterns: false, signals: false, history: false, td: false, learnOnly: false, notify: false, swingLen: 5 };
-const AN_VIEW_KEYS = ['autofib', 'bounce', 'liquidity', 'swing', 'legs', 'structure', 'zones', 'patterns', 'signals', 'history', 'td'];
-// one-time migration (v2.0.3): switch existing installs to the clean default
-if (store.get('defaultsV', 1) < 2) {
-  const an = store.get('an', null);
-  if (an) { AN_VIEW_KEYS.forEach((k) => { an[k] = false; }); an.notify = false; store.set('an', an); }
-  const inds = store.get('inds', null);
-  if (inds && JSON.stringify(inds.map((i) => [i.type, i.params])) === JSON.stringify([['ema', { period: 50 }], ['sma', { period: 200 }]])) store.set('inds', []);
-  store.set('sessions', true);
-  store.set('defaultsV', 2);
-}
-const S = {
-  symbol: store.get('symbol', 'XAUUSD'),
-  tf: store.get('tf', 3),
-  ctype: store.get('ctype', 'candles'),
-  inds: store.get('inds', []),
-  scripts: store.get('scripts', []),
-  alerts: store.get('alerts', []),
-  an: { ...AN_DEFAULT, ...store.get('an', {}) },
-  showAsk: store.get('showAsk', true),
-  magnet: store.get('magnet', true),
-  symbols: [], traySymbol: '', quotes: {}, candles: [], digits: {},
-  tool: 'cursor', pending: null, mouse: null, selected: null, measure: null,
-  pendingHistory: false, loadingMore: false, noMore: false,
-  A: null, notified: store.get('notified', {}),
-  source: store.get('source', 'vcg'),   // 'vcg' | 'demo'
-};
-const PREF_DEFAULT = { sound: true, desktop: true, toast: true, historyBars: 1500, rr1: 1, rr2: 2, slBuf: 0.2, minSamples: 5, maxBars: 100 };
-S.prefs = { ...PREF_DEFAULT, ...store.get('prefs', {}) };
+
 const tf = () => TFS.find((t) => t.type === S.tf) || TFS[3];
 const drawingsKey = () => 'drawings:' + S.symbol;
 let drawings = [];
