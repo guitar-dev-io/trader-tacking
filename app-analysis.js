@@ -2,9 +2,12 @@ import { PT, def } from './src/pt.ts';
 import { view } from './src/state.ts';
 import { ICON } from './icons.js';
 import { AN } from './src/legacy/core.ts';
-import { $, AN_VIEW_KEYS, S, TZ, digits, esc, fmt, store, tf } from './app-core.js';
+import { $, AN_VIEW_KEYS, S, TZ, digits, fmt, store, tf } from './app-core.js';
 import { closeMenus } from './app-chart.js';
-def({ AN_ITEMS: [() => AN_ITEMS], openAnalysisMenu: [() => openAnalysisMenu, (v) => { openAnalysisMenu = v; }], SETUP_TH: [() => SETUP_TH], resTH: [() => resTH], pct: [() => pct], rr: [() => rr], PERF: [() => PERF], runAnalysis: [() => runAnalysis, (v) => { runAnalysis = v; }], activeSignal: [() => activeSignal, (v) => { activeSignal = v; }], renderAnalysis: [() => renderAnalysis, (v) => { renderAnalysis = v; }], pushTimer: [() => pushTimer, (v) => { pushTimer = v; }], pushAnalysis: [() => pushAnalysis, (v) => { pushAnalysis = v; }], sigPayload: [() => sigPayload, (v) => { sigPayload = v; }] });
+import { mount, flushSync } from 'svelte';
+import Analysis from './src/ui/tabs/Analysis.svelte';
+import { analysisTick } from './src/ui/tabs/analysis-view.ts';
+def({ AN_ITEMS: [() => AN_ITEMS], openAnalysisMenu: [() => openAnalysisMenu, (v) => { openAnalysisMenu = v; }], SETUP_TH: [() => SETUP_TH], pct: [() => pct], rr: [() => rr], PERF: [() => PERF], runAnalysis: [() => runAnalysis, (v) => { runAnalysis = v; }], activeSignal: [() => activeSignal, (v) => { activeSignal = v; }], renderAnalysis: [() => renderAnalysis, (v) => { renderAnalysis = v; }], pushTimer: [() => pushTimer, (v) => { pushTimer = v; }], pushAnalysis: [() => pushAnalysis, (v) => { pushAnalysis = v; }], sigPayload: [() => sigPayload, (v) => { sigPayload = v; }] });
 // Price Tracker renderer · structure analysis: menu, run/render, signal notifications
 // ---------------------------------------------------------------- analysis menu
 const AN_ITEMS = [
@@ -34,7 +37,6 @@ $('an-btn').onclick = (e) => { e.stopPropagation(); openAnalysisMenu(); };
 
 // ---------------------------------------------------------------- analysis
 const SETUP_TH = { pullback: 'ย่อตามเทรนด์', choch: 'กลับตัวหลัง CHoCH', sr: 'เด้งแนวรับ/ต้าน' };
-const resTH = (r) => ({ win: 'ชนะ', loss: 'แพ้', open: 'ยังไม่จบ', expired: 'หมดเวลา' }[r.res]);
 const pct = (v) => (v == null ? '—' : (v * 100).toFixed(0) + '%');
 const rr = (v) => (v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + 'R');
 
@@ -58,59 +60,14 @@ function activeSignal() {
   const s = S.A.signals[S.A.signals.length - 1];
   return s.r2.res === 'open' && S.A.n - 1 - s.idx <= 10 ? s : null;
 }
+// panels: src/ui/tabs/Analysis.svelte (mounted below); this keeps the header trend badge and re-renders them
 function renderAnalysis() {
-  const A = S.A;
-  const badge = $('trend-badge');
-  if (!A) {
-    badge.textContent = ''; badge.className = '';
-    $('an-trend').innerHTML = '<p class="muted">ต้องมีข้อมูลกราฟอย่างน้อย 50 แท่ง</p>'; $('an-signal').innerHTML = ''; $('an-stats').innerHTML = '';
-    return;
-  }
-  const tr = A.lastTrend, ev = A.lastEvent;
-  badge.textContent = tr === 1 ? '▲ ขาขึ้น' : tr === -1 ? '▼ ขาลง' : '◆ ไซด์เวย์';
-  badge.className = tr === 1 ? 'up' : tr === -1 ? 'down' : 'flat';
-  const sw = A.swings.slice(-4).map((s) => `<span class="${s.label[0] === 'H' && s.label !== 'HL' ? '' : ''}">${s.label}</span>`).join(' → ');
-  $('an-trend').innerHTML = `<div class="panel-h">โครงสร้างตลาด · ${S.symbol} ${tf().label}</div>
-    <div>เทรนด์: <b class="${tr === 1 ? 'up' : tr === -1 ? 'down' : ''}">${tr === 1 ? 'ขาขึ้น' : tr === -1 ? 'ขาลง' : 'ยังไม่ชัด'}</b></div>
-    ${ev ? `<div>ล่าสุด: <b>${ev.type}</b> ${ev.dir === 1 ? 'ขึ้น' : 'ลง'} ทะลุ ${fmt(ev.price)} (${A.n - 1 - ev.idx} แท่งก่อน)</div>` : ''}
-    <div>สวิงล่าสุด: ${sw || '—'}</div>`;
-
-  const s = activeSignal();
-  const last = A.signals[A.signals.length - 1];
-  const card = (x, active) => {
-    const buy = x.dir === 1, lr = x.learned;
-    const dim = active && S.an.learnOnly && lr !== 'good';
-    const reward = (k) => Math.abs(k - x.entry) / x.risk;
-    return `<div class="sig-card ${buy ? 'buy' : 'sell'} ${dim ? 'dim' : ''}">
-      <div class="sig-head"><span class="${buy ? 'up' : 'down'}">${buy ? '▲ BUY' : '▼ SELL'}</span>
-        <small>${SETUP_TH[x.setup]} · ${AN.PAT[x.pattern].name}</small></div>
-      <div class="lv">
-        <span>Entry</span><b>${fmt(x.entry)}</b><span>ราคาปิดแท่งสัญญาณ</span>
-        <span class="down">SL</span><b>${fmt(x.sl)}</b><span>-${fmt(x.risk)} (1R)</span>
-        <span class="up">TP1</span><b>${fmt(x.tp1)}</b><span>1R</span>
-        <span class="up">TP2</span><b>${fmt(x.tp2)}</b><span>2R</span>
-        ${x.tpS != null ? `<span class="up">เป้าโครงสร้าง</span><b>${fmt(x.tpS)}</b><span>${reward(x.tpS).toFixed(1)}R</span>` : ''}
-      </div>
-      <div>โหมดเรียนรู้: <span class="badge ${lr}">${lr === 'good' ? ICON.html('circle-check', 13) + 'สถิติผ่าน' : lr === 'bad' ? ICON.html('circle-x', 13) + 'สถิติไม่ผ่าน' : '… ตัวอย่างยังน้อย'}</span>
-        <span class="muted"> (ก่อนหน้า ${x.prior.n} ครั้ง · TP2 ${pct(x.prior.wr2)} · ${rr(x.prior.exp)})</span></div>
-      <ol class="reasons">${x.reasons.map((r) => `<li>${esc(r)}</li>`).join('')}</ol>
-      ${active ? '' : `<div class="muted" style="margin-top:6px">ผล: TP1 ${resTH(x.r1)} · TP2 ${resTH(x.r2)} · ${A.n - 1 - x.idx} แท่งที่แล้ว</div>`}
-    </div>`;
-  };
-  $('an-signal').innerHTML = s
-    ? `<div class="panel-h">สัญญาณที่ยังเปิดอยู่</div>${card(s, true)}`
-    : `<div class="panel-h">สัญญาณ</div><p class="muted">ตอนนี้ยังไม่มีสัญญาณใหม่ (รอแท่งเทียนกลับตัวที่โซน/ตามเทรนด์)</p>${last ? '<div class="panel-h" style="margin-top:8px">สัญญาณล่าสุด</div>' + card(last, false) : ''}`;
-
-  const row = (name, st) => `<tr><td>${name}</td><td>${st.n}</td><td>${pct(st.wr1)}</td><td>${pct(st.wr2)}</td><td class="${st.exp > 0 ? 'up' : st.exp < 0 ? 'down' : ''}">${rr(st.exp)}</td></tr>`;
-  const st = A.stats;
-  $('an-stats').innerHTML = `<div class="panel-h">ทดสอบย้อนหลัง (${A.n} แท่ง · ${S.symbol} ${tf().label})</div>
-    <table class="stat"><thead><tr><th>กลุ่ม</th><th>ไม้</th><th>TP1</th><th>TP2</th><th>เฉลี่ย</th></tr></thead><tbody>
-    ${row('<b>ทั้งหมด</b>', st.all)}${row('<b>เฉพาะที่ผ่านโหมดเรียนรู้</b>', st.learned)}
-    ${Object.entries(st.bySetup).map(([k, v]) => row(SETUP_TH[k], v)).join('')}
-    ${Object.entries(st.byPattern).map(([k, v]) => row('· ' + AN.PAT[k].name, v)).join('')}
-    </tbody></table>
-    <p class="muted">TP1/TP2 = อัตราชนะ (ถึง TP ก่อน SL) · เฉลี่ย = กำไรเฉลี่ยต่อไม้ถ้าถือถึง TP2 (หน่วย R) · โดน SL และ TP ในแท่งเดียวกันนับเป็นแพ้</p>`;
+  const A = S.A, badge = $('trend-badge');
+  if (!A) { badge.textContent = ''; badge.className = ''; }
+  else { const tr = A.lastTrend; badge.textContent = tr === 1 ? '▲ ขาขึ้น' : tr === -1 ? '▼ ขาลง' : '◆ ไซด์เวย์'; badge.className = tr === 1 ? 'up' : tr === -1 ? 'down' : 'flat'; }
+  analysisTick.update((n) => n + 1); flushSync();
 }
+
 let pushTimer = null;
 function pushAnalysis() {
   clearTimeout(pushTimer);
@@ -133,4 +90,6 @@ function sigPayload(s) {
     setup: s.setup, pattern: AN.PAT[s.pattern].name, entry: s.entry, sl: s.sl, tp1: s.tp1, tp2: s.tp2, structureTarget: s.tpS,
     learned: s.learned, priorStats: s.prior, reasons: s.reasons, resultTP1: s.r1.res, resultTP2: s.r2.res };
 }
+const anApi = { activeSignal: () => activeSignal(), SETUP_TH, pct, rr };
+for (const part of ['trend', 'signal', 'stats']) mount(Analysis, { target: $('an-' + part), props: { part, api: anApi } });
 export { PERF, SETUP_TH, activeSignal, openAnalysisMenu, pct, renderAnalysis, rr, runAnalysis, sigPayload };

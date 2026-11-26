@@ -8,7 +8,7 @@ declare module '*/app-core.js' {
   export const S: Record<string, any>; export const store: { get<T = any>(k: string, d?: T): T; set(k: string, v: unknown): void };
   export const TFS: { label: string; type: number; sec: number }[]; export const THEME: any; export const TC: () => any;
   export const TZ: number; export const zoneOffsetSec: (tz: string) => number; export const UP: string; export const DOWN: string; export const drawings: any[]; export const createChart: any; export const LineSeries: any; export const AreaSeries: any;
-  export const HistogramSeries: any; export const CandlestickSeries: any; export const LineStyle: any; export const CrosshairMode: any; export const digits: () => number;
+  export const HistogramSeries: any; export const CandlestickSeries: any; export const LineStyle: any; export const CrosshairMode: any; export const digits: () => number; export const tf: () => { label: string; type: number; sec: number };
 }
 declare module '*/app-chart.js' { export const chart: any; export const chartThemeOptions: (...a: any[]) => any; export const applyChartTheme: (...a: any[]) => void; }
 declare module '*/app-data.js' { export const switchSymbol: (s: string) => void; export const loadChart: (...a: any[]) => any; export const dedupe: any; export const renderAlerts: any; export const toCandle: any; export const valid: any; export const connStatus: any; }
