@@ -246,6 +246,20 @@ app.whenReady().then(async () => {
     const lay = JSON.parse(await js(`JSON.stringify((() => { const r = (id) => document.getElementById(id).getBoundingClientRect(); return { shot: Math.round(r('shot').right), side: Math.round(r('side').left) }; })())`));
     check('layout: toolbar does not overlap side panel', lay.shot <= lay.side, lay);
     await A.shot('layout');
+    // MT5 read-only account panel + chart lines (positions.js)
+    const pz = JSON.parse(await js(`(async () => { const prev = S.source; S.source = 'mt5'; const px = S.candles.at(-1).close;
+      window.__posTest = { acct: { currency: 'USD', balance: 1000, equity: 987.5, demo: true, leverage: 500 },
+        positions: [{ ticket: 1, s: S.symbol + 'brex.', side: 'buy', vol: 0.02, open: +(px + 5).toFixed(2), sl: +(px - 10).toFixed(2), tp: +(px + 20).toFixed(2), price: px, profit: -12.5, swap: 0, time: 1 }],
+        orders: [{ ticket: 2, s: S.symbol, type: 'buy_limit', vol: 0.01, price: +(px - 6).toFixed(2), sl: 0, tp: 0, time: 1 }] };
+      return '{}'; })()`));
+    send('positions', await js('window.__posTest'));
+    await new Promise((r) => setTimeout(r, 1300));
+    const pp = JSON.parse(await js(`(() => { const el = document.getElementById('positions-panel'); const r = { shown: !el.classList.contains('hidden'), rows: el.querySelectorAll('.pos-t tr').length,
+      ro: /อ่านอย่างเดียว/.test(el.textContent), eq: /987\.50/.test(el.textContent), lines: (main.priceLines ? main.priceLines().length : -1) }; return JSON.stringify(r); })()`));
+    await shot('positions-panel');
+    check('mt5 positions: read-only panel with position + pending order', pp.shown && pp.rows === 2 && pp.ro && pp.eq, pp);
+    check('mt5 positions: entry/SL/TP + order lines on the chart', pp.lines === -1 || pp.lines >= 4, pp.lines);
+    await js(`S.source = 'vcg'; true`); send('positions', null);
     check('desktop: no console errors', A.errs.length === 0, A.errs.slice(0, 3));
     A.w.destroy();
 
