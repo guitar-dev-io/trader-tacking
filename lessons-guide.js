@@ -1,3 +1,4 @@
+import { PT, def } from './src/pt.ts';
 // Lesson book: categories + extra lessons (Thai). Loaded after lessons.js.
 // Candle illustrations are generated from OHLC numbers (0–100 scale, higher = higher price) so shapes are always correct.
 (function () {
@@ -33,7 +34,7 @@
   // build a trend of n candles from p0 drifting by d per bar
   const trend = (p0, d, n, rng = 4) => Array.from({ length: n }, (_, i) => { const o = p0 + d * i, c = o + d; return { o, c, h: Math.max(o, c) + rng * 0.4, l: Math.min(o, c) - rng * 0.4 }; });
 
-  window.LESSON_CATS = [
+  PT.LESSON_CATS = [
     { id: 'basics', name: 'พื้นฐานการอ่านกราฟ', icon: 'chart-line' },
     { id: 'candles', name: 'แท่งเทียนแต่ละแบบ', icon: 'chart-candlestick' },
     { id: 'structure', name: 'โครงสร้างราคา / สวิง / BOS-CHoCH', icon: 'compass' },
@@ -43,14 +44,14 @@
     { id: 'app', name: 'วิธีใช้แอป Price Tracker', icon: 'smartphone' },
   ];
 
-  window.LESSON_CAT_OF = {
+  PT.LESSON_CAT_OF = {
     0: 'structure', 1: 'structure', 2: 'structure', 3: 'basics', 4: 'candles', 5: 'structure', 6: 'app', 7: 'risk',
     8: 'app', 9: 'app', 10: 'risk', 11: 'risk', 12: 'app', 13: 'basics', 14: 'ds', 15: 'risk', 16: 'liquidity',
   };
 
   const NA = '<p class="lg-warn">เนื้อหาเพื่อการศึกษา ไม่ใช่คำแนะนำการลงทุน</p>';
 
-  window.LESSONS_EXTRA = [
+  PT.LESSONS_EXTRA = [
     // ------------------------------------------------------------------ basics
     { c: 'basics', t: 'อ่านแท่งเทียน 1 แท่ง: OHLC, เนื้อ, ไส้', b: `
 ${svg([{ o: 30, h: 85, l: 15, c: 70 }, { o: 70, h: 85, l: 15, c: 30 }], { w: 180, step: 70, bw: 18, labels: [

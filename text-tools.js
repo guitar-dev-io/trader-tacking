@@ -1,5 +1,8 @@
-/* global S, $, esc, store, fmt, digits, drawings:writable, saveDrawings, pushHistory, renderLayers, setTool, dirty:writable, el, TC, THEME,
-   inkColor, uid, xOfT, yOf, pointAt, mousePos, hitTest, handles, addAlert, toast, chart, main, ICON */
+import { PT, def } from './src/pt.ts';
+import { $, S, TC, digits, drawings, esc, fmt, saveDrawings, store } from './app-core.js';
+import { addAlert } from './app-data.js';
+import { el, yOf } from './app-overlay.js';
+def({ TXT: [() => TXT] });
 // Text on the chart (TradingView-style): multi-line styled text, callouts ("โน้ตชี้จุด"), labels on any drawing,
 // a right-click / long-press menu ("บันทึกราคา"), and a free-text note per symbol ("โน้ตของฉัน").
 // Loaded BEFORE draw.js: the functions here are only called at render / event time.
@@ -22,7 +25,7 @@ const TXT = (() => {
   };
   const ic = (n, s = 16) => `<svg class="ico" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LI[n] || ''}</svg>`;
   // the drawing toolbar asks ICON.svg('callout') → serve it from here
-  if (window.ICON && ICON.svg) { const base = ICON.svg; ICON.svg = (n, s = 20) => (n === 'callout' ? ic('callout', s) : base(n, s)); }
+  if (PT.ICON && PT.ICON.svg) { const base = PT.ICON.svg; PT.ICON.svg = (n, s = 20) => (n === 'callout' ? ic('callout', s) : base(n, s)); }
 
   const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans Thai", "Sukhumvit Set", Tahoma, sans-serif';
   const SIZES = [['S', 12], ['M', 14], ['L', 18], ['XL', 24]];
@@ -56,7 +59,7 @@ const TXT = (() => {
     return { x: P.x - 3, y: P.y - s.size - PY + 1, w, h, s, m };
   }
   function drawBox(d, b, sel) {
-    const { s, m } = b, col = inkColor(s.color), bg = (TC().box || '#0f1115cc').slice(0, 7);
+    const { s, m } = b, col = PT.inkColor(s.color), bg = (TC().box || '#0f1115cc').slice(0, 7);
     if (s.bg || sel) el('rect', { x: b.x, y: b.y, width: b.w, height: b.h, rx: 4, fill: s.bg ? bg : 'none', 'fill-opacity': s.bgOp,
       stroke: sel ? TC().sel : s.border ? col : 'none', 'stroke-width': sel ? 1.5 : 1, 'stroke-dasharray': sel && !s.border ? '3 2' : '' });
     else if (s.border) el('rect', { x: b.x, y: b.y, width: b.w, height: b.h, rx: 4, fill: 'none', stroke: col });
@@ -69,7 +72,7 @@ const TXT = (() => {
   function renderText(d, P, sel) { if (P[0].x == null || P[0].y == null) return; drawBox(d, boxOf(d, P[0]), sel); }
   function renderCallout(d, P, sel) {
     const A = P[0]; if (A.x == null || A.y == null) return;
-    const b = boxOf(d, A), col = sel ? TC().sel : inkColor(st(d).color);
+    const b = boxOf(d, A), col = sel ? TC().sel : PT.inkColor(st(d).color);
     const cx = Math.max(b.x, Math.min(A.x, b.x + b.w)), cy = Math.max(b.y, Math.min(A.y, b.y + b.h));   // nearest point of the box
     if (Math.hypot(cx - A.x, cy - A.y) > 2) el('line', { x1: A.x, y1: A.y, x2: cx, y2: cy, stroke: col, 'stroke-width': 1.3 });
     el('circle', { cx: A.x, cy: A.y, r: 3.5, fill: col });
@@ -92,7 +95,7 @@ const TXT = (() => {
       case 'vline': if (P[0].x != null) return { x: P[0].x + 6, y: 18, a: 'start' }; break;
       case 'rect': if (ok(P[0]) && ok(P[1])) return { x: Math.min(P[0].x, P[1].x) + 6, y: Math.min(P[0].y, P[1].y) + 16, a: 'start', inside: true }; break;
       case 'fib': case 'fibext': if (ok(P[0]) && ok(P[1])) return { x: Math.min(P[0].x, P[1].x), y: Math.min(...P.filter(ok).map((p) => p.y)) - 10, a: 'start' }; break;
-      case 'long': case 'short': if (ok(P[0])) { const L = typeof posLevels === 'function' ? posLevels(d) : null; const ys = L ? [L.sl, L.tp].map(yOf).filter((v) => v != null) : [P[0].y]; return { x: P[0].x + 4, y: Math.min(...ys) - 22, a: 'start' }; } break;
+      case 'long': case 'short': if (ok(P[0])) { const L = typeof PT.posLevels === 'function' ? PT.posLevels(d) : null; const ys = L ? [L.sl, L.tp].map(yOf).filter((v) => v != null) : [P[0].y]; return { x: P[0].x + 4, y: Math.min(...ys) - 22, a: 'start' }; } break;
       case 'arrowUp': if (ok(P[0])) return { x: P[0].x, y: P[0].y + 40, a: 'middle' }; break;
       case 'arrowDown': if (ok(P[0])) return { x: P[0].x, y: P[0].y - 30, a: 'middle' }; break;
       default: if (ok(P[0])) return { x: P[0].x + 6, y: P[0].y - 8, a: 'start' };
@@ -105,7 +108,7 @@ const TXT = (() => {
     const x0 = p.a === 'middle' ? p.x - w / 2 : p.a === 'end' ? p.x - w : p.x;
     const y0 = p.y - size - 1;
     if (!p.inside) el('rect', { x: x0, y: y0, width: w, height: h, rx: 3, fill: (TC().box || '#0f1115cc').slice(0, 7), 'fill-opacity': 0.85, stroke: sel ? TC().sel : 'none' });
-    m.lines.forEach((ln, i) => { const t = el('text', { x: x0 + 5, y: p.y + i * m.lh, fill: inkColor(d.color || '#ffffff'), 'font-size': size, 'font-weight': 600, 'font-family': FONT }); t.textContent = ln; });
+    m.lines.forEach((ln, i) => { const t = el('text', { x: x0 + 5, y: p.y + i * m.lh, fill: PT.inkColor(d.color || '#ffffff'), 'font-size': size, 'font-weight': 600, 'font-family': FONT }); t.textContent = ln; });
   }
 
   // ---- editor (text / callout / label)
@@ -158,7 +161,7 @@ const TXT = (() => {
     }
     const preview = () => {
       ta.style.fontSize = (kind === 'label' ? 13 : s.size) + 'px'; ta.style.fontWeight = s.bold ? 700 : 500;
-      ta.style.color = inkColor(s.color); ta.style.textAlign = s.align || 'left';
+      ta.style.color = PT.inkColor(s.color); ta.style.textAlign = s.align || 'left';
       ta.style.height = 'auto'; ta.style.height = Math.min(260, ta.scrollHeight + 2) + 'px';
     };
     const restyle = (patch, live) => {
@@ -172,21 +175,21 @@ const TXT = (() => {
       if (!ed) return; const v = ta.value.replace(/\s+$/, ''); close();
       const keep = { size: s.size, color: s.color, bold: !!s.bold, bg: !!s.bg, bgOp: s.bgOp, border: !!s.border, align: s.align };
       if (kind === 'label') {
-        if (!d) return; pushHistory(); if (v.trim()) d.label = v.slice(0, 300); else delete d.label;
+        if (!d) return; PT.pushHistory(); if (v.trim()) d.label = v.slice(0, 300); else delete d.label;
         if (s.color && s.color !== d.color) d.color = s.color;
       } else if (d) {
-        pushHistory();
+        PT.pushHistory();
         if (v.trim()) { d.text = v.slice(0, 2000); Object.assign(d, keep); } else drawings.splice(drawings.indexOf(d), 1);
       } else if (v.trim()) {
-        pushHistory();
-        const nd = { id: uid(), type: kind, pts: [o.pt], text: v.slice(0, 2000), ...keep };
+        PT.pushHistory();
+        const nd = { id: PT.uid(), type: kind, pts: [o.pt], text: v.slice(0, 2000), ...keep };
         if (kind === 'callout') nd.off = { dx: 24, dy: -Math.round(56 + (s.size - 14) * 1.5) };
         drawings.push(nd);
       }
       if (kind !== 'label') { last = { ...last, ...keep }; if (kind === 'callout') last.border = DEF.border; store.set('txtStyle', last); }
-      S.selected = null; saveDrawings(); renderLayers(); dirty = true; setTool('cursor');
+      S.selected = null; saveDrawings(); PT.renderLayers(); PT.dirty = true; PT.setTool('cursor');
     };
-    const cancel = () => { close(); setTool('cursor'); dirty = true; };
+    const cancel = () => { close(); PT.setTool('cursor'); PT.dirty = true; };
     ta.addEventListener('keydown', (e) => {
       e.stopPropagation();
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); commit(); }
@@ -205,10 +208,10 @@ const TXT = (() => {
   const bar = document.createElement('div'); bar.className = 'txt-bar hidden';
   let barFor = null, barKey = '';
   function applyTo(d, patch) {
-    pushHistory(); Object.assign(d, patch);
+    PT.pushHistory(); Object.assign(d, patch);
     if (d.type === 'text' && d.size == null) d.size = 13;   // first restyle of an old text: keep its size
     if (d.type === 'text' || d.type === 'callout') { last = { ...last, ...patch }; store.set('txtStyle', last); }
-    saveDrawings(); dirty = true; barKey = '';
+    saveDrawings(); PT.dirty = true; barKey = '';
   }
   function buildBar(d, i) {
     const isText = d.type === 'text' || d.type === 'callout';
@@ -217,13 +220,13 @@ const TXT = (() => {
       : `<button data-b="label" title="ข้อความบนรูปวาด">${ic('type')}<span>${d.label ? 'แก้ข้อความ' : 'เพิ่มข้อความ'}</span></button>${styleBar(s, { noSize: true })}`}
       <button data-b="del" class="txb-del" title="ลบ (Delete)">${ic('trash')}</button>`;
     wireStyle(bar, (patch) => { if (!S.locked) applyTo(d, patch); });
-    bar.querySelector('[data-b=del]').onclick = () => { if (S.locked) return; pushHistory(); drawings.splice(i, 1); S.selected = null; saveDrawings(); renderLayers(); dirty = true; };
+    bar.querySelector('[data-b=del]').onclick = () => { if (S.locked) return; PT.pushHistory(); drawings.splice(i, 1); S.selected = null; saveDrawings(); PT.renderLayers(); PT.dirty = true; };
     const e = bar.querySelector('[data-b=edit]'); if (e) e.onclick = () => openEditor(i);
     const l = bar.querySelector('[data-b=label]'); if (l) l.onclick = () => openEditor(i, true);
   }
   function openEditor(i, asLabel) {
     const d = drawings[i]; if (!d) return;
-    const P = { x: xOfT(d.pts[0].time), y: yOf(d.pts[0].price) };
+    const P = { x: PT.xOfT(d.pts[0].time), y: yOf(d.pts[0].price) };
     if (d.type === 'hline') P.x = $('chart').clientWidth - 360;
     if (d.type === 'text' || d.type === 'callout') { const b = boxOf(d, P); edit({ kind: d.type, existing: d, x: b.x, y: b.y + b.h }); }
     else if (asLabel || LABEL_TYPES.includes(d.type)) edit({ kind: 'label', target: d, x: P.x ?? 40, y: P.y ?? 40 });
@@ -238,14 +241,14 @@ const TXT = (() => {
     bar.classList.remove('hidden');
     if (!mobile()) {
       let x, y;
-      if (d.type === 'text' || d.type === 'callout') { const P = { x: xOfT(d.pts[0].time), y: yOf(d.pts[0].price) }; if (P.x == null || P.y == null) return; const b = boxOf(d, P); x = b.x; y = b.y; }
-      else { const hs = handles(d); if (!hs.length) return; x = Math.min(...hs.map((h) => h.x)); y = Math.min(...hs.map((h) => h.y)); }
+      if (d.type === 'text' || d.type === 'callout') { const P = { x: PT.xOfT(d.pts[0].time), y: yOf(d.pts[0].price) }; if (P.x == null || P.y == null) return; const b = boxOf(d, P); x = b.x; y = b.y; }
+      else { const hs = PT.handles(d); if (!hs.length) return; x = Math.min(...hs.map((h) => h.x)); y = Math.min(...hs.map((h) => h.y)); }
       // like TradingView: the toolbar floats at the top of the chart (never on top of the drawing itself);
       // it drops below the selection only when the drawing reaches the top edge
       const W = $('chart-wrap').clientWidth, bw = bar.offsetWidth || 420, bh = bar.offsetHeight || 36;
       let yb = y;
-      if (d.type === 'text' || d.type === 'callout') { const P = { x: xOfT(d.pts[0].time), y: yOf(d.pts[0].price) }; const b = boxOf(d, P); yb = b.y + b.h; }
-      else { const hs = handles(d); yb = Math.max(...hs.map((h) => h.y)); }
+      if (d.type === 'text' || d.type === 'callout') { const P = { x: PT.xOfT(d.pts[0].time), y: yOf(d.pts[0].price) }; const b = boxOf(d, P); yb = b.y + b.h; }
+      else { const hs = PT.handles(d); yb = Math.max(...hs.map((h) => h.y)); }
       bar.style.left = Math.max(4, Math.min(x, W - bw - 70)) + 'px';
       bar.style.top = (y > bh + 44 ? 34 : Math.min(yb + 12, $('chart-wrap').clientHeight - bh - 40)) + 'px';
     }
@@ -255,7 +258,7 @@ const TXT = (() => {
   const menu = document.createElement('div'); menu.className = 'ctx-menu hidden';
   function closeMenu() { menu.classList.add('hidden'); }
   function openMenu(cx, cy, x, y) {
-    const p = pointAt(x, y, false); if (!p) return;
+    const p = PT.pointAt(x, y, false); if (!p) return;
     const pt = { time: p.time, price: p.price };
     menu.innerHTML = `<div class="ctx-h">${fmt(p.price)}</div>
       <button data-c="text">${ic('type')}เพิ่มข้อความตรงนี้</button>
@@ -273,8 +276,8 @@ const TXT = (() => {
       if (c === 'text') edit({ kind: 'text', pt, x, y });
       else if (c === 'callout') edit({ kind: 'callout', pt, x, y });
       else if (c === 'hline') {
-        pushHistory(); const d = { id: uid(), type: 'hline', pts: [{ time: 0, price: p.price }], color: '#f5a623' };
-        drawings.push(d); saveDrawings(); renderLayers(); dirty = true;
+        PT.pushHistory(); const d = { id: PT.uid(), type: 'hline', pts: [{ time: 0, price: p.price }], color: '#f5a623' };
+        drawings.push(d); saveDrawings(); PT.renderLayers(); PT.dirty = true;
         edit({ kind: 'label', target: d, x: Math.max(20, $('chart').clientWidth - 380), y });
       } else if (c === 'alert') addAlert(+p.price.toFixed(digits()));
       else if (c === 'notes') NOTES.open();
@@ -287,13 +290,13 @@ const TXT = (() => {
     const skip = (t) => t.closest('#legend, #zoombar, #layers-pop, .txe, .txt-bar, #connect, #m-draw, #m-pill');
     wrap.addEventListener('contextmenu', (e) => {
       if (skip(e.target) || !S.candles || !S.candles.length) return;
-      e.preventDefault(); const { x, y } = mousePos(e); openMenu(e.clientX, e.clientY, x, y);
+      e.preventDefault(); const { x, y } = PT.mousePos(e); openMenu(e.clientX, e.clientY, x, y);
     });
     // phone: long-press on empty chart area
     let lp = null;
     wrap.addEventListener('pointerdown', (e) => {
       if (e.pointerType !== 'touch' || S.tool !== 'cursor' || skip(e.target)) return;
-      const { x, y } = mousePos(e); if (hitTest(x, y) != null) return;
+      const { x, y } = PT.mousePos(e); if (PT.hitTest(x, y) != null) return;
       lp = { x: e.clientX, y: e.clientY, t: setTimeout(() => { lp = null; openMenu(e.clientX, e.clientY, x, y); if (navigator.vibrate) navigator.vibrate(12); }, 550) };
     }, true);
     const cancelLp = (e) => { if (lp && (!e || e.type !== 'pointermove' || Math.hypot(e.clientX - lp.x, e.clientY - lp.y) > 8)) { clearTimeout(lp.t); lp = null; } };
@@ -351,4 +354,4 @@ const TXT = (() => {
   return { st, measure, boxOf, renderText, renderCallout, renderLabel, hit, hitCalloutBox, edit, close, isEditing: () => !!ed, sync, openEditor,
     openMenu, LABEL_TYPES, NOTES, last: () => ({ ...last }) };
 })();
-window.TXT = TXT;
+export { TXT };

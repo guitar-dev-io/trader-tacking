@@ -1,10 +1,15 @@
-/* global $, S, store, esc, ICON, PAGES, HEADLINES, NEWS */
+import { PT, def } from './src/pt.ts';
+import { $, esc, store } from './app-core.js';
+import { NEWS } from './extras.js';
+import { HEADLINES } from './news.js';
+import { PAGES } from './pages.js';
+def({ NEWSPAGE: [() => NEWSPAGE] });
 // "ข่าวและปฏิทิน": market headlines (news.js renders into #newsfeed) next to the full economic calendar of the week.
 // Desktop: a page tab with a titlebar button + unread badge. Phone: a full-screen page from the More page.
 // The ราคา tab keeps a small "ข่าวล่าสุด" teaser.
 const NEWSPAGE = (() => {
   const mobile = document.body.classList.contains('mobile');
-  const ic = (n, s = 16, c) => (ICON.html ? ICON.html(n, s, c) : '');
+  const ic = (n, s = 16, c) => (PT.ICON.html ? PT.ICON.html(n, s, c) : '');
   let calAll = store.get('np.calAll', false);
 
   // the old side tab's feed element moves into the page
@@ -69,10 +74,10 @@ const NEWSPAGE = (() => {
   if (mobile) {
     document.body.appendChild(root);
     root.querySelector('.np-close').onclick = close;
-    const prevBack = window.__mobileBack;
-    window.__mobileBack = () => { if (!root.classList.contains('hidden')) { close(); return true; } return prevBack ? prevBack() : false; };
+    const prevBack = PT.__mobileBack;
+    PT.__mobileBack = () => { if (!root.classList.contains('hidden')) { close(); return true; } return prevBack ? prevBack() : false; };
   } else {
-    const inner = (n) => (ICON.svg(n, 14) || '').replace(/^<svg[^>]*>|<\/svg>$/g, '');
+    const inner = (n) => (PT.ICON.svg(n, 14) || '').replace(/^<svg[^>]*>|<\/svg>$/g, '');
     const btn = document.createElement('button');
     btn.id = 'news-btn'; btn.className = 'ib tb-news'; btn.title = 'ข่าวและปฏิทินเศรษฐกิจ';
     btn.innerHTML = `${ic('newspaper', 16)}<span id="news-badge"></span>`;
@@ -85,4 +90,3 @@ const NEWSPAGE = (() => {
   setTimeout(teaser, 6000);
   return { open, close, render, isOpen: visible };
 })();
-window.NEWSPAGE = NEWSPAGE;

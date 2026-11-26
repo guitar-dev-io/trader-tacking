@@ -1,5 +1,10 @@
-/* global S, store, $, esc, fmt, tf, TFS, TZ, vcg, onChartMsg, onQuotesMsg, loadChart, toast, desktopNotify, beep, el, txt, label, chartW, paneH,
-   xIdx, timeToLogical, dirty:writable, chart, renderWatchlist, setAllData */
+import { PT, def } from './src/pt.ts';
+import { $, S, TZ, esc, store, tf } from './app-core.js';
+import { chart } from './app-chart.js';
+import { beep, desktopNotify, loadChart, onChartMsg, onQuotesMsg, renderConnect, renderWatchlist, setAllData } from './app-data.js';
+import { el, lToX, timeToLogical, txt } from './app-overlay.js';
+import { toast } from './settings.js';
+def({ fetchJSON: [() => fetchJSON], DEMO: [() => DEMO], setSource: [() => setSource, (v) => { setSource = v; }], renderSourceSel: [() => renderSourceSel, (v) => { renderSourceSel = v; }], CACHE: [() => CACHE], NEWS: [() => NEWS], UPDATE: [() => UPDATE] });
 // Extras: Demo data source (Binance public market data), local candle cache, economic calendar, update checker.
 
 // ---------------------------------------------------------------- helpers
@@ -17,9 +22,9 @@ const DEMO = (() => {
   let ws = null, wsKey = '', cur = null, retry = null;
 
   async function requestChart(o, handler) {
-    if (o.slot === 'mtf') handler = (m) => MTF.onMsg({ ...m, slot: 'mtf' });
+    if (o.slot === 'mtf') handler = (m) => PT.MTF.onMsg({ ...m, slot: 'mtf' });
     const extra = o.slot && o.slot !== 'main';          // MTF / dashboard widgets: never replace the main request
-    if (extra && !handler && typeof DASH !== 'undefined') handler = (m) => DASH.onMsg({ ...m, slot: o.slot });
+    if (extra && !handler && typeof PT.DASH !== 'undefined') handler = (m) => PT.DASH.onMsg({ ...m, slot: o.slot });
     handler = handler || onChartMsg;
     if (!extra) cur = o;
     try {
@@ -40,7 +45,7 @@ const DEMO = (() => {
     const syms = [...new Set([...S.symbols, S.symbol])];
     const streams = syms.map((s) => map(s).toLowerCase() + '@ticker');
     streams.push(map(S.symbol).toLowerCase() + '@kline_' + IV[S.tf]);
-    const mtfType = typeof MTF !== 'undefined' ? MTF.activeType() : null;
+    const mtfType = typeof PT.MTF !== 'undefined' ? PT.MTF.activeType() : null;
     if (mtfType != null && mtfType !== S.tf) streams.push(map(S.symbol).toLowerCase() + '@kline_' + IV[mtfType]);
     const key = streams.join('/');
     if (ws && wsKey === key && ws.readyState <= 1) return;
@@ -59,7 +64,7 @@ const DEMO = (() => {
       } else if (d.e === 'kline' && map(S.symbol) === d.s) {
         const k = d.k, msg = { type: 'chart', data: { updates: { candles: [{ timeSeconds: k.t / 1000, open: +k.o, high: +k.h, low: +k.l, close: +k.c }] } } };
         if (k.i === IV[S.tf]) onChartMsg(msg);
-        if (typeof MTF !== 'undefined' && MTF.activeType() != null && k.i === IV[MTF.activeType()]) MTF.onMsg({ ...msg, slot: 'mtf' });
+        if (typeof PT.MTF !== 'undefined' && PT.MTF.activeType() != null && k.i === IV[PT.MTF.activeType()]) PT.MTF.onMsg({ ...msg, slot: 'mtf' });
       }
     };
   }
@@ -88,7 +93,7 @@ function renderSourceSel() {
   $('src-sel').value = S.source;
   $('src-sel').querySelector('[value=vcg]').disabled = !vcg.capabilities?.vcg;
   const o5 = $('src-sel').querySelector('[value=mt5]'); o5.disabled = !vcg.capabilities?.mt5; o5.hidden = !vcg.capabilities?.mt5;
-  if (typeof SRC_UI !== 'undefined') SRC_UI.render();
+  if (typeof PT.SRC_UI !== 'undefined') PT.SRC_UI.render();
 }
 renderSourceSel();
 if (S.source === 'mt5' && !vcg.capabilities?.mt5) { S.source = vcg.capabilities?.vcg ? 'vcg' : 'demo'; store.set('source', S.source); }
@@ -151,7 +156,7 @@ const NEWS = (() => {
       const soon = e.t - now < 1800 && e.t > now, past = e.t < now;
       return `<tr style="${past ? 'opacity:.45' : soon ? 'background:#5c4a1233' : ''}"><td><i class="imp ${e.impact === 'High' ? 'hi' : 'md'}"></i>${hhmm(e.t)}</td><td style="text-align:left">${esc(e.ccy)} ${esc(e.title)}</td><td class="muted">${esc(e.forecast || '')}</td></tr>`;
     }).join('')}</tbody></table>` : '<p class="muted">ไม่มีข่าวแรงที่เกี่ยวข้อง หรือยังโหลดไม่ได้</p>') + '<p class="muted">ข้อมูลจาก Forex Factory · <i class="imp hi"></i>= ผลกระทบสูง · เวลาตาม timezone กราฟ</p>';
-    dirty = true;
+    PT.dirty = true;
   }
   function check() {
     const now = Date.now() / 1000;
@@ -197,7 +202,7 @@ const UPDATE = (() => {
       const r = await fetchJSON(`https://api.github.com/repos/${REPO}/releases/latest`);
       if (cur && r.tag_name && cmp(r.tag_name, cur) > 0) {
         const t = document.createElement('div'); t.className = 'toast ok'; t.style.pointerEvents = 'auto';
-        t.innerHTML = `${ICON.html('sparkles', 16, 'toast-ic')}มีเวอร์ชันใหม่ ${esc(r.tag_name)} (ตอนนี้ ${esc(cur)}) <a href="${esc(r.html_url)}" target="_blank" style="color:var(--link, #82aaff)">ดาวน์โหลด</a> <button style="margin-left:6px" aria-label="ปิด">${ICON.svg('x', 14)}</button>`;
+        t.innerHTML = `${PT.ICON.html('sparkles', 16, 'toast-ic')}มีเวอร์ชันใหม่ ${esc(r.tag_name)} (ตอนนี้ ${esc(cur)}) <a href="${esc(r.html_url)}" target="_blank" style="color:var(--link, #82aaff)">ดาวน์โหลด</a> <button style="margin-left:6px" aria-label="ปิด">${PT.ICON.svg('x', 14)}</button>`;
         t.querySelector('button').onclick = () => t.remove();
         $('toasts').appendChild(t);
         vcg.log('info', `มีเวอร์ชันใหม่ ${r.tag_name}`, null, 'update');
@@ -207,3 +212,4 @@ const UPDATE = (() => {
   if (store.get('autoUpdateCheck', true)) { setTimeout(() => check(false), 8000); setInterval(() => check(false), 6 * 3600e3); }
   return { check };
 })();
+export { CACHE, DEMO, NEWS, setSource };

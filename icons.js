@@ -1,3 +1,4 @@
+import { PT, def } from './src/pt.ts';
 // Icons for the whole UI (24×24, stroke = currentColor, so they follow the theme).
 //  - generic UI icons: Lucide (vendored below, see scripts/build-icons.js) — one consistent pack, works offline
 //  - chart-tool icons (fib, rect, hline…): drawn here in the same style (24 grid, round caps)
@@ -143,5 +144,5 @@
   // inline icon for text (aligned to the Thai/Latin baseline by CSS .ic)
   const html = (name, size = 16, cls = '') => `<span class="ic${cls ? ' ' + cls : ''}">${svg(name, size)}</span>`;
   const has = (name) => !!(L[A[name] || name] || P[name]);
-  window.ICON = { svg, html, has };
+  PT.ICON = { svg, html, has };
 })();

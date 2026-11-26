@@ -1,5 +1,14 @@
-/* global S, $, esc, store, toast, vcg, DEMO, TFS, TZ, toCandle, valid, dedupe, switchSymbol, LightweightCharts, chartThemeOptions, TC, THEME, UP, DOWN,
-   PAGES, POSITIONS, HEADLINES, NEWS, AN, BOUNCE, renderAlerts, connStatus */
+import { PT, def } from './src/pt.ts';
+import { AN, BOUNCE } from './src/legacy/core.ts';
+import { $, DOWN, S, TC, TFS, THEME, TZ, UP, esc, store } from './app-core.js';
+import { chartThemeOptions } from './app-chart.js';
+import { connStatus, dedupe, renderAlerts, switchSymbol, toCandle, valid } from './app-data.js';
+import { toast } from './settings.js';
+import { DEMO, NEWS } from './extras.js';
+import { HEADLINES } from './news.js';
+import { POSITIONS } from './positions.js';
+import { PAGES } from './pages.js';
+def({ DASH: [() => DASH] });
 // Dashboard: a page of widgets — several live charts (any symbol / timeframe), quotes, my MT5 orders, news, calendar,
 // session clock, bounce zones, alerts and notes. Widgets are added from a catalog, dragged to reorder, resized,
 // and saved as named layouts. Icons: Lucide (ISC license, https://lucide.dev) as inline SVG.
@@ -498,9 +507,9 @@ const DASH = (() => {
   function setActive(on) {
     if (on === active) return; active = on;
     // give the widgets the whole width: fold the side panel while the dashboard is open, restore it after
-    if (!mobile && window.setUI && S.ui) {
-      if (on) { sideWas = !!S.ui.side; if (sideWas) window.setUI('side', false); }
-      else if (sideWas) { window.setUI('side', true); sideWas = null; }
+    if (!mobile && PT.setUI && S.ui) {
+      if (on) { sideWas = !!S.ui.side; if (sideWas) PT.setUI('side', false); }
+      else if (sideWas) { PT.setUI('side', true); sideWas = null; }
     }
     if (on) { if (!grid.children.length) build(); requestAnimationFrame(mountVisible); }
   }
@@ -531,4 +540,3 @@ const DASH = (() => {
   return { open, close, onMsg, add, remove, layout, feeds: () => [...feeds.values()].map((f) => ({ sym: f.sym, tf: f.tf, slot: f.slot, n: f.candles.length, err: f.err })),
     setEdit, isActive: () => active, cfg: () => cfg, PRESETS: Object.keys(PRESETS), TYPES: Object.keys(TYPES) };
 })();
-window.DASH = DASH;

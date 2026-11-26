@@ -1,15 +1,23 @@
-/* global ICON, S, store, $, esc, fmt, digits, tf, TZ, setAllData, pushLast, chart, toast, vcg, el, label, txt, yOf, xIdx, chartW, autoVpp, vpp, plannerLot,
-   drawings:writable, saveDrawings, drawingsKey, switchSymbol, renderTfs, loadChart, dirty:writable, UP, DOWN, renderLayers, normalize, onQuotesMsg:writable, desktopNotify, beep */
+import { PT, def } from './src/pt.ts';
+import { $, DOWN, S, TZ, UP, drawings, esc, fmt, saveDrawings, store, tf } from './app-core.js';
+import { chart } from './app-chart.js';
+import { beep, loadChart, onQuotesMsg, pushLast, setAllData, switchSymbol } from './app-data.js';
+import { el, label, yOf } from './app-overlay.js';
+import { renderTfs } from './app.js';
+import { normalize } from './draw.js';
+import { autoVpp, plannerLot, vpp } from './planner.js';
+import { toast } from './settings.js';
+def({ REPLAY: [() => REPLAY], SIM: [() => SIM], _onQuotesMsg: [() => _onQuotesMsg], QUIZ: [() => QUIZ], downloadText: [() => downloadText, (v) => { downloadText = v; }], LESSON: [() => LESSON] });
 // Learning tools: Bar Replay, paper trading (simulated orders on live or replay data), practice exercises, journal & stats, lesson packs.
 
 // ================================================================ Bar Replay
 const REPLAY = (() => {
   const bar = document.createElement('div');
   bar.id = 'replaybar'; bar.className = 'hidden';
-  bar.innerHTML = `<span class="rp-title">${ICON.html('rewind', 16)}Replay</span>
-    <button data-r="back" title="ถอย 1 แท่ง" aria-label="ถอย 1 แท่ง">${ICON.svg('skip-back', 16)}</button><button data-r="play" title="เล่น/หยุด (Space)" aria-label="เล่น/หยุด">${ICON.svg('play', 16)}</button><button data-r="step" title="เดินหน้า 1 แท่ง (→)" aria-label="เดินหน้า 1 แท่ง">${ICON.svg('skip-forward', 16)}</button>
+  bar.innerHTML = `<span class="rp-title">${PT.ICON.html('rewind', 16)}Replay</span>
+    <button data-r="back" title="ถอย 1 แท่ง" aria-label="ถอย 1 แท่ง">${PT.ICON.svg('skip-back', 16)}</button><button data-r="play" title="เล่น/หยุด (Space)" aria-label="เล่น/หยุด">${PT.ICON.svg('play', 16)}</button><button data-r="step" title="เดินหน้า 1 แท่ง (→)" aria-label="เดินหน้า 1 แท่ง">${PT.ICON.svg('skip-forward', 16)}</button>
     <select data-r="speed" title="ความเร็ว"><option value="1">1 แท่ง/วิ</option><option value="2">2/วิ</option><option value="5">5/วิ</option><option value="10">10/วิ</option><option value="25">25/วิ</option></select>
-    <span class="rp-info"></span><button data-r="exit" class="rp-exit" title="ออกจาก Replay">${ICON.html('x', 14)}ออก</button>`;
+    <span class="rp-info"></span><button data-r="exit" class="rp-exit" title="ออกจาก Replay">${PT.ICON.html('x', 14)}ออก</button>`;
   $('chart-wrap').appendChild(bar);
   const info = bar.querySelector('.rp-info'), playBtn = bar.querySelector('[data-r=play]');
   let timer = null, picking = false;
@@ -24,7 +32,7 @@ const REPLAY = (() => {
     setAllData();
     chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, idx - 120), to: idx + 25 });
     bar.classList.remove('hidden'); document.body.classList.add('replaying');
-    if (typeof MTF !== 'undefined') MTF.replaySync();
+    if (typeof PT.MTF !== 'undefined') PT.MTF.replaySync();
     update(); SIM.render(); QUIZ.render(); vcg.log('info', `เริ่ม Replay ${S.symbol} ${tf().label} ที่แท่ง ${idx}`, null, 'learn');
   }
   function step(n = 1) {
@@ -36,17 +44,17 @@ const REPLAY = (() => {
       pushLast(true);
       SIM.onBar(b);
       QUIZ.onBar();
-      if (typeof MTF !== 'undefined') MTF.replaySync();
+      if (typeof PT.MTF !== 'undefined') PT.MTF.replaySync();
     }
     update();
   }
   function back() {
     const R = S.replay; if (!R || R.idx <= 30) return;
     R.idx--; S.candles = R.full.slice(0, R.idx + 1); setAllData(); update();
-    if (typeof MTF !== 'undefined') MTF.replaySync();
+    if (typeof PT.MTF !== 'undefined') PT.MTF.replaySync();
   }
-  function play() { if (timer) return stopPlay(); const sp = +bar.querySelector('[data-r=speed]').value; timer = setInterval(() => step(1), 1000 / sp); playBtn.innerHTML = ICON.svg('pause', 16); }
-  function stopPlay() { clearInterval(timer); timer = null; playBtn.innerHTML = ICON.svg('play', 16); }
+  function play() { if (timer) return stopPlay(); const sp = +bar.querySelector('[data-r=speed]').value; timer = setInterval(() => step(1), 1000 / sp); playBtn.innerHTML = PT.ICON.svg('pause', 16); }
+  function stopPlay() { clearInterval(timer); timer = null; playBtn.innerHTML = PT.ICON.svg('play', 16); }
   function exit() {
     if (!S.replay) return;
     stopPlay(); QUIZ.abort();
@@ -122,7 +130,7 @@ const SIM = (() => {
       toast(`ตั้งคำสั่ง ${ticket.type === 'limit' ? 'Limit' : 'Stop'} ${side === 1 ? 'BUY' : 'SELL'} @ ${fmt(price)}`, 'ok');
     }
     vcg.log('info', `จำลอง: ${ticket.type} ${side === 1 ? 'BUY' : 'SELL'} ${lot} ${sym}`, null, 'sim');
-    saveAcc(); render(); dirty = true; QUIZ.onTrade();
+    saveAcc(); render(); PT.dirty = true; QUIZ.onTrade();
   }
   function close(p, exit, reason, t, quiet) {
     const a = acc[p.mode] || A();
@@ -131,7 +139,7 @@ const SIM = (() => {
     a.balance += pnl;
     const h = { ...p, exit, reason, closeTime: t, pnl, r };
     a.history.push(h); if (a.history.length > 2000) a.history.shift();
-    saveAcc(); if (quiet) { QUIZ.onClose(h); return; } render(); dirty = true;
+    saveAcc(); if (quiet) { QUIZ.onClose(h); return; } render(); PT.dirty = true;
     const msg = `${reason === 'TP' ? 'ถึง TP' : reason === 'SL' ? 'โดน SL' : 'ปิด'} ${p.side === 1 ? 'BUY' : 'SELL'} ${p.symbol} ${money(pnl)}${r != null ? ` (${r >= 0 ? '+' : ''}${r.toFixed(2)}R)` : ''}`;
     toast(msg, pnl >= 0 ? 'ok' : 'warn');
     QUIZ.onClose(h);
@@ -209,7 +217,7 @@ const SIM = (() => {
     box.querySelectorAll('[data-t=side]').forEach((b) => (b.onclick = () => { ticket.side = +b.dataset.v; store.set('sim.ticket', ticket); render(); }));
     box.querySelectorAll('[data-close]').forEach((b) => (b.onclick = () => { const p = a.positions.find((x) => x.id === +b.dataset.close); const P = p && px(p.symbol); if (P) close(p, p.side === 1 ? P.bid : P.ask, 'manual', P.t); }));
     box.querySelectorAll('[data-bulk]').forEach((b) => (b.onclick = () => bulk(b.dataset.bulk)));
-    box.querySelectorAll('[data-cancel]').forEach((b) => (b.onclick = () => { a.orders = a.orders.filter((x) => x.id !== +b.dataset.cancel); saveAcc(); render(); dirty = true; }));
+    box.querySelectorAll('[data-cancel]').forEach((b) => (b.onclick = () => { a.orders = a.orders.filter((x) => x.id !== +b.dataset.cancel); saveAcc(); render(); PT.dirty = true; }));
     $('sim-place').onclick = (e) => {
       const b = e.currentTarget; if (b.disabled) return;
       b.disabled = true; setTimeout(() => { b.disabled = false; }, 800);   // one order per click
@@ -224,7 +232,7 @@ const SIM = (() => {
     };
     $('sim-reset').onclick = (e) => {
       if (e.target.dataset.armed !== '1') { e.target.dataset.armed = '1'; e.target.textContent = 'กดอีกครั้งเพื่อยืนยัน'; return; }
-      acc[m] = blank(); saveAcc(); render(); dirty = true;
+      acc[m] = blank(); saveAcc(); render(); PT.dirty = true;
     };
     $('sim-csv').onclick = () => {
       const rows = [['mode', 'symbol', 'side', 'lot', 'entry', 'exit', 'sl', 'tp', 'reason', 'pnl', 'r', 'tag', 'note', 'open', 'close', 'quiz']]
@@ -235,7 +243,7 @@ const SIM = (() => {
   // bulk actions: close all / winners / losers, move SL to entry on winners, cancel pending orders
   function bulk(kind) {
     const a = A();
-    if (kind === 'cancel') { const n = a.orders.length; a.orders = []; saveAcc(); render(); dirty = true; return toast(`ยกเลิกคำสั่งรอ ${n} รายการ`, 'ok'); }
+    if (kind === 'cancel') { const n = a.orders.length; a.orders = []; saveAcc(); render(); PT.dirty = true; return toast(`ยกเลิกคำสั่งรอ ${n} รายการ`, 'ok'); }
     let n = 0, total = 0;
     for (const p of [...a.positions]) {
       const P = px(p.symbol); if (!P) continue;
@@ -243,7 +251,7 @@ const SIM = (() => {
       if (kind === 'be') { if (pl > 0 && (!p.sl || (p.sl - p.entry) * p.side < 0)) { p.sl = p.entry; n++; } continue; }
       if (kind === 'all' || (kind === 'win' && pl > 0) || (kind === 'loss' && pl < 0)) { close(p, exit, 'manual', P.t, true); n++; total += pl; }
     }
-    saveAcc(); render(); dirty = true;
+    saveAcc(); render(); PT.dirty = true;
     const label = { all: 'ปิดทั้งหมด', win: 'ปิดไม้กำไร', loss: 'ปิดไม้ขาดทุน', be: 'กันทุน' }[kind];
     toast(n ? (kind === 'be' ? `${label}: เลื่อน SL มาที่ทุน ${n} ไม้` : `${label} ${n} ไม้ รวม ${money(total)}`) : `${label}: ไม่มีไม้ที่ตรงเงื่อนไข`, n ? 'ok' : 'info');
   }
@@ -285,7 +293,7 @@ const SIM = (() => {
 
 // hook live quotes into the simulator
 const _onQuotesMsg = onQuotesMsg;
-onQuotesMsg = function (list) { _onQuotesMsg(list); if (!S.replay) { for (const q of list) SIM.onQuote(q); SIM.tickUpdate(); } };
+PT.onQuotesMsg = function (list) { _onQuotesMsg(list); if (!S.replay) { for (const q of list) SIM.onQuote(q); SIM.tickUpdate(); } };
 
 // ================================================================ Practice exercises (random replay quiz)
 const QUIZ = (() => {
@@ -321,7 +329,7 @@ const QUIZ = (() => {
     const rs = done.filter((r) => r.r != null).map((r) => r.r);
     box.innerHTML = `<div class="panel-h">ฝึกด้วย Replay</div>
       <p class="muted">ย้อนกราฟแล้วเล่นทีละแท่ง โดยไม่เห็นอนาคต — ฝึกตีโซน วางจุดเข้า SL TP แล้วดูผล</p>
-      <div class="btns"><button id="rp-pick">${ICON.html('rewind', 15)}เลือกจุดเริ่มบนกราฟ</button><button id="rp-quiz" class="primary">${ICON.html('target', 15)}สุ่มโจทย์</button>${q && !q.traded ? '<button id="rp-skip">ข้าม (ไม่เข้า)</button>' : ''}${S.replay ? '<button id="rp-exit">ออกจาก Replay</button>' : ''}</div>
+      <div class="btns"><button id="rp-pick">${PT.ICON.html('rewind', 15)}เลือกจุดเริ่มบนกราฟ</button><button id="rp-quiz" class="primary">${PT.ICON.html('target', 15)}สุ่มโจทย์</button>${q && !q.traded ? '<button id="rp-skip">ข้าม (ไม่เข้า)</button>' : ''}${S.replay ? '<button id="rp-exit">ออกจาก Replay</button>' : ''}</div>
       <div class="sum" style="margin-top:8px"><span>โจทย์ที่ทำ</span><b>${done.length} (ข้าม ${res.length - done.length})</b><span>ถูกทาง</span><b>${done.length ? Math.round((wins / done.length) * 100) + '%' : '—'}</b><span>R เฉลี่ย</span><b>${rs.length ? (rs.reduce((a, b) => a + b, 0) / rs.length).toFixed(2) + 'R' : '—'}</b></div>
       <p class="muted">คีย์ลัด: Space = เล่น/หยุด · → = 1 แท่ง · Shift+→ = 10 แท่ง · ← = ถอย</p>`;
     $('rp-pick').onclick = () => REPLAY.pick();
@@ -349,7 +357,7 @@ const LESSON = (() => {
     if (p.app !== 'Price Tracker' || p.kind !== 'lesson') return toast('ไม่ใช่ไฟล์บทเรียนของ Price Tracker', 'warn');
     if (S.replay) REPLAY.exit();
     store.set('drawings:' + p.symbol, (p.drawings || []).map(normalize));
-    if (p.symbol !== S.symbol) switchSymbol(p.symbol); else { drawings = (p.drawings || []).map(normalize); saveDrawings(); dirty = true; }
+    if (p.symbol !== S.symbol) switchSymbol(p.symbol); else { PT.drawings = (p.drawings || []).map(normalize); saveDrawings(); PT.dirty = true; }
     if (p.tf !== S.tf) { S.tf = p.tf; store.set('tf', p.tf); renderTfs(); loadChart(); }
     if (p.replayAt) { const go = () => { const i = S.candles.findIndex((c) => c.time - TZ >= p.replayAt); if (i > 0) REPLAY.start(i); }; setTimeout(go, 2500); }
     toast(`นำเข้าบทเรียน ${p.symbol}${p.note ? ': ' + p.note : ''}`, 'ok', 10000);
@@ -370,3 +378,4 @@ const LESSON = (() => {
 // ================================================================ tab + hooks
 document.querySelector('#tabs [data-tab="practice"]').addEventListener('click', () => { QUIZ.render(); SIM.render(); LESSON.render(); });
 QUIZ.render(); LESSON.render();
+export { QUIZ, REPLAY };

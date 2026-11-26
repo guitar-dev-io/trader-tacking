@@ -1,4 +1,6 @@
-/* global $, esc, vcg */
+import { PT, def } from './src/pt.ts';
+import { $, esc } from './app-core.js';
+def({ SUPPORT: [() => SUPPORT] });
 // Developer credit + "support the developer" (settings → เกี่ยวกับ, mobile More page).
 // Fill SUPPORT.links with real channels; entries without a url are not shown.
 const SUPPORT = {
@@ -37,5 +39,5 @@ const SUPPORT = {
     if (more && !more.querySelector('.about-dev')) { const ver = more.querySelector('.m-ver'); (ver || more.lastElementChild).insertAdjacentHTML('beforebegin', html()); }
   }
   mount(); setTimeout(mount, 1500);           // the mobile More page is built by mobile.js
-  window.SUPPORT = SUPPORT;
+  
 })();

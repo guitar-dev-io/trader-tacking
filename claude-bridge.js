@@ -1,4 +1,16 @@
-/* global S, TZ, TFS, tf, vcg, store, drawings:writable, saveDrawings, switchSymbol, renderTfs, loadChart, fmt, dirty:writable, computePlan, renderPlanner, savePlan, AN, BOUNCE, uid, toast */
+import { PT, def } from './src/pt.ts';
+import { AN, BOUNCE } from './src/legacy/core.ts';
+import { S, TFS, TZ, drawings, fmt, saveDrawings, store, tf } from './app-core.js';
+import { chart } from './app-chart.js';
+import { PERF } from './app-analysis.js';
+import { runBounce } from './app-bounce.js';
+import { loadChart, switchSymbol } from './app-data.js';
+import { renderTfs } from './app.js';
+import { redraw, uid } from './draw.js';
+import { computePlan, isCentAcct, renderPlanner, savePlan } from './planner.js';
+import { toast } from './settings.js';
+import { CACHE, NEWS } from './extras.js';
+import { HEADLINES } from './news.js';
 // Commands the local API (and the Claude MCP server on top of it) can run inside the app window.
 // Read: view, candles, analysis, bounce · Act on the chart: open_chart, draw, clear_drawings · Calculator: plan.
 // Times in and out are UTC unix seconds (the chart itself is shifted by the display timezone TZ).
@@ -85,15 +97,15 @@
     }
     if (type === 'fib' && a.reverse != null) d.reverse = !!a.reverse;
     if ((type === 'text' || type === 'callout') && !d.text) throw new Error(type + ' ต้องมีข้อความ');
-    drawings.push(d); saveDrawings(); dirty = true;
+    drawings.push(d); saveDrawings(); PT.dirty = true;
     if (a.label && type !== 'text' && type !== 'callout') { d.label = String(a.label).slice(0, 200); saveDrawings(); }   // caption drawn on the shape
     toast('Claude วาด ' + type + (a.label ? ': ' + a.label : ''), 'info', 2500);
     return { ok: true, id: d.id, claudeDrawings: drawings.filter((x) => x.by === 'claude').length };
   }
   function clearDrawings({ all } = {}) {
     const before = drawings.length;
-    drawings = all ? [] : drawings.filter((d) => d.by !== 'claude');
-    saveDrawings(); dirty = true;
+    PT.drawings = all ? [] : drawings.filter((d) => d.by !== 'claude');
+    saveDrawings(); PT.dirty = true;
     return { removed: before - drawings.length };
   }
   function plan(a) {
@@ -107,7 +119,7 @@
     p.spacing = a.spacing != null ? fmt(a.spacing) : '';
     if (a.mode) p.mode = a.mode === 'pyramid' ? 'pyramid' : 'avg';
     if (a.account) p.account = a.account === 'cent' ? 'cent' : a.account === 'auto' ? 'auto' : 'std';   // cent: balance in USC, lots in cent lots
-    savePlan(); renderPlanner(); dirty = true;
+    savePlan(); renderPlanner(); PT.dirty = true;
     const r = computePlan();
     return { input: { side: p.side, entry: p.entry, sl: p.sl, tp1: p.tp1, tp2: p.tp2, balance: p.balance, risk: p.risk, riskMode: p.riskMode, account: p.account },
       account: isCentAcct() ? { type: 'cent', currency: 'USC', lotUnit: 'cent lot (1.00 = 0.01 standard lot)', usdPerUsc: 0.01 } : { type: 'standard', currency: 'USD', lotUnit: 'lot' },
@@ -123,7 +135,7 @@
       let A = null;
       out.analyzeMs = time(() => { A = AN.analyze(closed, { swingLen: S.an.swingLen, digits: 2 }); });
       out.bounceMs = time(() => BOUNCE.find(closed, A, {}));
-      out.redrawMs = time(() => { dirty = true; redraw(); }, 5);
+      out.redrawMs = time(() => { PT.dirty = true; redraw(); }, 5);
     }
     if (typeof CACHE !== 'undefined') { const a = performance.now(); await CACHE.peek(); out.cacheReadMs = Math.round(performance.now() - a); }
     const fr = await new Promise((res) => { let k = 0; const a = performance.now(); const f = () => (++k < 30 ? requestAnimationFrame(f) : res(Math.round((performance.now() - a) / 30 * 10) / 10)); requestAnimationFrame(f); });

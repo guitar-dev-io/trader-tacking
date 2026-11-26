@@ -1,5 +1,11 @@
+import { PT, def } from './src/pt.ts';
+import { AN } from './src/legacy/core.ts';
+import { $, DOWN, S, TC, UP, fmt, tf } from './app-core.js';
+import { chart, customOut, main } from './app-chart.js';
+import { activeSignal } from './app-analysis.js';
+import { drawAutoFib, drawBounce, drawLiquidity } from './app-bounce.js';
+def({ NS: [() => NS], svg: [() => svg], dirty: [() => dirty, (v) => { dirty = v; }], period: [() => period, (v) => { period = v; }], timeToLogical: [() => timeToLogical, (v) => { timeToLogical = v; }], logicalToTime: [() => logicalToTime, (v) => { logicalToTime = v; }], lToX: [() => lToX, (v) => { lToX = v; }], xOf: [() => xOf], xIdx: [() => xIdx], yOf: [() => yOf], el: [() => el, (v) => { el = v; }], txt: [() => txt, (v) => { txt = v; }], _lbls: [() => _lbls, (v) => { _lbls = v; }], resetLabels: [() => resetLabels, (v) => { resetLabels = v; }], ltxt: [() => ltxt, (v) => { ltxt = v; }], label: [() => label, (v) => { label = v; }], positionBox: [() => positionBox, (v) => { positionBox = v; }], drawAnalysis: [() => drawAnalysis, (v) => { drawAnalysis = v; }] });
 // Price Tracker renderer · SVG overlay: analysis drawing helpers and coordinate mapping
-/* global LightweightCharts, IND, AN, BOUNCE, CUSTOM, LESSONS, ICON, vcg */
 // ---------------------------------------------------------------- SVG overlay: drawings + analysis
 const NS = 'http://www.w3.org/2000/svg';
 const svg = document.createElementNS(NS, 'svg');
@@ -163,3 +169,4 @@ function drawAnalysis(W, H) {
     }
   }
 }
+export { dirty, drawAnalysis, el, lToX, label, logicalToTime, resetLabels, svg, timeToLogical, txt, yOf };

@@ -1,15 +1,20 @@
-/* global $, S, store, esc, toast, ICON, PAGES, LESSONS, MM_LEARN, QUIZ */
+import { PT, def } from './src/pt.ts';
+import { $, S, esc, store } from './app-core.js';
+import { toast } from './settings.js';
+import { QUIZ, REPLAY } from './learn.js';
+import { PAGES } from './pages.js';
+def({ LEARN: [() => LEARN] });
 // Learning center ("ศูนย์การเรียนรู้"): the lesson book as its own page — category list on the left, one lesson at a
 // time in a readable column, progress, a beginner path and the practice tools (MM quiz, MM plan, Replay practice).
 // Desktop: a page tab (pages.js). Phone: a full-screen page with list → reader → back.
 const LEARN = (() => {
   const mobile = document.body.classList.contains('mobile');
-  const ic = (n, s = 16, c) => (ICON.html ? ICON.html(n, s, c) : '');
-  const cats = window.LESSON_CATS || [{ id: 'all', name: 'บทเรียน', icon: 'book-open' }];
+  const ic = (n, s = 16, c) => (PT.ICON.html ? PT.ICON.html(n, s, c) : '');
+  const cats = PT.LESSON_CATS || [{ id: 'all', name: 'บทเรียน', icon: 'book-open' }];
   // stable id from the title (lessons have no ids; titles are unique)
   const hash = (t) => { let h = 5381; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return 'L' + (h >>> 0).toString(36); };
   const strip = (h) => h.replace(/<svg[\s\S]*?<\/svg>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
-  const raw = [...LESSONS.map((l, i) => ({ ...l, c: (window.LESSON_CAT_OF || {})[i] || cats[0].id })), ...(window.LESSONS_EXTRA || [])];
+  const raw = [...PT.LESSONS.map((l, i) => ({ ...l, c: (PT.LESSON_CAT_OF || {})[i] || cats[0].id })), ...(PT.LESSONS_EXTRA || [])];
   // reading order = category order, then the order inside each category
   const all = cats.flatMap((c) => raw.filter((l) => l.c === c.id)).map((l) => {
     const text = strip(l.b), title = l.t.replace(/^\d+\.\s*/, '');
@@ -110,7 +115,7 @@ const LEARN = (() => {
     const l = byId.get(view), p = PRACTICE.find((x) => x.id === view);
     doc.className = 'lc-doc' + (l ? ' lesson' : p ? ' practice' : ' home');
     doc.innerHTML = l ? lessonHtml(l) : p ? practiceHtml(p) : homeHtml();
-    if (window.MM_LEARN) MM_LEARN.mount(doc);
+    if (PT.MM_LEARN) PT.MM_LEARN.mount(doc);
     scrolls._v = view;
     main.scrollTop = (l && scrolls[view]) || 0;
     store.set('lc.scroll', Object.fromEntries(Object.entries(scrolls).filter(([k]) => k !== '_v').slice(-60)));
@@ -138,7 +143,7 @@ const LEARN = (() => {
   });
   q.addEventListener('input', () => { term = q.value.trim().toLowerCase(); renderNav(); });
   q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { const f = nav.querySelector('.lc-les'); if (f) { mListMode = false; go(f.dataset.v, { reader: true }); } } if (e.key === 'Escape') { q.value = ''; term = ''; renderNav(); q.blur(); } });
-  const visible = () => (mobile ? !root.classList.contains('hidden') : window.PAGES && PAGES.active() === 'learn');
+  const visible = () => (mobile ? !root.classList.contains('hidden') : PT.PAGES && PAGES.active() === 'learn');
   document.addEventListener('keydown', (e) => {
     if (!visible() || e.metaKey || e.ctrlKey || e.altKey) return;
     const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
@@ -171,10 +176,10 @@ const LEARN = (() => {
     root.querySelector('.lc-main').insertAdjacentHTML('afterbegin', `<div class="lc-mbar"><button class="lc-back" aria-label="กลับ">${ic('arrow-left', 18)}<span>บทเรียนทั้งหมด</span></button></div>`);
     root.querySelector('.lc-back').onclick = () => { mListMode = true; renderNav(); root.classList.remove('m-reading'); };
     document.body.appendChild(root);
-    const prevBack = window.__mobileBack;
-    window.__mobileBack = () => { if (!root.classList.contains('hidden')) { if (!mListMode) { mListMode = true; root.classList.remove('m-reading'); } else close(); return true; } return prevBack ? prevBack() : false; };
+    const prevBack = PT.__mobileBack;
+    PT.__mobileBack = () => { if (!root.classList.contains('hidden')) { if (!mListMode) { mListMode = true; root.classList.remove('m-reading'); } else close(); return true; } return prevBack ? prevBack() : false; };
   } else {
-    const inner = (n) => (ICON.svg(n, 14) || '').replace(/^<svg[^>]*>|<\/svg>$/g, '');
+    const inner = (n) => (PT.ICON.svg(n, 14) || '').replace(/^<svg[^>]*>|<\/svg>$/g, '');
     const btn = document.createElement('button');
     btn.id = 'learn-btn'; btn.className = 'ib tb-learn'; btn.title = 'ศูนย์การเรียนรู้ — บทเรียนและแบบฝึก (Ctrl/⌘ + L)';
     btn.innerHTML = `${ic('graduation-cap', 16)}<span>เรียนรู้</span>`;
@@ -191,9 +196,9 @@ const LEARN = (() => {
     let sideWas = null;
     window.addEventListener('pagechange', (e) => {
       const reading = e.detail === 'learn' || e.detail === 'news';
-      if (!window.setUI || !S.ui) return;
-      if (reading && sideWas === null) { sideWas = !!S.ui.side; if (sideWas) window.setUI('side', false); }
-      else if (e.detail === 'chart' && sideWas !== null) { if (sideWas) window.setUI('side', true); sideWas = null; }
+      if (!PT.setUI || !S.ui) return;
+      if (reading && sideWas === null) { sideWas = !!S.ui.side; if (sideWas) PT.setUI('side', false); }
+      else if (e.detail === 'chart' && sideWas !== null) { if (sideWas) PT.setUI('side', true); sideWas = null; }
     });
   }
   render();
@@ -204,4 +209,3 @@ const LEARN = (() => {
     find: (text) => all.find((l) => l.q.includes(String(text).toLowerCase())),
   };
 })();
-window.LEARN = LEARN;

@@ -1,3 +1,4 @@
+import { PT, def } from './src/pt.ts';
 // User-written indicators (JavaScript). A script is the body of a function that receives:
 //   candles, open, high, low, close   – data (arrays, oldest → newest)
 //   input(name, default)              – a parameter the user can edit with ⚙
@@ -99,5 +100,5 @@ plot('My SMA', ta.sma(close, n), { color: '#f5a623' });
     return out;
   }
 
-  window.CUSTOM = { run, TA, EXAMPLES, TEMPLATE };
+  PT.CUSTOM = { run, TA, EXAMPLES, TEMPLATE };
 })();

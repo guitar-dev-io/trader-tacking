@@ -1,5 +1,12 @@
-/* global S, store, $, esc, fmt, digits, tf, TFS, TZ, vcg, AN, DEMO, ICON, LightweightCharts, toCandle, valid, dedupe, chart, xOfT, yOf,
-   el, txt, label, dirty:writable, UP, DOWN, loadChart:writable, onQuotesMsg:writable, closeMenus */
+import { PT, def } from './src/pt.ts';
+import { AN } from './src/legacy/core.ts';
+import { $, DOWN, S, TC, TFS, THEME, TZ, UP, digits, fmt, store, tf } from './app-core.js';
+import { chart, chartThemeOptions } from './app-chart.js';
+import { dedupe, loadChart, onQuotesMsg, toCandle, valid } from './app-data.js';
+import { el, lToX, label, txt, yOf } from './app-overlay.js';
+import { xOfT } from './draw.js';
+import { DEMO } from './extras.js';
+def({ MTF: [() => MTF] });
 // Multi-timeframe (top-down) view: a higher-timeframe chart beside the main chart, its structure and zones
 // drawn onto the main chart, a band showing what the main chart is looking at, and both trends in the header.
 const MTF = (() => {
@@ -18,10 +25,10 @@ const MTF = (() => {
     <select id="mtf-tf" title="Timeframe ใหญ่"><option value="auto">อัตโนมัติ</option>${TFS.map((t) => `<option value="${t.type}">${t.label}</option>`).join('')}</select>
     <label class="chk" title="วาดโซนของ TF ใหญ่ลงบนกราฟหลัก"><input type="checkbox" id="mtf-zones"> โซน</label>
     <label class="chk" title="เส้น Swing High/Low ล่าสุดของ TF ใหญ่บนกราฟหลัก"><input type="checkbox" id="mtf-levels"> สวิง</label>
-    <button id="mtf-x" class="pop-x" style="position:static" title="ปิด" aria-label="ปิด">${ICON.svg('x', 16)}</button></div>
+    <button id="mtf-x" class="pop-x" style="position:static" title="ปิด" aria-label="ปิด">${PT.ICON.svg('x', 16)}</button></div>
     <div id="mtf-chart-wrap"><div id="mtf-chart"></div><div id="mtf-msg" class="hidden"></div></div>`;
   row.appendChild(pane);
-  $('an-btn').closest('.dropdown').insertAdjacentHTML('afterend', `<button id="mtf-btn" class="tb-btn" title="ดูหลาย Timeframe (top-down)"><i>${ICON.svg('layers', 16)}</i>MTF</button>`);
+  $('an-btn').closest('.dropdown').insertAdjacentHTML('afterend', `<button id="mtf-btn" class="tb-btn" title="ดูหลาย Timeframe (top-down)"><i>${PT.ICON.svg('layers', 16)}</i>MTF</button>`);
   $('trend-badge').insertAdjacentHTML('afterend', '<span id="mtf-badge"></span>');
 
   const mch = LightweightCharts.createChart($('mtf-chart'), {
@@ -106,7 +113,7 @@ const MTF = (() => {
       lastLen = view.length;
       renderBadges();
     } else if (view.length) ms.update(view[view.length - 1]);
-    mdirty = true; dirty = true;
+    mdirty = true; PT.dirty = true;
   }
   const replaySync = () => { if (cfg.on) refresh(true); };
 
@@ -206,21 +213,21 @@ const MTF = (() => {
     cfg.on = v; save();
     pane.classList.toggle('hidden', !v); $('mtf-btn').classList.toggle('active', v); document.body.classList.toggle('mtf-on', v);
     if (v) { buildSeries(); load(); } else { candles = []; view = []; A = null; renderBadges(); }
-    dirty = true;
+    PT.dirty = true;
     if (S.source === 'demo') DEMO.connect();
   }
   $('mtf-btn').onclick = () => setOn(!cfg.on);
   $('mtf-x').onclick = () => setOn(false);
   $('mtf-tf').value = String(cfg.tf);
   $('mtf-tf').onchange = () => { cfg.tf = $('mtf-tf').value === 'auto' ? 'auto' : +$('mtf-tf').value; save(); load(); };
-  $('mtf-zones').checked = cfg.zones; $('mtf-zones').onchange = () => { cfg.zones = $('mtf-zones').checked; save(); dirty = true; };
-  $('mtf-levels').checked = cfg.levels; $('mtf-levels').onchange = () => { cfg.levels = $('mtf-levels').checked; save(); dirty = true; };
+  $('mtf-zones').checked = cfg.zones; $('mtf-zones').onchange = () => { cfg.zones = $('mtf-zones').checked; save(); PT.dirty = true; };
+  $('mtf-levels').checked = cfg.levels; $('mtf-levels').onchange = () => { cfg.levels = $('mtf-levels').checked; save(); PT.dirty = true; };
 
   // reload the HTF whenever the main chart reloads (symbol / timeframe / source / timezone change)
   const _load = loadChart;
-  loadChart = function () { _load(); if (cfg.on) { buildSeries(); load(); } };
+  PT.loadChart = function () { _load(); if (cfg.on) { buildSeries(); load(); } };
   const _oq = onQuotesMsg;
-  onQuotesMsg = function (list) { _oq(list); for (const q of list) onQuote(q); };
+  PT.onQuotesMsg = function (list) { _oq(list); for (const q of list) onQuote(q); };
 
   // Phones: a normal single chart (switch timeframe by tapping) — the split view is a desktop feature.
   const isMobile = () => document.body.classList.contains('mobile');

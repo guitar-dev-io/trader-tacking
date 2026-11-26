@@ -1,15 +1,6 @@
-// The classic (non-module) renderer scripts, in load order. Single source of truth: the Vite legacy plugin
-// concatenates exactly these into ONE classic <script> (see docs/MIGRATION.md for why), for the desktop app,
-// the Android app and the web app alike. Add a new legacy file here — never as a <script> tag in index.html.
-// New code should be an ES module under src/ instead (imported from src/main.ts).
-// gen/*.js = compiled from src/core/*.ts (TypeScript) by scripts/build-core.mjs before every build.
-export const LEGACY_SCRIPTS = [
-  'vcg-inject.js', 'bridge.js', 'lib/lightweight-charts.standalone.production.js',
-  'indicators.js', 'gen/analysis.js', 'gen/bounce.js', 'custom.js', 'lessons.js', 'lessons-guide.js', 'icons.js',
-  'app-core.js', 'app-chart.js', 'app-analysis.js', 'app-bounce.js', 'app-data.js', 'app-overlay.js',
-  'gen/mm.js', 'mm-learn.js', 'app.js', 'text-tools.js', 'draw.js', 'planner.js', 'settings.js', 'extras.js',
-  'learn.js', 'news.js', 'setup.js', 'positions.js', 'mtf.js', 'ui.js', 'mobile.js', 'pages.js', 'about.js',
-  'gen/journal.js', 'journal-page.js', 'dashboard.js', 'learn-center.js', 'news-page.js', 'claude-bridge.js',
-];
-// Only in the web/Android build (www/): after everything else.
-export const WEB_ONLY_SCRIPTS = ['pwa.js'];
+// Classic (non-module) scripts the renderer still loads with a plain <script> tag, before the ES modules.
+// Only third-party code that defines its own global stays here; all app code is ES modules (src/app.ts imports
+// them in the old order — see docs/MIGRATION.md, Phase 2).
+export const VENDOR_SCRIPTS = ['lib/lightweight-charts.standalone.production.js'];
+// Only in the web/Android build (www/): Capacitor core + version.js are added by the plugin before these.
+export const WEB_ONLY_SCRIPTS = [];

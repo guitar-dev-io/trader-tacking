@@ -1,4 +1,5 @@
-/* global VCGI */
+import { PT, def } from './src/pt.ts';
+import VCGI from './src/vcg-inject.mjs';
 // window.vcg for platforms without Electron:
 //  • Android (Capacitor): drives a hidden native WebView with VCG WebTrader (plugin "VcgWeb") — same logic as main.js
 //  • plain browser: no VCG connection (the Demo data source is used instead)
@@ -195,7 +196,7 @@
     showTrader: () => {
       if (V) { shownForLogin = true; showOverlay('ผู้ใช้กดเปิดหน้า Login'); return true; }
       log('error', 'app', 'เปิดหน้า VCG ไม่ได้: ส่วนเชื่อมต่อ Android ไม่ทำงาน (platform=' + (native ? 'android' : 'web') + ')');
-      if (typeof toast === 'function') toast(/Android/.test(navigator.userAgent) ? 'ส่วนเชื่อมต่อ Android ไม่ทำงาน — ส่งภาพแท็บ Log ให้ผู้พัฒนา' : 'โหมดเว็บต่อ VCG ไม่ได้ — ใช้ข้อมูล Demo', 'error', 10000);
+      if (typeof PT.toast === 'function') PT.toast(/Android/.test(navigator.userAgent) ? 'ส่วนเชื่อมต่อ Android ไม่ทำงาน — ส่งภาพแท็บ Log ให้ผู้พัฒนา' : 'โหมดเว็บต่อ VCG ไม่ได้ — ใช้ข้อมูล Demo', 'error', 10000);
     },
     onBack: (cb) => on('back', cb),
     minimize: () => V && V.minimize(),

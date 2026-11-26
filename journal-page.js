@@ -1,10 +1,19 @@
-/* global $, S, store, esc, ICON, PAGES, JOURNAL, vcg, toast, THEME, TC, chartThemeOptions, LightweightCharts, TZ, TFS, switchSymbol, drawings:writable, dirty:writable, chart, SETUP, POSITIONS */
+import { PT, def } from './src/pt.ts';
+import { JOURNAL } from './src/legacy/core.ts';
+import { $, S, TC, TFS, THEME, TZ, drawings, esc, store } from './app-core.js';
+import { chart, chartThemeOptions } from './app-chart.js';
+import { connStatus, switchSymbol } from './app-data.js';
+import { toast } from './settings.js';
+import { SETUP } from './setup.js';
+import { POSITIONS } from './positions.js';
+import { PAGES } from './pages.js';
+def({ JOURNALPAGE: [() => JOURNALPAGE] });
 // "ผลการเทรด" — trading journal dashboard built from the user's own MT5 history (read-only, stored on this computer).
 // Desktop: a page tab (titlebar button, Ctrl/⌘+J). Phone: a full-screen page from the More page. "ดูตัวอย่าง" shows sample data.
 const JOURNALPAGE = (() => {
   const mobile = document.body.classList.contains('mobile');
-  const ic = (n, s = 16, c) => (ICON.html ? ICON.html(n, s, c) : '');
-  const inner = (n) => (ICON.svg(n, 14) || '').replace(/^<svg[^>]*>|<\/svg>$/g, '');
+  const ic = (n, s = 16, c) => (PT.ICON.html ? PT.ICON.html(n, s, c) : '');
+  const inner = (n) => (PT.ICON.svg(n, 14) || '').replace(/^<svg[^>]*>|<\/svg>$/g, '');
   const TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
   const TH_WD = ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'];
   const SESS = { asia: 'เอเชีย', london: 'ลอนดอน', newyork: 'นิวยอร์ก' };
@@ -287,11 +296,11 @@ const JOURNALPAGE = (() => {
       const ready = c.length > 1 && c[c.length - 1].time - c[c.length - 2].time === span && (t.open == null || c[0].time <= t.open + tz());
       if (!ready && Date.now() - start < 4000) return setTimeout(place, 250);
       const snap = (time) => { let best = null; for (const x of c) { if (x.time <= time) best = x.time; else break; } return best ?? (c[0] && c[0].time); };
-      drawings = drawings.filter((x) => x.by !== 'journal');
+      PT.drawings = drawings.filter((x) => x.by !== 'journal');
       const color = t.side === 'buy' ? '#2962ff' : '#e91e63';
       if (t.open != null && t.openPrice != null) drawings.push({ id: 'jr-in-' + t.pos, type: t.side === 'buy' ? 'arrowUp' : 'arrowDown', pts: [{ time: snap(t.open + tz()), price: t.openPrice }], color, by: 'journal' });
       if (t.close != null && t.closePrice != null) drawings.push({ id: 'jr-out-' + t.pos, type: 'text', pts: [{ time: snap(t.close + tz()), price: t.closePrice }], text: `ปิด ${money(t.net)}`, color: t.net >= 0 ? '#26a69a' : '#ef5350', by: 'journal' });
-      dirty = true;
+      PT.dirty = true;
       try { if (c.length && t.close) chart.timeScale().setVisibleRange({ from: (t.open ?? t.close) + tz() - span * 40, to: t.close + tz() + span * 20 }); } catch (_) {}
     })();
   }
@@ -300,9 +309,9 @@ const JOURNALPAGE = (() => {
   let shown = false;
   async function open() {
     if (mobile) {
-      if (window.LEARN && LEARN.isOpen && LEARN.isOpen()) LEARN.close();
-      if (window.NEWSPAGE && NEWSPAGE.isOpen && NEWSPAGE.isOpen()) NEWSPAGE.close();
-      if (window.DASH && document.body.classList.contains('dash-open')) DASH.close();
+      if (PT.LEARN && PT.LEARN.isOpen && PT.LEARN.isOpen()) PT.LEARN.close();
+      if (PT.NEWSPAGE && PT.NEWSPAGE.isOpen && PT.NEWSPAGE.isOpen()) PT.NEWSPAGE.close();
+      if (PT.DASH && document.body.classList.contains('dash-open')) PT.DASH.close();
       root.classList.remove('hidden'); document.body.classList.add('jr-open');
     }
     else PAGES.open('journal');
@@ -316,8 +325,8 @@ const JOURNALPAGE = (() => {
   const visible = () => (mobile ? !root.classList.contains('hidden') : PAGES.active && PAGES.active() === 'journal');
   if (mobile) {
     document.body.appendChild(root);
-    const prevBack = window.__mobileBack;
-    window.__mobileBack = () => { if (visible()) { close(); return true; } return prevBack ? prevBack() : false; };
+    const prevBack = PT.__mobileBack;
+    PT.__mobileBack = () => { if (visible()) { close(); return true; } return prevBack ? prevBack() : false; };
   } else {
     const btn = document.createElement('button');
     btn.id = 'journal-btn'; btn.className = 'ib'; btn.title = 'ผลการเทรด — สรุปกำไร/ขาดทุน รายวัน รายเดือน จาก MT5 (Ctrl/⌘ + J)';
@@ -328,9 +337,9 @@ const JOURNALPAGE = (() => {
     // full width while the journal is shown: fold the side panel, restore it when back on the chart
     let sideWas = null;
     window.addEventListener('pagechange', (e) => {
-      if (!window.setUI || !S.ui) return;
-      if (e.detail === 'journal' && sideWas === null) { sideWas = !!S.ui.side; if (sideWas) window.setUI('side', false); }
-      else if (e.detail === 'chart' && sideWas !== null) { if (sideWas) window.setUI('side', true); sideWas = null; }
+      if (!PT.setUI || !S.ui) return;
+      if (e.detail === 'journal' && sideWas === null) { sideWas = !!S.ui.side; if (sideWas) PT.setUI('side', false); }
+      else if (e.detail === 'chart' && sideWas !== null) { if (sideWas) PT.setUI('side', true); sideWas = null; }
     });
     window.addEventListener('pagechange', (e) => { btn.classList.toggle('on', e.detail === 'journal'); if (e.detail === 'journal' && !shown) { shown = true; load().then(render); } else if (e.detail !== 'journal' && shown) { shown = false; disposeCharts(); } });
     document.addEventListener('keydown', (e) => {
@@ -345,4 +354,3 @@ const JOURNALPAGE = (() => {
   return { open, close, render, isOpen: visible, sample: (on) => { sampleMode = !!on; store.set('jr.sample', sampleMode); raw = null; return load().then(render); },
     setRange: (r) => { range = r; store.set('jr.range', r); page = 0; dayFilter = null; calMonth = null; render(); }, data: () => lastData, showOnChart };
 })();
-window.JOURNALPAGE = JOURNALPAGE;

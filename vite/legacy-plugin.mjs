@@ -1,28 +1,22 @@
-// Vite plugin: builds/serves the classic renderer scripts listed in src/legacy-order.mjs.
-//
-// Why classic scripts (not ES-module imports): the ~40 legacy files share one global lexical scope — top-level
-// let/const/function in one file are used by the others (S, main, store, toast, …). ES modules each get their own
-// scope, so importing them would break every cross-file reference, or need a codemod over hundreds of shared
-// bindings in files other branches are still editing.
-// Why one <script> per file (not one concatenated file): separate classic scripts are NOT the same as one big
-// script. Code like `typeof CACHE !== 'undefined'` that runs before extras.js declares `const CACHE` is false in a
-// separate script but throws (temporal dead zone) in a concatenated one, and one file that throws at top level
-// no longer stops the rest. So each file is emitted as its own content-hashed classic script, in order — exactly
-// the old behaviour. The files ARE parsed together at build time, so a duplicate top-level name across files
-// (which used to crash only one file at runtime) now fails the build.
+// Vite plugin: the non-module parts of the renderer build.
+//  • third-party classic scripts that define their own global (src/legacy-order.mjs → VENDOR_SCRIPTS: the chart
+//    library), emitted as content-hashed classic <script> tags before the app's ES modules
+//  • web/Android: Capacitor core + version.js, the web <head>, manifest + service worker (PWA)
+//  • static files the app loads by URL at run time (assets/, icon, chart-library licence)
+// All app code is ES modules since Phase 2 (src/app.ts); see docs/MIGRATION.md.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
 import { transform } from 'esbuild';
-import { LEGACY_SCRIPTS, WEB_ONLY_SCRIPTS } from '../src/legacy-order.mjs';
+import { VENDOR_SCRIPTS, WEB_ONLY_SCRIPTS } from '../src/legacy-order.mjs';
 import { buildCore } from '../scripts/build-core.mjs';
 
 const MARKER = '<!-- legacy-scripts -->';
 const DEV_URL = '/@pt-legacy/';
 
 export default function legacyScripts({ root, web, version }) {
-  const list = () => [...LEGACY_SCRIPTS, ...(web ? WEB_ONLY_SCRIPTS : [])];
+  const list = () => [...VENDOR_SCRIPTS, ...(web ? WEB_ONLY_SCRIPTS : [])];
   const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
   const flat = (f) => f.replace(/^lib\//, '').replace(/\.js$/, '');
   let emitted = [], outDir = '';
@@ -37,12 +31,8 @@ export default function legacyScripts({ root, web, version }) {
     name: 'pt-legacy-scripts',
     configResolved(cfg) { outDir = cfg.build.outDir; },
     async buildStart() {
-      await buildCore({ quiet: true });                     // src/core/*.ts → gen/*.js (part of the legacy list)
+      await buildCore({ quiet: true });                     // gen/ for Electron main + Node tests
       for (const f of list()) this.addWatchFile(path.join(root, f));
-      // parse check only (never shipped): syntax errors + the same top-level name declared in two files
-      const all = list().map((f) => `\n/* ==== ${f} ==== */\n${read(f)}\n;`).join('');
-      try { await transform(all, { loader: 'js', logLevel: 'silent' }); }
-      catch (e) { this.error('legacy scripts: ' + (e.errors || []).map((x) => `${x.text} (${x.location ? x.location.lineText.trim().slice(0, 120) : ''})`).join('\n')); }
       emitted = list().map((f) => {
         const src = read(f), fileName = `_v/legacy/${flat(f)}-${crypto.createHash('sha256').update(src).digest('hex').slice(0, 8)}.js`;
         this.emitFile({ type: 'asset', fileName, source: src });

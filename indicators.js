@@ -1,3 +1,4 @@
+import { PT, def } from './src/pt.ts';
 // Technical indicators. Input: candles [{time, open, high, low, close}] sorted by time.
 // Output: arrays of {time, value} (null values skipped).
 (function () {
@@ -95,6 +96,6 @@
     return out;
   }
 
-  window.IND = { DEFS, heikinAshi, _smaArr: smaArr, _emaArr: emaArr };
-  if (typeof module !== 'undefined') module.exports = window.IND;
+  PT.IND = { DEFS, heikinAshi, _smaArr: smaArr, _emaArr: emaArr };
+  if (typeof module !== 'undefined') module.exports = PT.IND;
 })();

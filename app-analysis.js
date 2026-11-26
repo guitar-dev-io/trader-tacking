@@ -1,5 +1,9 @@
+import { PT, def } from './src/pt.ts';
+import { AN } from './src/legacy/core.ts';
+import { $, AN_VIEW_KEYS, S, TZ, digits, esc, fmt, store, tf } from './app-core.js';
+import { closeMenus } from './app-chart.js';
+def({ AN_ITEMS: [() => AN_ITEMS], openAnalysisMenu: [() => openAnalysisMenu, (v) => { openAnalysisMenu = v; }], SETUP_TH: [() => SETUP_TH], resTH: [() => resTH], pct: [() => pct], rr: [() => rr], PERF: [() => PERF], runAnalysis: [() => runAnalysis, (v) => { runAnalysis = v; }], activeSignal: [() => activeSignal, (v) => { activeSignal = v; }], renderAnalysis: [() => renderAnalysis, (v) => { renderAnalysis = v; }], pushTimer: [() => pushTimer, (v) => { pushTimer = v; }], pushAnalysis: [() => pushAnalysis, (v) => { pushAnalysis = v; }], sigPayload: [() => sigPayload, (v) => { sigPayload = v; }] });
 // Price Tracker renderer · structure analysis: menu, run/render, signal notifications
-/* global LightweightCharts, IND, AN, BOUNCE, CUSTOM, LESSONS, ICON, vcg */
 // ---------------------------------------------------------------- analysis menu
 const AN_ITEMS = [
   ['bounce', 'จุดเด้ง / จุดเข้าซื้อ-ขาย (โซนรอเข้า)'],
@@ -38,14 +42,14 @@ function runAnalysis() {
   const t0 = performance.now();
   S.A = closed.length >= 50 ? AN.analyze(closed, { swingLen: S.an.swingLen, digits: digits(), rr1: +S.prefs.rr1, rr2: +S.prefs.rr2, slBuf: +S.prefs.slBuf, minSamples: +S.prefs.minSamples, maxBars: +S.prefs.maxBars }) : null;
   const t1 = performance.now();
-  runBounce();
+  PT.runBounce();
   const t2 = performance.now();
   renderAnalysis();
   Object.assign(PERF, { analyze: Math.round(t1 - t0), bounce: Math.round(t2 - t1), render: Math.round(performance.now() - t2), n: closed.length, at: Date.now() });
   if (performance.now() - t0 > 400) vcg.log('warn', `วิเคราะห์ช้า: ${Math.round(performance.now() - t0)} ms (${closed.length} แท่ง · โครงสร้าง ${PERF.analyze} · จุดเด้ง ${PERF.bounce} · แสดงผล ${PERF.render} ms)`, null, 'perf');
   pushAnalysis();
-  checkNewSignal();
-  dirty = true;
+  PT.checkNewSignal();
+  PT.dirty = true;
 }
 function activeSignal() {
   if (!S.A || !S.A.signals.length) return null;
@@ -85,7 +89,7 @@ function renderAnalysis() {
         <span class="up">TP2</span><b>${fmt(x.tp2)}</b><span>2R</span>
         ${x.tpS != null ? `<span class="up">เป้าโครงสร้าง</span><b>${fmt(x.tpS)}</b><span>${reward(x.tpS).toFixed(1)}R</span>` : ''}
       </div>
-      <div>โหมดเรียนรู้: <span class="badge ${lr}">${lr === 'good' ? ICON.html('circle-check', 13) + 'สถิติผ่าน' : lr === 'bad' ? ICON.html('circle-x', 13) + 'สถิติไม่ผ่าน' : '… ตัวอย่างยังน้อย'}</span>
+      <div>โหมดเรียนรู้: <span class="badge ${lr}">${lr === 'good' ? PT.ICON.html('circle-check', 13) + 'สถิติผ่าน' : lr === 'bad' ? PT.ICON.html('circle-x', 13) + 'สถิติไม่ผ่าน' : '… ตัวอย่างยังน้อย'}</span>
         <span class="muted"> (ก่อนหน้า ${x.prior.n} ครั้ง · TP2 ${pct(x.prior.wr2)} · ${rr(x.prior.exp)})</span></div>
       <ol class="reasons">${x.reasons.map((r) => `<li>${esc(r)}</li>`).join('')}</ol>
       ${active ? '' : `<div class="muted" style="margin-top:6px">ผล: TP1 ${resTH(x.r1)} · TP2 ${resTH(x.r2)} · ${A.n - 1 - x.idx} แท่งที่แล้ว</div>`}
@@ -127,3 +131,4 @@ function sigPayload(s) {
     setup: s.setup, pattern: AN.PAT[s.pattern].name, entry: s.entry, sl: s.sl, tp1: s.tp1, tp2: s.tp2, structureTarget: s.tpS,
     learned: s.learned, priorStats: s.prior, reasons: s.reasons, resultTP1: s.r1.res, resultTP2: s.r2.res };
 }
+export { PERF, SETUP_TH, activeSignal, openAnalysisMenu, pct, renderAnalysis, rr, runAnalysis, sigPayload };

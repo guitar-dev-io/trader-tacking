@@ -29,6 +29,9 @@ export async function buildCore({ quiet = false } = {}) {
       format: 'cjs', platform: 'node',
       banner: { js: `// GENERATED from src/core/${name}.ts by scripts/build-core.mjs — do not edit` },
     })),
+    // scripts injected into VCG WebTrader: ES module for the renderer (src/vcg-inject.mjs), CommonJS for Electron main + tests
+    build({ ...common, entryPoints: [path.join(root, 'src/vcg-inject.mjs')], outfile: path.join(out, 'vcg-inject.js'), format: 'cjs', platform: 'node',
+      banner: { js: '// GENERATED from src/vcg-inject.mjs by scripts/build-core.mjs — do not edit' } }),
   ]);
   if (!quiet) console.log('gen/ built:', [...Object.keys(SHARED), ...NODE_ONLY].join(', '));
 }

@@ -1,5 +1,7 @@
+import { PT, def } from './src/pt.ts';
+import { $, AreaSeries, BarSeries, CandlestickSeries, CrosshairMode, DOWN, HistogramSeries, IND_COLORS, LineSeries, LineStyle, S, TC, THEME, UP, createChart, digits, esc, fmt, store, tf } from './app-core.js';
+def({ chartThemeOptions: [() => chartThemeOptions, (v) => { chartThemeOptions = v; }], chart: [() => chart], applyChartTheme: [() => applyChartTheme, (v) => { applyChartTheme = v; }], main: [() => main, (v) => { main = v; }], askLine: [() => askLine, (v) => { askLine = v; }], hlineObjs: [() => hlineObjs, (v) => { hlineObjs = v; }], alertLines: [() => alertLines, (v) => { alertLines = v; }], indSeries: [() => indSeries, (v) => { indSeries = v; }], customOut: [() => customOut], priceFormat: [() => priceFormat, (v) => { priceFormat = v; }], displayData: [() => displayData, (v) => { displayData = v; }], buildMain: [() => buildMain, (v) => { buildMain = v; }], refreshPriceLines: [() => refreshPriceLines, (v) => { refreshPriceLines = v; }], scriptOf: [() => scriptOf], indName: [() => indName, (v) => { indName = v; }], runCustom: [() => runCustom, (v) => { runCustom = v; }], buildIndicators: [() => buildIndicators, (v) => { buildIndicators = v; }], histColor: [() => histColor], indTimer: [() => indTimer, (v) => { indTimer = v; }], lastIndRun: [() => lastIndRun, (v) => { lastIndRun = v; }], updateIndicators: [() => updateIndicators, (v) => { updateIndicators = v; }], setSeries: [() => setSeries, (v) => { setSeries = v; }], legendTimer: [() => legendTimer, (v) => { legendTimer = v; }], renderLegend: [() => renderLegend, (v) => { renderLegend = v; }], editIndicator: [() => editIndicator, (v) => { editIndicator = v; }], addIndicator: [() => addIndicator, (v) => { addIndicator = v; }], openIndicatorMenu: [() => openIndicatorMenu, (v) => { openIndicatorMenu = v; }], closeMenus: [() => closeMenus, (v) => { closeMenus = v; }], editingScript: [() => editingScript, (v) => { editingScript = v; }], openScriptEditor: [() => openScriptEditor, (v) => { openScriptEditor = v; }], testScript: [() => testScript, (v) => { testScript = v; }], saveScript: [() => saveScript, (v) => { saveScript = v; }] });
 // Price Tracker renderer · chart: main series, indicators, legend, custom-script editor
-/* global LightweightCharts, IND, AN, BOUNCE, CUSTOM, LESSONS, ICON, vcg */
 // ---------------------------------------------------------------- chart
 // colors of a lightweight-charts chart for the current theme (also used by the MTF chart)
 function chartThemeOptions(fontSize = 11) {
@@ -21,16 +23,16 @@ const chart = createChart($('chart'), {
 // re-apply theme colors to the chart(s) — called on theme change
 function applyChartTheme() {
   chart.applyOptions(chartThemeOptions(11));
-  if (typeof applyChartCfg === 'function') applyChartCfg();     // keep the user's grid on/off
-  try { dirty = true; } catch (_) {}                              // redraw SVG overlays with the new colors
+  if (typeof PT.applyChartCfg === 'function') PT.applyChartCfg();     // keep the user's grid on/off
+  try { PT.dirty = true; } catch (_) {}                              // redraw SVG overlays with the new colors
 }
-THEME.onChange(() => { applyChartTheme(); if (typeof redraw === 'function') try { redraw(); } catch (_) {} });
+THEME.onChange(() => { applyChartTheme(); if (typeof PT.redraw === 'function') try { PT.redraw(); } catch (_) {} });
 let main = null, askLine = null, hlineObjs = [], alertLines = [], indSeries = [];
 const customOut = new Map(); // ind.id -> last run output
 
 function priceFormat() { const d = digits(); return { type: 'price', precision: d, minMove: 1 / 10 ** d }; }
 function displayData() {
-  if (S.ctype === 'ha') return IND.heikinAshi(S.candles);
+  if (S.ctype === 'ha') return PT.IND.heikinAshi(S.candles);
   if (S.ctype === 'line' || S.ctype === 'area') return S.candles.map((c) => ({ time: c.time, value: c.close }));
   return S.candles;
 }
@@ -60,12 +62,12 @@ function refreshPriceLines() {
 const scriptOf = (ind) => S.scripts.find((s) => s.id === ind.scriptId);
 function indName(ind) {
   if (ind.type === 'custom') { const sc = scriptOf(ind); return (sc ? sc.name : '(ลบแล้ว)') + (Object.keys(ind.params || {}).length ? ' ' + Object.values(ind.params).join(', ') : ''); }
-  const def = IND.DEFS[ind.type]; return `${def.name} ${Object.values(ind.params).join(', ')}`;
+  const def = PT.IND.DEFS[ind.type]; return `${def.name} ${Object.values(ind.params).join(', ')}`;
 }
 function runCustom(ind) {
   const sc = scriptOf(ind);
   if (!sc) return { plots: [], hlines: [], markers: [], inputs: {}, error: 'ไม่พบสคริปต์' };
-  const out = CUSTOM.run(sc.code, S.candles, ind.params || {});
+  const out = PT.CUSTOM.run(sc.code, S.candles, ind.params || {});
   if (out.error && customOut.get(ind.id)?.error !== out.error) vcg.log('error', `indicator "${sc.name}": ${out.error}`, null, 'script');
   ind.params = { ...out.inputs };
   customOut.set(ind.id, out);
@@ -93,7 +95,7 @@ function buildIndicators() {
       });
       continue;
     }
-    const def = IND.DEFS[ind.type]; if (!def) continue;
+    const def = PT.IND.DEFS[ind.type]; if (!def) continue;
     const p = def.pane === 'main' ? 0 : ++pane;
     let first = null;
     for (const [key, col] of Object.entries(def.lines)) {
@@ -135,12 +137,12 @@ function updateIndicators(throttle) {
       setSeries(x, data);
       continue;
     }
-    if (!cache.has(x.ind)) cache.set(x.ind, S.candles.length ? IND.DEFS[x.ind.type].calc(S.candles, x.ind.params) : {});
+    if (!cache.has(x.ind)) cache.set(x.ind, S.candles.length ? PT.IND.DEFS[x.ind.type].calc(S.candles, x.ind.params) : {});
     let data = cache.get(x.ind)[x.key] || [];
     if (x.hist) data = histColor(data);
     setSeries(x, data);
   }
-  dirty = true;
+  PT.dirty = true;
 }
 // Only the last point changes on a live tick → update() it instead of re-sending the whole series (smoother).
 function setSeries(x, data) {
@@ -170,7 +172,7 @@ function renderLegend(param) {
       <span class="${cls}">${ch >= 0 ? '+' : ''}${fmt(ch)} (${((ch / bar.open) * 100).toFixed(2)}%)</span></div>`;
   }
   for (const ind of S.inds) {
-    const isC = ind.type === 'custom', def = IND.DEFS[ind.type];
+    const isC = ind.type === 'custom', def = PT.IND.DEFS[ind.type];
     if (!isC && !def) continue;
     const vals = indSeries.filter((x) => x.ind === ind).map((x) => {
       const d = param && param.seriesData ? param.seriesData.get(x.series) : null;
@@ -179,9 +181,9 @@ function renderLegend(param) {
       const isMain = isC ? (customOut.get(ind.id)?.plots[x.key]?.pane === 'main') : def.pane === 'main';
       return `<span style="color:${col}">${v == null ? '—' : isMain ? fmt(v) : v.toFixed(2)}</span>`;
     }).join(' ');
-    const err = isC && customOut.get(ind.id)?.error ? `<span class="err" title="${esc(customOut.get(ind.id).error)}">${ICON.html('triangle-alert', 12)}error</span>` : '';
+    const err = isC && customOut.get(ind.id)?.error ? `<span class="err" title="${esc(customOut.get(ind.id).error)}">${PT.ICON.html('triangle-alert', 12)}error</span>` : '';
     html += `<div class="row"><span class="ind" data-id="${ind.id}"><b style="color:${ind.color || 'var(--text)'}">${esc(indName(ind))}</b> ${vals} ${err}
-      ${isC ? '<button data-act="code" title="แก้โค้ด">{ }</button>' : ''}<button data-act="edit" title="ตั้งค่า" aria-label="ตั้งค่า">${ICON.svg('settings', 14)}</button><button data-act="del" title="ลบ" aria-label="ลบ">${ICON.svg('x', 14)}</button></span></div>`;
+      ${isC ? '<button data-act="code" title="แก้โค้ด">{ }</button>' : ''}<button data-act="edit" title="ตั้งค่า" aria-label="ตั้งค่า">${PT.ICON.svg('settings', 14)}</button><button data-act="del" title="ลบ" aria-label="ลบ">${PT.ICON.svg('x', 14)}</button></span></div>`;
   }
   el.innerHTML = html;
 }
@@ -199,7 +201,7 @@ function editIndicator(ind) {
   closeMenus();
   const menu = $('ind-menu'); menu.classList.remove('hidden');
   const isC = ind.type === 'custom';
-  const def = isC ? null : IND.DEFS[ind.type];
+  const def = isC ? null : PT.IND.DEFS[ind.type];
   const single = isC || Object.keys(def.lines).length === 1;
   menu.innerHTML = `<div class="group">${esc(isC ? indName(ind) : def.name)}</div>` +
     Object.entries(ind.params || {}).map(([k, v]) => `<div class="item"><span>${esc(k)}</span><input data-k="${esc(k)}" type="number" step="any" value="${v}" style="width:80px"></div>`).join('') +
@@ -222,14 +224,14 @@ function openIndicatorMenu() {
   if (!menu.classList.contains('hidden')) return closeMenus();
   closeMenus();
   const item = ([k, d]) => `<div class="item" data-type="${k}"><span>${d.name}</span><small>${Object.values(d.params).join(', ')}</small></div>`;
-  const all = Object.entries(IND.DEFS);
+  const all = Object.entries(PT.IND.DEFS);
   menu.innerHTML = '<div class="group">บนกราฟราคา</div>' + all.filter(([, d]) => d.pane === 'main').map(item).join('') +
     '<div class="group">หน้าต่างแยก (Oscillators)</div>' + all.filter(([, d]) => d.pane === 'sub').map(item).join('') +
     '<div class="group">สคริปต์ของฉัน</div>' +
     S.scripts.map((s) => `<div class="item sc" data-script="${s.id}"><span>${esc(s.name)}</span><button data-edit="${s.id}">แก้โค้ด</button></div>`).join('') +
-    '<div class="item" data-new><span>' + ICON.html('pencil', 14) + 'เขียน indicator ใหม่…</span></div>';
+    '<div class="item" data-new><span>' + PT.ICON.html('pencil', 14) + 'เขียน indicator ใหม่…</span></div>';
   menu.classList.remove('hidden');
-  menu.querySelectorAll('[data-type]').forEach((el) => el.onclick = () => { addIndicator({ type: el.dataset.type, params: { ...IND.DEFS[el.dataset.type].params } }); closeMenus(); });
+  menu.querySelectorAll('[data-type]').forEach((el) => el.onclick = () => { addIndicator({ type: el.dataset.type, params: { ...PT.IND.DEFS[el.dataset.type].params } }); closeMenus(); });
   menu.querySelectorAll('[data-script]').forEach((el) => el.onclick = (e) => {
     if (e.target.dataset.edit) { closeMenus(); return openScriptEditor(+e.target.dataset.edit); }
     addIndicator({ type: 'custom', scriptId: +el.dataset.script }); closeMenus();
@@ -245,22 +247,22 @@ let editingScript = null;
 function openScriptEditor(id) {
   editingScript = id != null ? S.scripts.find((s) => s.id === id) : null;
   $('sc-name').value = editingScript ? editingScript.name : 'My Indicator';
-  $('sc-code').value = editingScript ? editingScript.code : CUSTOM.TEMPLATE;
+  $('sc-code').value = editingScript ? editingScript.code : PT.CUSTOM.TEMPLATE;
   $('sc-delete').classList.toggle('hidden', !editingScript);
   $('sc-msg').textContent = 'ทดสอบกับข้อมูลกราฟที่เปิดอยู่ได้ด้วยปุ่ม "ทดสอบ"';
   $('modal-script').classList.remove('hidden');
   $('sc-code').focus();
 }
-$('sc-example').innerHTML += Object.keys(CUSTOM.EXAMPLES).map((k) => `<option>${esc(k)}</option>`).join('');
-$('sc-example').onchange = () => { const k = $('sc-example').value; if (!k) return; $('sc-code').value = CUSTOM.EXAMPLES[k]; $('sc-name').value = k; $('sc-example').value = ''; };
+$('sc-example').innerHTML += Object.keys(PT.CUSTOM.EXAMPLES).map((k) => `<option>${esc(k)}</option>`).join('');
+$('sc-example').onchange = () => { const k = $('sc-example').value; if (!k) return; $('sc-code').value = PT.CUSTOM.EXAMPLES[k]; $('sc-name').value = k; $('sc-example').value = ''; };
 $('sc-code').addEventListener('keydown', (e) => {
   if (e.key === 'Tab') { e.preventDefault(); const t = e.target, s = t.selectionStart; t.setRangeText('  ', s, t.selectionEnd, 'end'); }
 });
 function testScript() {
   if (!S.candles.length) { $('sc-msg').textContent = 'ยังไม่มีข้อมูลกราฟให้ทดสอบ'; return true; }
-  const out = CUSTOM.run($('sc-code').value, S.candles, {});
-  if (out.error) { $('sc-msg').innerHTML = `<span class="down">${ICON.html('circle-x', 14)}${esc(out.error)}</span>`; return false; }
-  $('sc-msg').innerHTML = `<span class="up">${ICON.html('circle-check', 14)}ผ่าน</span> — ${out.plots.length} plot, ${out.markers.length} marker, inputs: ${esc(JSON.stringify(out.inputs))}`;
+  const out = PT.CUSTOM.run($('sc-code').value, S.candles, {});
+  if (out.error) { $('sc-msg').innerHTML = `<span class="down">${PT.ICON.html('circle-x', 14)}${esc(out.error)}</span>`; return false; }
+  $('sc-msg').innerHTML = `<span class="up">${PT.ICON.html('circle-check', 14)}ผ่าน</span> — ${out.plots.length} plot, ${out.markers.length} marker, inputs: ${esc(JSON.stringify(out.inputs))}`;
   return true;
 }
 function saveScript() {
@@ -286,3 +288,4 @@ $('sc-delete').onclick = () => {
   $('modal-script').classList.add('hidden');
 };
 document.querySelectorAll('[data-close]').forEach((b) => (b.onclick = () => b.closest('.modal').classList.add('hidden')));
+export { askLine, buildIndicators, buildMain, chart, chartThemeOptions, closeMenus, customOut, displayData, main, openIndicatorMenu, priceFormat, refreshPriceLines, renderLegend, updateIndicators };

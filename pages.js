@@ -1,4 +1,6 @@
-/* global $, store, toast, S */
+import { PT, def } from './src/pt.ts';
+import { $, S, store } from './app-core.js';
+def({ PAGES: [() => PAGES] });
 // Page tabs (desktop): open a side-panel tab (บทเรียน, ข่าว, คำนวณ, ฝึก, วิเคราะห์, Log, ราคา) as a full page next to
 // the chart, browser-style. The tab's own DOM node is moved, so everything inside keeps working; closing the page
 // puts it back into the side panel.
@@ -115,4 +117,4 @@ const PAGES = (() => {
   if (open.length && !open.includes(active)) active = 'chart';
   return { open: openPage, close: closePage, activate, register, isOpen: (k) => open.includes(k), list: () => open.slice(), active: () => active };
 })();
-window.PAGES = PAGES;
+export { PAGES };

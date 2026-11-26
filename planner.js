@@ -1,4 +1,9 @@
-/* global ICON, S, store, $, esc, fmt, digits, activeSignal, el, label, chartW, yOf, dirty:writable, UP, DOWN, vcg */
+import { PT, def } from './src/pt.ts';
+import { MM } from './src/legacy/core.ts';
+import { $, DOWN, S, TC, UP, digits, esc, fmt, store } from './app-core.js';
+import { activeSignal } from './app-analysis.js';
+import { el, label, yOf } from './app-overlay.js';
+def({ savePlan: [() => savePlan], pointSize: [() => pointSize], toPts: [() => toPts], contractSize: [() => contractSize, (v) => { contractSize = v; }], quoteToUSD: [() => quoteToUSD, (v) => { quoteToUSD = v; }], autoVpp: [() => autoVpp, (v) => { autoVpp = v; }], vpp: [() => vpp, (v) => { vpp = v; }], isCentAcct: [() => isCentAcct], CUR: [() => CUR], usdOf: [() => usdOf], floorStep: [() => floorStep], lotFmt: [() => lotFmt], money: [() => money], riskAmount: [() => riskAmount, (v) => { riskAmount = v; }], plannerLot: [() => plannerLot, (v) => { plannerLot = v; }], computePlan: [() => computePlan, (v) => { computePlan = v; }], renderPlanner: [() => renderPlanner, (v) => { renderPlanner = v; }], plannerFrom: [() => plannerFrom, (v) => { plannerFrom = v; }], drawPlanner: [() => drawPlanner, (v) => { drawPlanner = v; }] });
 // Position & scale-in calculator ("คำนวณ" tab): lot size from risk, add-on (เติมไม้) levels, average price,
 // loss at SL, profit at TP, and the plan drawn on the chart.
 
@@ -141,7 +146,7 @@ function renderPlanner() {
       ${inp('lotStep', 'lot step')}
     </div>
     <p class="muted">อัตโนมัติ: ${S.symbol} 1 lot = ${contractSize(S.symbol).toLocaleString()} หน่วย${av ? ` → ราคาขยับ 1.0 = ${isCentAcct() ? av.toLocaleString() + ' USC ต่อ cent lot' : '$' + av.toLocaleString() + ' ต่อ lot'}` : ''}${isCentAcct() ? ' (บัญชีเซ็นต์: 1 cent lot = 1/100 ของ lot มาตรฐาน)' : ''} · ตรวจกับสเปกโบรกเกอร์อีกครั้ง</p>
-    ${r.warn.map((w) => `<div class="warn">${ICON.html('triangle-alert', 14)}${esc(w)}</div>`).join('')}
+    ${r.warn.map((w) => `<div class="warn">${PT.ICON.html('triangle-alert', 14)}${esc(w)}</div>`).join('')}
     ${r.rows.length ? `
     <div class="sum">
       <span>ความเสี่ยงที่ตั้ง</span><b>${money(r.risk)}${usdOf(r.risk)}</b>
@@ -164,26 +169,26 @@ function renderPlanner() {
   const sel = $('planner').querySelector('select[data-k="weight"]'); sel.value = p.weight;
   const trs = $('planner').querySelector('select[data-k="trail"]'); if (trs) trs.value = p.trail || 'none';
   const dirN = () => (p.side === 'buy' ? 1 : -1), entryNow = () => { const e = parseFloat(p.entry); if (isFinite(e)) return e; const qq = S.quotes[S.symbol]; if (!qq) return null; p.entry = fmt(p.side === 'buy' ? qq.ask : qq.bid); return parseFloat(p.entry); };
-  const setSlPts = (n) => { const e = entryNow(); if (e == null || !(n > 0)) return; p.sl = fmt(e - dirN() * n * pointSize()); savePlan(); renderPlanner(); dirty = true; };
+  const setSlPts = (n) => { const e = entryNow(); if (e == null || !(n > 0)) return; p.sl = fmt(e - dirN() * n * pointSize()); savePlan(); renderPlanner(); PT.dirty = true; };
   $('pl-slpts').onchange = () => setSlPts(+$('pl-slpts').value);
-  $('pl-tppts').onchange = () => { const e = entryNow(), n = +$('pl-tppts').value; if (e == null || !(n > 0)) return; p.tp1 = fmt(e + dirN() * n * pointSize()); const s = parseFloat(p.sl); if (isFinite(s)) p.tp2 = fmt(e + dirN() * 2 * n * pointSize()); savePlan(); renderPlanner(); dirty = true; };
-  $('pl-sppts').onchange = () => { const n = +$('pl-sppts').value; p.spacing = n > 0 ? fmt(n * pointSize()) : ''; savePlan(); renderPlanner(); dirty = true; };
+  $('pl-tppts').onchange = () => { const e = entryNow(), n = +$('pl-tppts').value; if (e == null || !(n > 0)) return; p.tp1 = fmt(e + dirN() * n * pointSize()); const s = parseFloat(p.sl); if (isFinite(s)) p.tp2 = fmt(e + dirN() * 2 * n * pointSize()); savePlan(); renderPlanner(); PT.dirty = true; };
+  $('pl-sppts').onchange = () => { const n = +$('pl-sppts').value; p.spacing = n > 0 ? fmt(n * pointSize()) : ''; savePlan(); renderPlanner(); PT.dirty = true; };
   $('planner').querySelectorAll('[data-slpts]').forEach((b) => (b.onclick = () => setSlPts(+b.dataset.slpts)));
-  $('planner').querySelectorAll('input[data-k], select[data-k]').forEach((i) => (i.onchange = () => { p[i.dataset.k] = i.value; savePlan(); renderPlanner(); dirty = true; }));
-  $('planner').querySelectorAll('[data-seg]').forEach((b) => (b.onclick = () => { p[b.dataset.seg] = b.dataset.v; savePlan(); renderPlanner(); dirty = true; }));
-  $('pl-show').onchange = () => { p.show = $('pl-show').checked; savePlan(); dirty = true; };
-  $('pl-now').onclick = () => { const qq = S.quotes[S.symbol]; if (!qq) return; p.entry = fmt(p.side === 'buy' ? qq.ask : qq.bid); savePlan(); renderPlanner(); dirty = true; };
+  $('planner').querySelectorAll('input[data-k], select[data-k]').forEach((i) => (i.onchange = () => { p[i.dataset.k] = i.value; savePlan(); renderPlanner(); PT.dirty = true; }));
+  $('planner').querySelectorAll('[data-seg]').forEach((b) => (b.onclick = () => { p[b.dataset.seg] = b.dataset.v; savePlan(); renderPlanner(); PT.dirty = true; }));
+  $('pl-show').onchange = () => { p.show = $('pl-show').checked; savePlan(); PT.dirty = true; };
+  $('pl-now').onclick = () => { const qq = S.quotes[S.symbol]; if (!qq) return; p.entry = fmt(p.side === 'buy' ? qq.ask : qq.bid); savePlan(); renderPlanner(); PT.dirty = true; };
   $('pl-sig').onclick = () => {
     const s = activeSignal() || (S.A && S.A.signals[S.A.signals.length - 1]); if (!s) return;
-    Object.assign(p, { side: s.dir === 1 ? 'buy' : 'sell', entry: fmt(s.entry), sl: fmt(s.sl), tp1: fmt(s.tp1), tp2: fmt(s.tp2) }); savePlan(); renderPlanner(); dirty = true;
+    Object.assign(p, { side: s.dir === 1 ? 'buy' : 'sell', entry: fmt(s.entry), sl: fmt(s.sl), tp1: fmt(s.tp1), tp2: fmt(s.tp2) }); savePlan(); renderPlanner(); PT.dirty = true;
   };
   $('pl-atr').onclick = () => {
     const a = S.A && S.A.atr[S.A.n - 1]; const e = parseFloat(p.entry); if (!a || !isFinite(e)) return;
-    p.sl = fmt(e - (p.side === 'buy' ? 1 : -1) * 1.5 * a); savePlan(); renderPlanner(); dirty = true;
+    p.sl = fmt(e - (p.side === 'buy' ? 1 : -1) * 1.5 * a); savePlan(); renderPlanner(); PT.dirty = true;
   };
   $('pl-rr').onclick = () => {
     const e = parseFloat(p.entry), s = parseFloat(p.sl); if (!isFinite(e) || !isFinite(s)) return;
-    p.tp1 = fmt(e + (e - s)); p.tp2 = fmt(e + 2 * (e - s)); savePlan(); renderPlanner(); dirty = true;
+    p.tp1 = fmt(e + (e - s)); p.tp2 = fmt(e + 2 * (e - s)); savePlan(); renderPlanner(); PT.dirty = true;
   };
 }
 
@@ -191,7 +196,7 @@ function renderPlanner() {
 function plannerFrom(d) {
   const e = d.pts[0].price, sl = d.pts[1].price, rr = d.rr || 2;
   Object.assign(S.plan, { side: d.type === 'long' ? 'buy' : 'sell', entry: fmt(e), sl: fmt(sl), tp1: fmt(e + (e - sl)), tp2: fmt(e + (e - sl) * rr) });
-  savePlan(); renderPlanner(); dirty = true;
+  savePlan(); renderPlanner(); PT.dirty = true;
   document.querySelector('#tabs [data-tab="calc"]').click();
 }
 
@@ -207,5 +212,6 @@ function drawPlanner(W) {
   if (r.rows.length > 1) line(r.avg, TC().fg, `เฉลี่ย ${fmt(r.avg)}`, '2 3');
 }
 
-document.querySelector('#tabs [data-tab="calc"]').addEventListener('click', () => { renderPlanner(); dirty = true; });
+document.querySelector('#tabs [data-tab="calc"]').addEventListener('click', () => { renderPlanner(); PT.dirty = true; });
 renderPlanner();
+export { autoVpp, computePlan, isCentAcct, plannerLot, renderPlanner, savePlan, vpp };

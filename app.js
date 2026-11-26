@@ -1,5 +1,10 @@
+import { PT, def } from './src/pt.ts';
+import { $, S, TFS, esc, store } from './app-core.js';
+import { buildIndicators, buildMain, refreshPriceLines } from './app-chart.js';
+import { renderAnalysis } from './app-analysis.js';
+import { loadChart, renderAlerts, updateHeader } from './app-data.js';
+def({ logs: [() => logs], errCount: [() => errCount, (v) => { errCount = v; }], logRenderTimer: [() => logRenderTimer, (v) => { logRenderTimer = v; }], LV: [() => LV], renderLogs: [() => renderLogs, (v) => { renderLogs = v; }], renderTfs: [() => renderTfs, (v) => { renderTfs = v; }] });
 // Price Tracker renderer · tabs, lessons, logs, toolbar and start-up (loaded last of the app-*.js files)
-/* global LightweightCharts, IND, AN, BOUNCE, CUSTOM, LESSONS, ICON, vcg */
 // ---------------------------------------------------------------- tabs, lessons, logs
 document.querySelectorAll('#tabs button[data-tab]').forEach((b) => (b.onclick = () => {
   document.querySelectorAll('#tabs button[data-tab]').forEach((x) => x.classList.toggle('active', x === b));
@@ -31,7 +36,7 @@ $('log-copy').onclick = () => navigator.clipboard.writeText(logs.map((e) => `${e
 // ---------------------------------------------------------------- toolbar
 function renderTfs() {
   $('tfs').innerHTML = TFS.map((t) => `<button data-t="${t.type}" class="${t.type === S.tf ? 'active' : ''}">${t.label}</button>`).join('');
-  $('tfs').querySelectorAll('button').forEach((b) => (b.onclick = () => { if (S.replay && typeof REPLAY !== 'undefined') REPLAY.exit(); S.tf = +b.dataset.t; store.set('tf', S.tf); renderTfs(); loadChart(); }));
+  $('tfs').querySelectorAll('button').forEach((b) => (b.onclick = () => { if (S.replay && typeof PT.REPLAY !== 'undefined') PT.REPLAY.exit(); S.tf = +b.dataset.t; store.set('tf', S.tf); renderTfs(); loadChart(); }));
 }
 $('ctype').value = S.ctype;
 $('ctype').onchange = () => { S.ctype = $('ctype').value; store.set('ctype', S.ctype); buildMain(); buildIndicators(); };
@@ -48,3 +53,4 @@ renderAlerts();
 updateHeader();
 renderAnalysis();
 loadChart();
+export { renderTfs };
