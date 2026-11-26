@@ -30,7 +30,7 @@ function candles(n, sec, seed, start = 3500) {
 }
 
 async function open(file, { width = 1400, height = 900, preload = true, mock = false } = {}) {
-  const w = new BrowserWindow({ width, height, show: true, webPreferences: preload ? { preload: path.join(ROOT, 'preload.js'), contextIsolation: true }
+  const w = new BrowserWindow({ width, height, show: true, webPreferences: preload ? { preload: path.join(ROOT, 'gen', 'main', 'preload.js'), contextIsolation: true }
     : { partition: 'mobile-' + Date.now() + Math.random(), ...(mock ? { preload: path.join(__dirname, 'capacitor-mock.js'), contextIsolation: false } : {}) } });   // fresh storage, like a new phone
   const errs = []; globalThis.__lastErrs = errs;
   w.webContents.on('console-message', (e) => { if (e.level === 'error') errs.push(e.message); });
@@ -46,7 +46,8 @@ app.whenReady().then(async () => {
   const reqs = [];
   ipcMain.handle('mt5-positions', () => null); ipcMain.handle('open-site', (_e, u) => { globalThis.__siteOpened = u; return true; }); ipcMain.handle('mt5-deals', () => []); ipcMain.handle('journal-get', () => ({ account: null, deals: [], snapshots: [], status: { state: 'ready' } })); ipcMain.handle('journal-sync', () => ({ added: 0, state: 'ok' })); ipcMain.handle('mt5-ea-info', () => ({ bundled: 103, running: null, auto: true }));
   ipcMain.handle('get-settings', () => ({ api: {}, webhook: {}, telegram: {}, net: { slowMs: 800, delayMs: 3000, staleSec: 45, stuckSec: 60, notify: false }, version: 'test', source: 'vcg' }));
-  ipcMain.handle('set-settings', (_e, v) => { globalThis.__savedSettings = v; return true; }); ipcMain.handle('notify', () => 0); ipcMain.handle('sign-out', () => true);
+  ipcMain.handle('set-settings', (_e, v) => { globalThis.__savedSettings = v; return true; });
+  ipcMain.handle('mt5-update-ea', () => { globalThis.__eaCalls = (globalThis.__eaCalls || []).concat('update'); return { ok: true, steps: [] }; }); ipcMain.handle('mt5-open-editor', () => { globalThis.__eaCalls = (globalThis.__eaCalls || []).concat('editor'); return true; }); ipcMain.handle('notify', () => 0); ipcMain.handle('sign-out', () => true);
   ipcMain.handle('fetch-json', () => { throw new Error('offline (test)'); });
   const iso = (m) => new Date(Date.now() - m * 60000);
   const RSS = {
@@ -522,6 +523,8 @@ app.whenReady().then(async () => {
       if (a) { a.checked = false; a.dispatchEvent(new Event('change', { bubbles: true })); } const save = document.getElementById('st-save'); if (save) save.click(); await new Promise((r) => setTimeout(r, 200));
       document.getElementById('modal-settings').classList.add('hidden'); return JSON.stringify(r); })()`));
     const sv = globalThis.__savedSettings && globalThis.__savedSettings.mt5;
+    await js(`(async () => { document.getElementById('open-settings').click(); await new Promise((r) => setTimeout(r, 300)); document.getElementById('st-ea-update').click(); await new Promise((r) => setTimeout(r, 150)); document.getElementById('st-ea-editor').click(); await new Promise((r) => setTimeout(r, 150)); document.getElementById('modal-settings').classList.add('hidden'); return true; })()`);
+    check('settings: "อัปเดต EA ตอนนี้" and "เปิด MetaEditor" buttons are wired', (globalThis.__eaCalls || []).includes('update') && (globalThis.__eaCalls || []).includes('editor'), globalThis.__eaCalls);
     check('settings: MT5 auto-launch toggles (on by default) are saved', al.has && al.def && sv && sv.autoLaunch === false && sv.closeOnQuit === true, { ...al, saved: sv });
     check('desktop: no console errors', A.errs.length === 0, A.errs.slice(0, 3));
     A.w.destroy();

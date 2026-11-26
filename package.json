@@ -6,7 +6,7 @@
   "main": "gen/main/main.js",
   "scripts": {
     "start": "electron .",
-    "build:mac": "electron-packager . \"Price Tracker\" --platform=darwin --arch=arm64,x64 --icon=build/icon.icns --out=dist --overwrite --app-bundle-id=local.pricetracker.app --ignore=\"^/(dist|dist-win|build|tools|tests|node_modules|android|www|scripts|src|vite|site|claude|preload\\.js|_site|docs|\\.github|capacitor\\.config\\.json|vite\\.config\\.mjs|svelte\\.config\\.mjs|tsconfig[^/]*\\.json|README\\.md|\\.gitignore|package-lock\\.json)(/|$)\"",
+    "build:mac": "electron-packager . \"Price Tracker\" --platform=darwin --arch=arm64,x64 --icon=build/icon.icns --out=dist --overwrite --app-bundle-id=local.pricetracker.app --ignore=\"^/(dist|dist-win|build|tools|tests|node_modules|android|www|scripts|src|vite|site|claude|_site|docs|\\.github|capacitor\\.config\\.json|vite\\.config\\.mjs|svelte\\.config\\.mjs|tsconfig[^/]*\\.json|README\\.md|\\.gitignore|package-lock\\.json)(/|$)\"",
     "build:win": "electron-builder --win --x64 --publish never",
     "build:www": "node scripts/build-www.js",
     "android:sync": "node scripts/build-www.js && npx cap sync android",
@@ -59,8 +59,7 @@
       "!**/*.map",
       "!vite.config.mjs",
       "!tsconfig*.json",
-      "!svelte.config.mjs",
-      "!preload.js"
+      "!svelte.config.mjs"
     ],
     "asar": false,
     "win": {

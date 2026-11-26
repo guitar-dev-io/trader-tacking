@@ -54,9 +54,6 @@ async function buildMain(common) {
     build({ ...node, entryPoints: [path.join(root, 'src/mcp/price-tracker-mcp.ts')], outfile: path.join(out, 'price-tracker-mcp.js'),
       banner: { js: '#!/usr/bin/env node\n// GENERATED from src/mcp/price-tracker-mcp.ts by scripts/build-core.mjs — do not edit' } }),
   ]);
-  // interim: tests/ui/run.js (owned by the renderer migration) still loads <root>/preload.js → keep a generated copy
-  // there until it points at gen/main/preload.js (gitignored; see docs/MIGRATION.md)
-  fs.copyFileSync(path.join(out, 'preload.js'), path.join(root, 'preload.js'));
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) buildCore().catch((e) => { console.error(e); process.exit(1); });
