@@ -1,7 +1,8 @@
 import { PT, def } from './src/pt.ts';
+import { toast } from './src/ui/toast.ts';
+import { ICON } from './icons.js';
 import { S, esc, store } from './app-core.js';
 import { connStatus } from './app-data.js';
-import { toast } from './settings.js';
 import { setSource } from './extras.js';
 def({ isWin: [() => isWin, (v) => { isWin = v; }], osKeys: [() => osKeys, (v) => { osKeys = v; }], SETUP: [() => SETUP], SRC_UI: [() => SRC_UI] });
 // Setup guide: install the app, pick a price source, log in (VCG or MT5) — with live checks.
@@ -74,7 +75,7 @@ const SETUP = (() => {
         <p>ใช้กราฟตัวอย่างฝึกอ่านแท่งเทียน ตีเส้น วิเคราะห์ และฝึกเทรดจำลองได้ทุกอย่าง</p>
         <p class="muted">อยากได้ราคาจริงเมื่อไร กลับมาที่คู่มือนี้แล้วเลือก VCG หรือ MT5</p>
         <button class="su-primary" data-act="demo">เริ่มใช้ Demo</button>
-        <button class="su-secondary" data-act="learn">${PT.ICON.html('graduation-cap', 16)}เปิดศูนย์การเรียนรู้</button>` }],
+        <button class="su-secondary" data-act="learn">${ICON.html('graduation-cap', 16)}เปิดศูนย์การเรียนรู้</button>` }],
     },
     vcg: {
       title: 'เชื่อมต่อ VCG Markets',
@@ -91,12 +92,12 @@ const SETUP = (() => {
             <li>กรอก <b>อีเมล</b> และ <b>รหัสผ่าน</b> ของ VCG (ถ้ามีรหัส OTP ให้กรอกด้วย)</li>
             <li>${isMobile() ? 'login เสร็จหน้า login จะปิดให้เอง' : 'login เสร็จปิดหน้าต่างนั้นได้เลย แอปยังรับราคาต่อ'} · login ครั้งเดียว แอปจำไว้ให้</li>
           </ol>
-          <p class="su-safe">${PT.ICON.html('lock', 15)}รหัสผ่านกรอกในหน้าเว็บของ VCG เอง แอปนี้ไม่เห็นและไม่เก็บรหัสผ่านของคุณ</p>
-          <button class="su-primary" data-act="vcg-login">${PT.ICON.html('log-in', 18)}เข้าสู่ระบบ VCG</button>` , check: 'vcg' },
+          <p class="su-safe">${ICON.html('lock', 15)}รหัสผ่านกรอกในหน้าเว็บของ VCG เอง แอปนี้ไม่เห็นและไม่เก็บรหัสผ่านของคุณ</p>
+          <button class="su-primary" data-act="vcg-login">${ICON.html('log-in', 18)}เข้าสู่ระบบ VCG</button>` , check: 'vcg' },
         { h: 'รับราคาสด', body: () => `
-          <p>เมื่อสถานะเป็น ${PT.ICON.html('circle-check', 15)} ราคาเข้าแล้ว ปิดคู่มือนี้แล้วเริ่มใช้งานได้เลย</p>
+          <p>เมื่อสถานะเป็น ${ICON.html('circle-check', 15)} ราคาเข้าแล้ว ปิดคู่มือนี้แล้วเริ่มใช้งานได้เลย</p>
           <ul><li>ถ้ารอเกิน 1 นาที กด <b>เชื่อมต่อใหม่</b></li><li>ยังไม่ได้ → แท็บ <b>Log</b> แล้วส่งภาพให้ผู้พัฒนา</li></ul>
-          <button data-act="vcg-retry">${PT.ICON.html('refresh-cw', 15)}เชื่อมต่อใหม่</button>`, check: 'vcg' },
+          <button data-act="vcg-retry">${ICON.html('refresh-cw', 15)}เชื่อมต่อใหม่</button>`, check: 'vcg' },
       ],
     },
     mt5: {
@@ -116,7 +117,7 @@ const SETUP = (() => {
             <li>กรอก <b>เลขบัญชี (Login)</b>, <b>รหัสผ่าน</b> และเลือก <b>Server</b> → OK</li>
             <li>มุมขวาล่างของ MT5 ต้องขึ้นเป็นตัวเลข kb ไม่ใช่ "No connection"</li>
           </ol>
-          <p class="su-safe">${PT.ICON.html('shield-check', 15)}ใช้ <b>รหัสผ่านนักลงทุน (investor password)</b> ได้ — ดูราคาได้แต่ส่งออเดอร์ไม่ได้ ปลอดภัยกว่า · รหัสผ่านกรอกใน MT5 เท่านั้น แอปนี้ไม่เห็น</p>` },
+          <p class="su-safe">${ICON.html('shield-check', 15)}ใช้ <b>รหัสผ่านนักลงทุน (investor password)</b> ได้ — ดูราคาได้แต่ส่งออเดอร์ไม่ได้ ปลอดภัยกว่า · รหัสผ่านกรอกใน MT5 เท่านั้น แอปนี้ไม่เห็น</p>` },
         { h: 'อนุญาตให้ EA ส่งราคาให้แอป', body: () => `
           <ol>
             <li>ใน MT5 กด ${win() ? keys('Ctrl', 'O') : keys('⌘', ',')} หรือเมนู <b>Tools → Options</b> → แท็บ <b>Expert Advisors</b></li>
@@ -127,8 +128,8 @@ const SETUP = (() => {
         { h: 'ติด EA (อัตโนมัติ)', body: () => `
           <p>แอปจะคัดลอก EA, compile ให้ และเปิด MT5 พร้อม EA บนกราฟ</p>
           <ol><li><b>ปิด MT5 ก่อน</b> (${win() ? keys('Alt', 'F4') : keys('⌘', 'Q')})</li><li>กดปุ่มด้านล่าง แล้วรอ MT5 เปิดขึ้นมา (10–30 วินาที)</li></ol>
-          <button class="su-primary" data-act="mt5-launch" ${busy ? 'disabled' : ''}>${busy ? 'กำลังทำ…' : `${PT.ICON.html('rocket', 18)}เปิด MT5 พร้อม EA`}</button>
-          ${lastRun ? `<ul class="su-run">${lastRun.steps.map((x) => `<li class="${x.ok ? 'ok' : 'bad'}">${PT.ICON.html(x.ok ? 'check' : 'x', 14)}${esc(x.t)}</li>`).join('')}</ul>` : ''}
+          <button class="su-primary" data-act="mt5-launch" ${busy ? 'disabled' : ''}>${busy ? 'กำลังทำ…' : `${ICON.html('rocket', 18)}เปิด MT5 พร้อม EA`}</button>
+          ${lastRun ? `<ul class="su-run">${lastRun.steps.map((x) => `<li class="${x.ok ? 'ok' : 'bad'}">${ICON.html(x.ok ? 'check' : 'x', 14)}${esc(x.t)}</li>`).join('')}</ul>` : ''}
           <details ${lastRun && !lastRun.ok ? 'open' : ''}><summary>ทำเอง (ถ้าปุ่มอัตโนมัติไม่ได้ผล)</summary>
             <ol>
               <li><button data-act="mt5-install">คัดลอก EA ลง MT5</button></li>
@@ -137,7 +138,7 @@ const SETUP = (() => {
               <li>ลาก <b>PriceTrackerBridge</b> ไปวางบนกราฟไหนก็ได้ → OK (ห้ามปิดกราฟนั้น)</li>
             </ol></details>`, check: 'mt5' },
         { h: 'เสร็จแล้ว', body: () => `
-          <p>เมื่อสถานะเป็น ${PT.ICON.html('circle-check', 15)} ราคาจากโบรกเกอร์ของคุณจะเข้ามาที่แอป</p>
+          <p>เมื่อสถานะเป็น ${ICON.html('circle-check', 15)} ราคาจากโบรกเกอร์ของคุณจะเข้ามาที่แอป</p>
           <ul>
             <li>ชื่อ symbol ของโบรกเกอร์อาจมีคำต่อท้าย (เช่น XAUUSDm, XAUUSDbrex.) แอปจับคู่ให้เอง</li>
             <li>ไม่ต้องเปิด MT5 ค้างไว้เอง — แอปจะเปิด MT5 ให้แบบย่อหน้าต่างตอนเปิดแอป และปิดให้ตอนปิดแอป (ปิดได้ที่ การตั้งค่า → MT5) · อย่าปิดกราฟที่ติด EA ใน MT5</li>
@@ -151,7 +152,7 @@ const SETUP = (() => {
   function startHtml() {
     const mob = isMobile(), s = st();
     const cur = S.source === 'mt5' ? live.mt5() : S.source === 'vcg' ? live.vcg() : { t: 'ใช้ข้อมูล Demo' };
-    const card = (p, icon, t, sub, dis) => `<button class="su-card" data-path="${p}" ${dis ? 'disabled' : ''}><i>${PT.ICON.svg(icon, 24)}</i><span><b>${t}</b><small>${sub}</small></span></button>`;
+    const card = (p, icon, t, sub, dis) => `<button class="su-card" data-path="${p}" ${dis ? 'disabled' : ''}><i>${ICON.svg(icon, 24)}</i><span><b>${t}</b><small>${sub}</small></span></button>`;
     return `<h2>เริ่มต้นใช้งาน Price Tracker</h2>
       <p class="muted">เลือกว่าจะเอาราคามาจากไหน · เปลี่ยนทีหลังได้เสมอ</p>
       <div class="su-now ${cur.ok ? 'ok' : ''}">สถานะตอนนี้: ${esc(cur.t)}${s.version ? ' · v' + esc(s.version) : ''}</div>
@@ -160,22 +161,22 @@ const SETUP = (() => {
       ${card('mt5', 'monitor', 'MT5 โบรกเกอร์ของฉัน', mob ? 'ใช้ได้เฉพาะแอปบนคอม (Mac/Windows)' : 'Exness, XM, Brex ฯลฯ · EA อ่านอย่างเดียว ส่งออเดอร์ไม่ได้ — ดูออเดอร์/โพซิชันของตัวเองได้', mob)}
       <div class="su-sec">ยังไม่ได้ติดตั้ง หรืออยากอัปเดต?</div>
       ${card('install', 'download', 'วิธีติดตั้งแอป', 'Mac (zip) และ Android (apk) · แก้ปัญหาเปิดครั้งแรกไม่ได้')}
-      <p class="su-ro">${PT.ICON.html('shield-check', 15)}แอปนี้<b>อ่านและแสดงราคาเท่านั้น</b> ไม่ส่งคำสั่งซื้อขาย · ผลวิเคราะห์มีไว้เพื่อการเรียนรู้ ไม่ใช่คำแนะนำการลงทุน</p>`;
+      <p class="su-ro">${ICON.html('shield-check', 15)}แอปนี้<b>อ่านและแสดงราคาเท่านั้น</b> ไม่ส่งคำสั่งซื้อขาย · ผลวิเคราะห์มีไว้เพื่อการเรียนรู้ ไม่ใช่คำแนะนำการลงทุน</p>`;
   }
   function pathHtml() {
     const P = PATHS[path], s = P.steps[step], n = P.steps.length;
     const chk = s.check ? live[s.check]() : null;
     return `<h2>${P.title}</h2>
-      ${n > 1 ? `<div class="su-dots">${P.steps.map((x, i) => `<button class="${i < step ? 'done' : i === step ? 'now' : ''}" data-step="${i}" title="${esc(x.h)}">${i < step ? PT.ICON.svg('check', 14) : i + 1}</button>`).join('<i></i>')}</div>` : ''}
+      ${n > 1 ? `<div class="su-dots">${P.steps.map((x, i) => `<button class="${i < step ? 'done' : i === step ? 'now' : ''}" data-step="${i}" title="${esc(x.h)}">${i < step ? ICON.svg('check', 14) : i + 1}</button>`).join('<i></i>')}</div>` : ''}
       <h3>${n > 1 ? `ขั้นที่ ${step + 1}: ` : ''}${s.h}</h3>
       <div class="su-body">${s.body()}</div>
-      ${chk ? `<div class="su-now ${chk.ok ? 'ok' : ''}">${PT.ICON.html(chk.ok ? 'circle-check' : 'hourglass', 16)}${esc(chk.t)}</div>` : ''}
+      ${chk ? `<div class="su-now ${chk.ok ? 'ok' : ''}">${ICON.html(chk.ok ? 'circle-check' : 'hourglass', 16)}${esc(chk.t)}</div>` : ''}
       <div class="su-nav"><button data-nav="back">‹ ${step ? 'ย้อนกลับ' : 'เลือกใหม่'}</button>
-        ${step < n - 1 ? '<button class="su-next" data-nav="next">ถัดไป ›</button>' : path === 'demo' ? '' : '<button class="su-next" data-nav="done">เสร็จแล้ว ' + PT.ICON.svg('check', 15) + '</button>'}</div>`;
+        ${step < n - 1 ? '<button class="su-next" data-nav="next">ถัดไป ›</button>' : path === 'demo' ? '' : '<button class="su-next" data-nav="done">เสร็จแล้ว ' + ICON.svg('check', 15) + '</button>'}</div>`;
   }
   function render() {
     if (!box) return;
-    const html = `<div class="su-card-wrap"><button class="su-x" data-nav="close" aria-label="ปิด">${PT.ICON.svg('x', 18)}</button>${path === 'start' ? startHtml() : pathHtml()}</div>`;
+    const html = `<div class="su-card-wrap"><button class="su-x" data-nav="close" aria-label="ปิด">${ICON.svg('x', 18)}</button>${path === 'start' ? startHtml() : pathHtml()}</div>`;
     if (html === box._html) return;
     const sc = box.querySelector('.su-card-wrap'), top = sc ? sc.scrollTop : 0, open = box.querySelector('details[open]');
     box._html = html; box.innerHTML = html;
@@ -259,12 +260,12 @@ const SRC_UI = (() => {
     if (m) { m.remove(); return; }
     const pill = document.getElementById('src-pill'), r = pill.getBoundingClientRect();
     const cap = vcg.capabilities || {};
-    const it = (k, icon, t, sub, dis) => `<button role="menuitemradio" aria-checked="${S.source === k}" data-src="${k}" ${dis ? 'disabled' : ''}><i>${PT.ICON.svg(icon, 20)}</i><span><b>${t}</b><small>${sub}</small></span>${S.source === k ? '<em>' + PT.ICON.svg('check', 16) + '</em>' : ''}</button>`;
+    const it = (k, icon, t, sub, dis) => `<button role="menuitemradio" aria-checked="${S.source === k}" data-src="${k}" ${dis ? 'disabled' : ''}><i>${ICON.svg(icon, 20)}</i><span><b>${t}</b><small>${sub}</small></span>${S.source === k ? '<em>' + ICON.svg('check', 16) + '</em>' : ''}</button>`;
     m = document.createElement('div'); m.id = 'src-menu'; m.setAttribute('role', 'menu');
     m.innerHTML = it('vcg', 'globe', 'VCG Markets', 'ราคาจริงจากบัญชี VCG', !cap.vcg)
       + (cap.mt5 ? it('mt5', 'monitor', 'MT5 โบรกเกอร์ของฉัน', 'EA อ่านอย่างเดียว ส่งออเดอร์ไม่ได้') : '')
       + it('demo', 'graduation-cap', 'Demo (ฝึก)', 'ไม่ต้อง login')
-      + '<hr><button data-src="guide"><i>' + PT.ICON.svg('book-open', 20) + '</i><span><b>วิธีเชื่อมต่อ / login</b><small>คู่มือเริ่มต้นทีละขั้น</small></span></button>';
+      + '<hr><button data-src="guide"><i>' + ICON.svg('book-open', 20) + '</i><span><b>วิธีเชื่อมต่อ / login</b><small>คู่มือเริ่มต้นทีละขั้น</small></span></button>';
     document.body.appendChild(m);
     const w = 260; m.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.right - w)) + 'px'; m.style.top = (r.bottom + 6) + 'px';
     m.onclick = (e) => {

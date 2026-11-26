@@ -1,10 +1,11 @@
 import { PT, def } from './src/pt.ts';
+import { toast } from './src/ui/toast.ts';
+import { ICON } from './icons.js';
 import { $, S, esc, fmt, store } from './app-core.js';
 import { openIndicatorMenu } from './app-chart.js';
 import { openAnalysisMenu } from './app-analysis.js';
 import { switchSymbol } from './app-data.js';
 import { GROUPS, TOOLS, setTool, undo } from './draw.js';
-import { toast } from './settings.js';
 import { REPLAY } from './learn.js';
 import { SETUP } from './setup.js';
 // Phone layout (Android app / narrow windows). The desktop UI is a TradingView-style workstation; on a phone we
@@ -22,7 +23,7 @@ import { SETUP } from './setup.js';
   // ------------------------------------------------------------ bottom sheet
   const sheet = document.createElement('div');
   sheet.id = 'msheet'; sheet.className = 'hidden';
-  sheet.innerHTML = '<div class="ms-back"></div><div class="ms-panel"><div class="ms-grab"></div><div class="ms-head"><b class="ms-title"></b><button class="ms-x" aria-label="ปิด">' + PT.ICON.svg('x', 20) + '</button></div><div class="ms-body"></div></div>';
+  sheet.innerHTML = '<div class="ms-back"></div><div class="ms-panel"><div class="ms-grab"></div><div class="ms-head"><b class="ms-title"></b><button class="ms-x" aria-label="ปิด">' + ICON.svg('x', 20) + '</button></div><div class="ms-body"></div></div>';
   document.body.appendChild(sheet);
   let borrowed = null, borrowedHome = null, watch = null, onCloseCb = null;
   function closeSheet() {
@@ -65,8 +66,8 @@ import { SETUP } from './setup.js';
   on($('sym-title'), 'click', () => openSymbols());
   const row = document.createElement('div'); row.id = 'mtfrow';
   row.innerHTML = `<div class="m-tfs"></div><div class="m-acts">
-    <button data-m="ind" aria-label="อินดิเคเตอร์">${PT.ICON.svg('fx', 20)}</button>
-    <button data-m="an" aria-label="วิเคราะห์บนกราฟ">${PT.ICON.svg('brain', 20)}</button>
+    <button data-m="ind" aria-label="อินดิเคเตอร์">${ICON.svg('fx', 20)}</button>
+    <button data-m="an" aria-label="วิเคราะห์บนกราฟ">${ICON.svg('brain', 20)}</button>
     <button data-m="opts" aria-label="ตัวเลือกกราฟ"><span class="m-dots">⋯</span></button></div>`;
   tb.after(row);
   // network warning: a thin strip under the timeframe row instead of squeezing the price header
@@ -81,8 +82,8 @@ import { SETUP } from './setup.js';
 
   // ------------------------------------------------------------ chart: draw button + active-tool pill
   const wrap = $('chart-wrap');
-  wrap.insertAdjacentHTML('beforeend', `<button id="m-draw" aria-label="เครื่องมือวาด">${PT.ICON.svg('trend', 22)}</button>
-    <div id="m-pill" class="hidden"><span class="mp-ic"></span><span class="mp-t"></span><button class="mp-undo" aria-label="ย้อนกลับ">${PT.ICON.svg('undo-2', 18)}</button><button class="mp-x" aria-label="เลิกวาด">${PT.ICON.svg('x', 18)}</button></div>`);
+  wrap.insertAdjacentHTML('beforeend', `<button id="m-draw" aria-label="เครื่องมือวาด">${ICON.svg('trend', 22)}</button>
+    <div id="m-pill" class="hidden"><span class="mp-ic"></span><span class="mp-t"></span><button class="mp-undo" aria-label="ย้อนกลับ">${ICON.svg('undo-2', 18)}</button><button class="mp-x" aria-label="เลิกวาด">${ICON.svg('x', 18)}</button></div>`);
   on($('m-draw'), 'click', openTools);
   on(wrap.querySelector('.mp-x'), 'click', () => setTool('cursor'));
   on(wrap.querySelector('.mp-undo'), 'click', () => { undo(); PT.dirty = true; });
@@ -91,7 +92,7 @@ import { SETUP } from './setup.js';
   function syncPill() {
     const t = S.tool, p = $('m-pill'), drawing = t && t !== 'cursor';
     p.classList.toggle('hidden', !drawing); $('m-draw').classList.toggle('on', drawing);
-    if (drawing) { p.querySelector('.mp-ic').innerHTML = PT.ICON.svg(TOOLS[t].icon, 16); p.querySelector('.mp-t').textContent = `${TOOLS[t].name.split(' (')[0].split(' ·')[0]} · ${HINT[t] || ''}`; }
+    if (drawing) { p.querySelector('.mp-ic').innerHTML = ICON.svg(TOOLS[t].icon, 16); p.querySelector('.mp-t').textContent = `${TOOLS[t].name.split(' (')[0].split(' ·')[0]} · ${HINT[t] || ''}`; }
   }
   const _setTool = PT.setTool;
   PT.setTool = function (t) { _setTool(t); syncPill(); };
@@ -100,9 +101,9 @@ import { SETUP } from './setup.js';
 
   function openTools() {
     const body = openSheet('เครื่องมือวาด', `<div class="m-tools">${GROUPS.flat().filter((k) => TOOLS[k]).map((k) =>
-      `<button data-t="${k}" class="${S.tool === k ? 'on' : ''}">${PT.ICON.svg(TOOLS[k].icon, 22)}<span>${esc(TOOLS[k].name.split(' (')[0].split(' ·')[0])}</span></button>`).join('')}</div>
+      `<button data-t="${k}" class="${S.tool === k ? 'on' : ''}">${ICON.svg(TOOLS[k].icon, 22)}<span>${esc(TOOLS[k].name.split(' (')[0].split(' ·')[0])}</span></button>`).join('')}</div>
       <div class="m-row2"><label class="m-switch"><input type="checkbox" id="m-magnet" ${S.magnet ? 'checked' : ''}> Magnet (ดูดเข้าราคา)</label>
-      <button id="m-layers">รูปวาดทั้งหมด</button><button id="m-undo">${PT.ICON.html('undo-2', 16)}ย้อน</button></div>`);
+      <button id="m-layers">รูปวาดทั้งหมด</button><button id="m-undo">${ICON.html('undo-2', 16)}ย้อน</button></div>`);
     body.querySelectorAll('[data-t]').forEach((b) => (b.onclick = () => { setTool(b.dataset.t); closeSheet(); }));
     body.querySelector('#m-magnet').onchange = (e) => { S.magnet = e.target.checked; store.set('magnet', S.magnet); const m = $('magnet'); if (m) m.checked = S.magnet; };
     body.querySelector('#m-undo').onclick = () => { undo(); PT.dirty = true; };
@@ -120,10 +121,10 @@ import { SETUP } from './setup.js';
       <div class="m-seg">${[['auto', 'อัตโนมัติ'], ['log', 'Log'], ['pct', '%']].map(([v, n]) => `<button data-sc="${v}">${n}</button>`).join('')}</div>
       <div class="m-list">
         <label class="m-switch"><input type="checkbox" data-chk="show-ask" ${$('show-ask').checked ? 'checked' : ''}> แสดงราคา Ask</label>
-        <button data-a="replay">${PT.ICON.html('rewind', 18)}Bar Replay (ย้อนดูทีละแท่ง)</button>
-        <button data-a="settings">${PT.ICON.html('settings', 18)}ตั้งค่ากราฟ (สี, เส้นตาราง, Session, Fibo)</button>
-        <button data-a="shot">${PT.ICON.html('camera', 18)}บันทึกภาพกราฟ</button>
-        <button data-a="reset">${PT.ICON.html('rotate-ccw', 18)}รีเซ็ตมุมมองกราฟ</button>
+        <button data-a="replay">${ICON.html('rewind', 18)}Bar Replay (ย้อนดูทีละแท่ง)</button>
+        <button data-a="settings">${ICON.html('settings', 18)}ตั้งค่ากราฟ (สี, เส้นตาราง, Session, Fibo)</button>
+        <button data-a="shot">${ICON.html('camera', 18)}บันทึกภาพกราฟ</button>
+        <button data-a="reset">${ICON.html('rotate-ccw', 18)}รีเซ็ตมุมมองกราฟ</button>
       </div>`);
     // ranges: reuse the desktop buttons' click handlers
     const rs = body.querySelector('.m-ranges');
@@ -152,18 +153,18 @@ import { SETUP } from './setup.js';
   const side = $('side');
   side.insertAdjacentHTML('afterbegin', '<div id="m-page-h"><button class="mph-back" aria-label="กลับ">‹</button><b class="mph-t"></b></div>');
   side.insertAdjacentHTML('beforeend', `<div class="tab hidden" id="tab-more"><div class="m-more">
-    <button data-do="dash">${PT.ICON.svg('chart-candlestick', 22)}<span><b>แดชบอร์ด</b><small>หลายกราฟพร้อมกัน + ข่าว ราคา Session</small></span></button>
-    <button data-go="calc">${PT.ICON.svg('calc', 22)}<span><b>คำนวณ lot / จุดเติม</b><small>ขนาดไม้จาก % ความเสี่ยง, SL เป็นจุด</small></span></button>
-    <button data-do="news">${PT.ICON.svg('newspaper', 22)}<span><b>ข่าวและปฏิทิน</b><small>FXStreet, Investing, Fed, ECB, BLS + ปฏิทินเศรษฐกิจ</small></span></button>
-    <button data-do="journal">${PT.ICON.svg('wallet', 22)}<span><b>ผลการเทรด</b><small>กำไร/ขาดทุน รายวัน รายเดือน จาก MT5 · ดูตัวอย่างได้</small></span></button>
-    <button data-do="learn">${PT.ICON.svg('graduation-cap', 22)}<span><b>ศูนย์การเรียนรู้</b><small>บทเรียน แท่งเทียน, Demand & Supply, MM + แบบฝึก</small></span></button>
-    <button data-go="log">${PT.ICON.svg('logs', 22)}<span><b>Log</b><small>สถานะการเชื่อมต่อ · ส่งให้ผู้พัฒนาเมื่อมีปัญหา</small></span><i id="m-logb"></i></button>
-    <button data-do="settings">${PT.ICON.svg('gear', 22)}<span><b>การตั้งค่า</b><small>เวลา, แจ้งเตือน, Session, ข้อมูล</small></span></button>
+    <button data-do="dash">${ICON.svg('chart-candlestick', 22)}<span><b>แดชบอร์ด</b><small>หลายกราฟพร้อมกัน + ข่าว ราคา Session</small></span></button>
+    <button data-go="calc">${ICON.svg('calc', 22)}<span><b>คำนวณ lot / จุดเติม</b><small>ขนาดไม้จาก % ความเสี่ยง, SL เป็นจุด</small></span></button>
+    <button data-do="news">${ICON.svg('newspaper', 22)}<span><b>ข่าวและปฏิทิน</b><small>FXStreet, Investing, Fed, ECB, BLS + ปฏิทินเศรษฐกิจ</small></span></button>
+    <button data-do="journal">${ICON.svg('wallet', 22)}<span><b>ผลการเทรด</b><small>กำไร/ขาดทุน รายวัน รายเดือน จาก MT5 · ดูตัวอย่างได้</small></span></button>
+    <button data-do="learn">${ICON.svg('graduation-cap', 22)}<span><b>ศูนย์การเรียนรู้</b><small>บทเรียน แท่งเทียน, Demand & Supply, MM + แบบฝึก</small></span></button>
+    <button data-go="log">${ICON.svg('logs', 22)}<span><b>Log</b><small>สถานะการเชื่อมต่อ · ส่งให้ผู้พัฒนาเมื่อมีปัญหา</small></span><i id="m-logb"></i></button>
+    <button data-do="settings">${ICON.svg('gear', 22)}<span><b>การตั้งค่า</b><small>เวลา, แจ้งเตือน, Session, ข้อมูล</small></span></button>
     <div class="m-sec">การเชื่อมต่อ</div>
-    <button data-do="guide">${PT.ICON.svg('book-open', 22)}<span><b>คู่มือเริ่มต้น</b><small>ติดตั้งแอป · วิธี login · เลือกแหล่งราคา</small></span></button>
+    <button data-do="guide">${ICON.svg('book-open', 22)}<span><b>คู่มือเริ่มต้น</b><small>ติดตั้งแอป · วิธี login · เลือกแหล่งราคา</small></span></button>
     <div class="m-src"></div>
-    <button data-do="login">${PT.ICON.svg('log-in', 22)}<span><b>เข้าสู่ระบบ VCG</b><small>เปิดหน้า login ของ VCG WebTrader</small></span></button>
-    <button data-do="reconnect">${PT.ICON.svg('refresh-cw', 22)}<span><b>เชื่อมต่อใหม่</b><small>โหลดหน้า VCG ใหม่</small></span></button>
+    <button data-do="login">${ICON.svg('log-in', 22)}<span><b>เข้าสู่ระบบ VCG</b><small>เปิดหน้า login ของ VCG WebTrader</small></span></button>
+    <button data-do="reconnect">${ICON.svg('refresh-cw', 22)}<span><b>เชื่อมต่อใหม่</b><small>โหลดหน้า VCG ใหม่</small></span></button>
     <p class="muted m-ver"></p></div></div>`);
   const PAGES = { market: 'ราคา', analysis: 'วิเคราะห์', practice: 'ฝึกเทรด', calc: 'คำนวณ', log: 'Log', more: 'เพิ่มเติม' };
   const SUB = { calc: 1, log: 1 };
@@ -197,7 +198,7 @@ import { SETUP } from './setup.js';
 
   const nav = document.createElement('nav'); nav.id = 'mnav2';
   const NAV = [['chart', 'candles', 'กราฟ'], ['market', 'list', 'ราคา'], ['analysis', 'brain', 'วิเคราะห์'], ['learn', 'graduation-cap', 'เรียนรู้'], ['practice', 'play', 'ฝึก'], ['more', 'menu', 'เพิ่มเติม']];
-  nav.innerHTML = NAV.map(([k, i, n]) => `<button data-nav="${k}">${PT.ICON.svg(i, 22) || ''}<span>${n}</span>${k === 'more' ? '<i class="nb"></i>' : ''}</button>`).join('');
+  nav.innerHTML = NAV.map(([k, i, n]) => `<button data-nav="${k}">${ICON.svg(i, 22) || ''}<span>${n}</span>${k === 'more' ? '<i class="nb"></i>' : ''}</button>`).join('');
   document.body.appendChild(nav);
   nav.querySelectorAll('[data-nav]').forEach((b) => (b.onclick = () => {
     closeSheet();

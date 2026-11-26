@@ -1,6 +1,7 @@
 import { PT, def } from './src/pt.ts';
+import { toast } from './src/ui/toast.ts';
+import { ICON } from './icons.js';
 import { $, S, esc, store } from './app-core.js';
-import { toast } from './settings.js';
 import { NEWS } from './extras.js';
 def({ HEADLINES: [() => HEADLINES] });
 // Market news ("ข่าว" tab): headlines from a fixed list of established publishers and official sources (RSS),
@@ -87,14 +88,14 @@ const HEADLINES = (() => {
     const chips = [['rel', `เกี่ยวกับ ${S.symbol}`], ['all', 'ทั้งหมด'], ['official', 'ทางการ (Fed/ECB/BLS)'], ...FEEDS.filter((f) => f.kind === 'market').map((f) => [f.id, f.name.split(' ·')[0] === 'Investing.com' ? f.name.replace('Investing.com · ', 'Investing ') : f.name])];
     const cal = !box.closest('#news-page') && typeof NEWS !== 'undefined' && NEWS.upcoming ? NEWS.upcoming(4) : [];   // the news page shows the full calendar itself
     box.innerHTML = `
-      <div class="panel nw-head"><div class="panel-h"><span>${PT.ICON.html('newspaper', 16)}ข่าวตลาด</span><button id="nw-refresh" class="ib" title="โหลดใหม่" aria-label="โหลดใหม่">${PT.ICON.svg(loading ? 'loader-circle' : 'refresh-cw', 16)}</button></div>
+      <div class="panel nw-head"><div class="panel-h"><span>${ICON.html('newspaper', 16)}ข่าวตลาด</span><button id="nw-refresh" class="ib" title="โหลดใหม่" aria-label="โหลดใหม่">${ICON.svg(loading ? 'loader-circle' : 'refresh-cw', 16)}</button></div>
         <div class="nw-chips">${chips.map(([k, n]) => `<button data-nf="${k}" class="${filter === k ? 'on' : ''}">${esc(n)}</button>`).join('')}</div>
         ${cal.length ? `<div class="nw-cal">${cal.map((e) => `<div><i class="imp ${e.impact === 'High' ? 'hi' : 'md'}"></i><b>${esc(e.when)}</b> ${esc(e.ccy)} ${esc(e.title)}</div>`).join('')}<small class="muted">ปฏิทินเศรษฐกิจ (Forex Factory)</small></div>` : ''}
       </div>
       <div class="nw-list">${list.length ? list.slice(0, 80).map((x) => `<a class="nw-item ${x.t > seenAt ? 'new' : ''} ${x.kind}" href="${esc(x.link)}" target="_blank" rel="noopener noreferrer">
           <span class="nw-t">${esc(x.title)}</span><span class="nw-m">${esc(x.src)} · ${ago(x.t)}${x.kind === 'official' ? ' · <b>ทางการ</b>' : ''}</span></a>`).join('')
         : `<p class="muted">${loading ? 'กำลังโหลดข่าว…' : items.list.length ? 'ไม่มีข่าวในหมวดนี้' : 'ยังโหลดข่าวไม่ได้ — ตรวจอินเทอร์เน็ตแล้วกดปุ่มโหลดใหม่'}</p>`}</div>
-      <p class="muted nw-foot">แหล่ง: ${FEEDS.map((f) => esc(f.name) + (errors[f.id] ? ' ' + PT.ICON.html('triangle-alert', 12, 'warn') : '')).join(' · ')} · แตะหัวข้อเพื่ออ่านที่เว็บต้นทาง · อัปเดตทุก 5 นาที${items.at ? ' · ล่าสุด ' + ago(items.at) : ''}</p>`;
+      <p class="muted nw-foot">แหล่ง: ${FEEDS.map((f) => esc(f.name) + (errors[f.id] ? ' ' + ICON.html('triangle-alert', 12, 'warn') : '')).join(' · ')} · แตะหัวข้อเพื่ออ่านที่เว็บต้นทาง · อัปเดตทุก 5 นาที${items.at ? ' · ล่าสุด ' + ago(items.at) : ''}</p>`;
     box.querySelectorAll('[data-nf]').forEach((b) => (b.onclick = () => { filter = b.dataset.nf; store.set('headlines.filter', filter); render(); }));
     $('nw-refresh').onclick = () => refresh(true);
   }

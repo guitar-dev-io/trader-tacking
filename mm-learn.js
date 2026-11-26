@@ -1,10 +1,15 @@
 import { PT, def } from './src/pt.ts';
+import { toast } from './src/ui/toast.ts';
+def({ MM_LEARN: [() => MM_LEARN] });
+import { LESSONS_EXTRA, LESSON_CATS } from './lessons-guide.js';
+import { ICON } from './icons.js';
 import { MM } from './src/legacy/core.ts';
 import { esc, store } from './app-core.js';
+let MM_LEARN; // set below; exported (was window.MM_LEARN)
 // Money Management (MM) lessons, the "MM plan by account size" table and random calculation practice.
 // Loaded after lessons-guide.js (adds a lesson category) and before app.js renders the lesson book.
 (function () {
-  const ic = (n, s = 14) => (typeof PT.ICON !== 'undefined' && PT.ICON.html ? PT.ICON.html(n, s) : '');
+  const ic = (n, s = 14) => (typeof ICON !== 'undefined' && ICON.html ? ICON.html(n, s) : '');
   const $$ = (r, q) => r.querySelector(q);
   const usd = (v, d = 2) => '$' + Number(v).toLocaleString('en-US', { minimumFractionDigits: v % 1 ? Math.min(d, 2) : 0, maximumFractionDigits: d });
   const n = (v, d = 2) => Number(v).toLocaleString('en-US', { maximumFractionDigits: d });
@@ -143,11 +148,11 @@ ${bars([100, 500, 2000].map((lv) => ({ label: `1:${lv}`, v: MM.margin('XAUUSD', 
 <p class="lg-tip">ถ้าตอบ "ไม่แน่ใจ" ข้อไหน = ยังไม่ต้องเข้า ตลาดเปิดทุกวัน</p>${practiceBtn()}${NA}` },
   ];
 
-  if (PT.LESSON_CATS && PT.LESSONS_EXTRA) {
+  if (LESSON_CATS && LESSONS_EXTRA) {
     const cat = { id: 'mm', name: 'Money Management (MM) / บัญชีเซ็นต์', icon: 'coins' };
-    const i = PT.LESSON_CATS.findIndex((c) => c.id === 'risk');
-    if (!PT.LESSON_CATS.some((c) => c.id === 'mm')) PT.LESSON_CATS.splice(i >= 0 ? i + 1 : PT.LESSON_CATS.length, 0, cat);
-    PT.LESSONS_EXTRA.push(...LESSONS.map((l) => ({ c: 'mm', ...l })));
+    const i = LESSON_CATS.findIndex((c) => c.id === 'risk');
+    if (!LESSON_CATS.some((c) => c.id === 'mm')) LESSON_CATS.splice(i >= 0 ? i + 1 : LESSON_CATS.length, 0, cat);
+    LESSONS_EXTRA.push(...LESSONS.map((l) => ({ c: 'mm', ...l })));
   }
 
   // ------------------------------------------------------------ widget: MM plan by account size
@@ -243,7 +248,8 @@ ${bars([100, 500, 2000].map((lv) => ({ label: `1:${lv}`, v: MM.margin('XAUUSD', 
     if (b.dataset.mmPractice !== Q.kind) { Q.kind = b.dataset.mmPractice; saveQ(); }
     // practice lives in the learning center (learn-center.js)
     if (PT.LEARN) PT.LEARN.open('p:mmquiz');
-    if (typeof PT.toast === 'function') PT.toast('ฝึกโจทย์: ' + (MM.KIND_NAME[Q.kind] || 'ทุกหัวข้อ'), 'info', 2500);
+    if (typeof toast === 'function') toast('ฝึกโจทย์: ' + (MM.KIND_NAME[Q.kind] || 'ทุกหัวข้อ'), 'info', 2500);
   });
-  PT.MM_LEARN = { mount, planWidget, quizWidget };
+  MM_LEARN = { mount, planWidget, quizWidget };
 })();
+export { MM_LEARN };

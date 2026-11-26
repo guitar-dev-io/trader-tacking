@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { toast } from './src/ui/toast.ts';
 import { AN, BOUNCE } from './src/legacy/core.ts';
 import { S, TFS, TZ, drawings, fmt, saveDrawings, store, tf } from './app-core.js';
 import { chart } from './app-chart.js';
@@ -8,7 +9,6 @@ import { loadChart, switchSymbol } from './app-data.js';
 import { renderTfs } from './app.js';
 import { redraw, uid } from './draw.js';
 import { computePlan, isCentAcct, renderPlanner, savePlan } from './planner.js';
-import { toast } from './settings.js';
 import { CACHE, NEWS } from './extras.js';
 import { HEADLINES } from './news.js';
 // Commands the local API (and the Claude MCP server on top of it) can run inside the app window.

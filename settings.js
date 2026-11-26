@@ -1,22 +1,15 @@
 import { PT, def } from './src/pt.ts';
+import { toast } from './src/ui/toast.ts';
+import { ICON } from './icons.js';
 import { $, S, THEME, esc, store, zoneOffsetSec } from './app-core.js';
 import { runAnalysis } from './app-analysis.js';
 import { loadChart } from './app-data.js';
 import { DEFAULT_SESSIONS, SESSIONS_ALL, ZONES, _sessionWindow, setSessions } from './draw.js';
-def({ toast: [() => toast, (v) => { toast = v; }], NET_TH: [() => NET_TH], lastNet: [() => lastNet, (v) => { lastNet = v; }], lastNetLevel: [() => lastNetLevel, (v) => { lastNetLevel = v; }], bannerDismissed: [() => bannerDismissed, (v) => { bannerDismissed = v; }], renderNetNow: [() => renderNetNow, (v) => { renderNetNow = v; }], mainCfg: [() => mainCfg, (v) => { mainCfg = v; }], v: [() => v], chk: [() => chk], openSettings: [() => openSettings, (v) => { openSettings = v; }], showSection: [() => showSection, (v) => { showSection = v; }], clampNum: [() => clampNum], saveSettingsUI: [() => saveSettingsUI, (v) => { saveSettingsUI = v; }], renderClaude: [() => renderClaude, (v) => { renderClaude = v; }], signOutArmed: [() => signOutArmed, (v) => { signOutArmed = v; }], lastStatus: [() => lastStatus, (v) => { lastStatus = v; }], renderMt5Info: [() => renderMt5Info, (v) => { renderMt5Info = v; }], SESS_ZONES: [() => SESS_ZONES], SESS_PRESETS: [() => SESS_PRESETS], sessDraft: [() => sessDraft, (v) => { sessDraft = v; }], bkkHM: [() => bkkHM, (v) => { bkkHM = v; }], sessPreview: [() => sessPreview, (v) => { sessPreview = v; }], renderSessRows: [() => renderSessRows, (v) => { renderSessRows = v; }], SCHEMA: [() => SCHEMA], resetArmed: [() => resetArmed, (v) => { resetArmed = v; }], syncThemeUI: [() => syncThemeUI, (v) => { syncThemeUI = v; }], eaInfo: [() => eaInfo, (v) => { eaInfo = v; }] });
+def({ NET_TH: [() => NET_TH], lastNet: [() => lastNet, (v) => { lastNet = v; }], lastNetLevel: [() => lastNetLevel, (v) => { lastNetLevel = v; }], bannerDismissed: [() => bannerDismissed, (v) => { bannerDismissed = v; }], renderNetNow: [() => renderNetNow, (v) => { renderNetNow = v; }], mainCfg: [() => mainCfg, (v) => { mainCfg = v; }], v: [() => v], chk: [() => chk], openSettings: [() => openSettings, (v) => { openSettings = v; }], showSection: [() => showSection, (v) => { showSection = v; }], clampNum: [() => clampNum], saveSettingsUI: [() => saveSettingsUI, (v) => { saveSettingsUI = v; }], renderClaude: [() => renderClaude, (v) => { renderClaude = v; }], signOutArmed: [() => signOutArmed, (v) => { signOutArmed = v; }], lastStatus: [() => lastStatus, (v) => { lastStatus = v; }], renderMt5Info: [() => renderMt5Info, (v) => { renderMt5Info = v; }], SESS_ZONES: [() => SESS_ZONES], SESS_PRESETS: [() => SESS_PRESETS], sessDraft: [() => sessDraft, (v) => { sessDraft = v; }], bkkHM: [() => bkkHM, (v) => { bkkHM = v; }], sessPreview: [() => sessPreview, (v) => { sessPreview = v; }], renderSessRows: [() => renderSessRows, (v) => { renderSessRows = v; }], SCHEMA: [() => SCHEMA], resetArmed: [() => resetArmed, (v) => { resetArmed = v; }], syncThemeUI: [() => syncThemeUI, (v) => { syncThemeUI = v; }], eaInfo: [() => eaInfo, (v) => { eaInfo = v; }] });
 // Toasts, network status, the Settings window, backup / restore / reset.
 
 // ---------------------------------------------------------------- toasts
-function toast(msg, kind = 'info', ms = 5000) {
-  if (!S.prefs.toast && kind !== 'error') return;
-  // one icon per kind (Lucide) instead of emoji in the text
-  const t = document.createElement('div'); t.className = 'toast ' + kind;
-  t.innerHTML = PT.ICON.html({ ok: 'circle-check', error: 'circle-x', warn: 'triangle-alert' }[kind] || 'info', 16, 'toast-ic') + '<span></span>';
-  t.lastChild.textContent = String(msg).replace(/^\s*(?:\p{Extended_Pictographic}\uFE0F?\s*)+/u, '');
-  $('toasts').appendChild(t);
-  while ($('toasts').children.length > 4) $('toasts').firstChild.remove();
-  setTimeout(() => t.remove(), ms);
-}
+// toast() lives in src/ui/toast.ts
 window.addEventListener('offline', () => toast('อินเทอร์เน็ตของเครื่องหลุด', 'error', 8000));
 window.addEventListener('online', () => toast('อินเทอร์เน็ตกลับมาแล้ว', 'ok'));
 
@@ -50,7 +43,7 @@ function renderNetNow() {
 }
 
 // ---------------------------------------------------------------- settings window
-$('settings-btn').innerHTML = PT.ICON.svg('gear', 18);
+$('settings-btn').innerHTML = ICON.svg('gear', 18);
 let mainCfg = null;
 const v = (id) => $(id).value, chk = (id) => $(id).checked;
 async function openSettings(section) {
@@ -179,8 +172,8 @@ function renderMt5Info() {
   else pill('st-vcg-pill', st.connected && S.source === 'vcg' ? 'ok' : st.loggedIn ? 'wait' : 'bad', st.connected && S.source === 'vcg' ? 'เชื่อมต่อแล้ว' : st.loggedIn ? 'login แล้ว' : 'ยังไม่ได้ login');
   if (!vcg.capabilities?.mt5) { box.textContent = 'ใช้ได้เฉพาะแอปบนคอม (Mac / Windows)'; pill('st-mt5-pill', '', 'เฉพาะบนคอม'); $('st-use-mt5') && ($('st-use-mt5').disabled = true); return; }
   pill('st-mt5-pill', m.connected ? 'ok' : S.source === 'mt5' ? 'wait' : '', m.connected ? 'EA เชื่อมต่อแล้ว' : S.source === 'mt5' ? 'รอ EA' : 'ไม่ได้ใช้');
-  box.innerHTML = m.connected ? `${PT.ICON.html('circle-check', 15, 'up')}<b>${esc(m.broker || '')}</b> (${esc(m.server || '')}) · ${(m.symbols || []).length} symbol ใน Market Watch${(m.unknown || []).length ? `<br>${PT.ICON.html('triangle-alert', 15, 'warn')}ไม่พบใน MT5: ${esc(m.unknown.join(', '))}` : ''}`
-    : S.source === 'mt5' ? `${PT.ICON.html('hourglass', 15)}รอ EA เชื่อมต่อที่ 127.0.0.1:${m.port || 7788} — เปิด MT5 แล้วติด EA บนกราฟ` : 'ยังไม่ได้เลือก MT5 เป็นแหล่งราคา';
+  box.innerHTML = m.connected ? `${ICON.html('circle-check', 15, 'up')}<b>${esc(m.broker || '')}</b> (${esc(m.server || '')}) · ${(m.symbols || []).length} symbol ใน Market Watch${(m.unknown || []).length ? `<br>${ICON.html('triangle-alert', 15, 'warn')}ไม่พบใน MT5: ${esc(m.unknown.join(', '))}` : ''}`
+    : S.source === 'mt5' ? `${ICON.html('hourglass', 15)}รอ EA เชื่อมต่อที่ 127.0.0.1:${m.port || 7788} — เปิด MT5 แล้วติด EA บนกราฟ` : 'ยังไม่ได้เลือก MT5 เป็นแหล่งราคา';
 }
 ['vcg', 'mt5', 'demo'].forEach((k) => { const b = $('st-use-' + k); if (b) b.onclick = () => { PT.setSource(k); renderMt5Info(); if (k === 'mt5' && !(lastStatus && lastStatus.mt5 && lastStatus.mt5.connected)) { $('modal-settings').classList.add('hidden'); PT.SETUP.open('mt5', 0); } }; });
 if ($('st-open-guide')) $('st-open-guide').onclick = () => { $('modal-settings').classList.add('hidden'); PT.SETUP.open(); };
@@ -237,7 +230,7 @@ function renderSessRows() {
     <td><input type="text" class="hm" data-f="close" value="${x.close}" placeholder="HH:MM" maxlength="5"></td>
     <td><select data-f="zone">${SESS_ZONES.map(([z, n]) => `<option value="${z}" ${z === x.zone ? 'selected' : ''}>${n}</option>`).join('')}</select></td>
     <td class="pv">${sessPreview(x)}</td>
-    <td><button data-del="${i}" title="ลบ" aria-label="ลบ">${PT.ICON.svg('x', 14)}</button></td></tr>`).join('');
+    <td><button data-del="${i}" title="ลบ" aria-label="ลบ">${ICON.svg('x', 14)}</button></td></tr>`).join('');
   $('sess-rows').querySelectorAll('[data-f]').forEach((inp) => (inp.oninput = inp.onchange = () => {
     const i = +inp.closest('tr').dataset.i, f = inp.dataset.f;
     sessDraft[i][f] = f === 'on' ? inp.checked : inp.value;

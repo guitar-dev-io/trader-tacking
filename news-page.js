@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { ICON } from './icons.js';
 import { $, esc, store } from './app-core.js';
 import { NEWS } from './extras.js';
 import { HEADLINES } from './news.js';
@@ -9,7 +10,7 @@ def({ NEWSPAGE: [() => NEWSPAGE] });
 // The ราคา tab keeps a small "ข่าวล่าสุด" teaser.
 const NEWSPAGE = (() => {
   const mobile = document.body.classList.contains('mobile');
-  const ic = (n, s = 16, c) => (PT.ICON.html ? PT.ICON.html(n, s, c) : '');
+  const ic = (n, s = 16, c) => (ICON.html ? ICON.html(n, s, c) : '');
   let calAll = store.get('np.calAll', false);
 
   // the old side tab's feed element moves into the page
@@ -77,7 +78,7 @@ const NEWSPAGE = (() => {
     const prevBack = PT.__mobileBack;
     PT.__mobileBack = () => { if (!root.classList.contains('hidden')) { close(); return true; } return prevBack ? prevBack() : false; };
   } else {
-    const inner = (n) => (PT.ICON.svg(n, 14) || '').replace(/^<svg[^>]*>|<\/svg>$/g, '');
+    const inner = (n) => (ICON.svg(n, 14) || '').replace(/^<svg[^>]*>|<\/svg>$/g, '');
     const btn = document.createElement('button');
     btn.id = 'news-btn'; btn.className = 'ib tb-news'; btn.title = 'ข่าวและปฏิทินเศรษฐกิจ';
     btn.innerHTML = `${ic('newspaper', 16)}<span id="news-badge"></span>`;

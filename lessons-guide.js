@@ -1,4 +1,8 @@
 import { PT, def } from './src/pt.ts';
+def({ LESSONS_EXTRA: [() => LESSONS_EXTRA], LESSON_CAT_OF: [() => LESSON_CAT_OF], LESSON_CATS: [() => LESSON_CATS] });
+let LESSONS_EXTRA; // set below; exported (was window.LESSONS_EXTRA)
+let LESSON_CAT_OF; // set below; exported (was window.LESSON_CAT_OF)
+let LESSON_CATS; // set below; exported (was window.LESSON_CATS)
 // Lesson book: categories + extra lessons (Thai). Loaded after lessons.js.
 // Candle illustrations are generated from OHLC numbers (0–100 scale, higher = higher price) so shapes are always correct.
 (function () {
@@ -34,7 +38,7 @@ import { PT, def } from './src/pt.ts';
   // build a trend of n candles from p0 drifting by d per bar
   const trend = (p0, d, n, rng = 4) => Array.from({ length: n }, (_, i) => { const o = p0 + d * i, c = o + d; return { o, c, h: Math.max(o, c) + rng * 0.4, l: Math.min(o, c) - rng * 0.4 }; });
 
-  PT.LESSON_CATS = [
+  LESSON_CATS = [
     { id: 'basics', name: 'พื้นฐานการอ่านกราฟ', icon: 'chart-line' },
     { id: 'candles', name: 'แท่งเทียนแต่ละแบบ', icon: 'chart-candlestick' },
     { id: 'structure', name: 'โครงสร้างราคา / สวิง / BOS-CHoCH', icon: 'compass' },
@@ -44,14 +48,14 @@ import { PT, def } from './src/pt.ts';
     { id: 'app', name: 'วิธีใช้แอป Price Tracker', icon: 'smartphone' },
   ];
 
-  PT.LESSON_CAT_OF = {
+  LESSON_CAT_OF = {
     0: 'structure', 1: 'structure', 2: 'structure', 3: 'basics', 4: 'candles', 5: 'structure', 6: 'app', 7: 'risk',
     8: 'app', 9: 'app', 10: 'risk', 11: 'risk', 12: 'app', 13: 'basics', 14: 'ds', 15: 'risk', 16: 'liquidity',
   };
 
   const NA = '<p class="lg-warn">เนื้อหาเพื่อการศึกษา ไม่ใช่คำแนะนำการลงทุน</p>';
 
-  PT.LESSONS_EXTRA = [
+  LESSONS_EXTRA = [
     // ------------------------------------------------------------------ basics
     { c: 'basics', t: 'อ่านแท่งเทียน 1 แท่ง: OHLC, เนื้อ, ไส้', b: `
 ${svg([{ o: 30, h: 85, l: 15, c: 70 }, { o: 70, h: 85, l: 15, c: 30 }], { w: 180, step: 70, bw: 18, labels: [
@@ -389,3 +393,6 @@ ${svg([{ o: 60, c: 45, h: 62, l: 30 }, { o: 45, c: 55, h: 57, l: 30.5 }, { o: 55
 <p>อย่ากระโดดไปเทรดจริงก่อนผ่านสัปดาห์ 7 — ความรู้เรื่องโซนไม่ช่วยถ้ายังคุมความเสี่ยงไม่ได้</p>` },
   ];
 })();
+export { LESSON_CATS };
+export { LESSON_CAT_OF };
+export { LESSONS_EXTRA };

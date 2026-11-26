@@ -1,4 +1,6 @@
 import { PT, def } from './src/pt.ts';
+def({ IND: [() => IND] });
+let IND; // set below; exported (was window.IND)
 // Technical indicators. Input: candles [{time, open, high, low, close}] sorted by time.
 // Output: arrays of {time, value} (null values skipped).
 (function () {
@@ -96,6 +98,7 @@ import { PT, def } from './src/pt.ts';
     return out;
   }
 
-  PT.IND = { DEFS, heikinAshi, _smaArr: smaArr, _emaArr: emaArr };
-  if (typeof module !== 'undefined') module.exports = PT.IND;
+  IND = { DEFS, heikinAshi, _smaArr: smaArr, _emaArr: emaArr };
+  if (typeof module !== 'undefined') module.exports = IND;
 })();
+export { IND };

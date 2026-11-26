@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { ICON } from './icons.js';
 def({ createChart: [() => createChart], CandlestickSeries: [() => CandlestickSeries], BarSeries: [() => BarSeries], LineSeries: [() => LineSeries], AreaSeries: [() => AreaSeries], HistogramSeries: [() => HistogramSeries], LineStyle: [() => LineStyle], CrosshairMode: [() => CrosshairMode], TFS: [() => TFS], store: [() => store], _dtf: [() => _dtf], zoneOffsetSec: [() => zoneOffsetSec, (v) => { zoneOffsetSec = v; }], TZ: [() => TZ, (v) => { TZ = v; }], FIB_DEF: [() => FIB_DEF], FIBX_DEF: [() => FIBX_DEF], FIB: [() => FIB, (v) => { FIB = v; }], FIBX: [() => FIBX, (v) => { FIBX = v; }], FIB_REVERSE: [() => FIB_REVERSE, (v) => { FIB_REVERSE = v; }], FIB_PRESETS: [() => FIB_PRESETS], FIB_PRESET_REVERSE: [() => FIB_PRESET_REVERSE], fibColor: [() => fibColor], IND_COLORS: [() => IND_COLORS], UP: [() => UP, (v) => { UP = v; }], DOWN: [() => DOWN, (v) => { DOWN = v; }], CHART_THEME: [() => CHART_THEME], THEME: [() => THEME], TC: [() => TC], AN_DEFAULT: [() => AN_DEFAULT], AN_VIEW_KEYS: [() => AN_VIEW_KEYS], S: [() => S], PREF_DEFAULT: [() => PREF_DEFAULT], tf: [() => tf], drawingsKey: [() => drawingsKey], drawings: [() => drawings, (v) => { drawings = v; }], saveDrawings: [() => saveDrawings], digits: [() => digits], fmt: [() => fmt], $: [() => $], esc: [() => esc] });
 // Price Tracker renderer · core: constants, storage, shared state (S), formatting helpers
 const { createChart, CandlestickSeries, BarSeries, LineSeries, AreaSeries, HistogramSeries, LineStyle, CrosshairMode } = LightweightCharts;
@@ -116,7 +117,7 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 // icons
-document.querySelectorAll('[data-icon]').forEach((i) => (i.innerHTML = PT.ICON.svg(i.dataset.icon, 16)));
+document.querySelectorAll('[data-icon]').forEach((i) => (i.innerHTML = ICON.svg(i.dataset.icon, 16)));
 
 // renderer errors → log
 window.addEventListener('error', (e) => vcg.log('error', `${e.message} @ ${(e.filename || '').split('/').pop()}:${e.lineno}`));

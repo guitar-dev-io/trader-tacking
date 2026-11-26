@@ -17,7 +17,7 @@
     "prestart": "npm run build:renderer",
     "prebuild:mac": "npm run build:renderer",
     "prebuild:win": "npm run build:renderer",
-    "typecheck": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json && node scripts/codemod/check-free.mjs",
     "build:core": "node scripts/build-core.mjs",
     "pretest": "npm run build:core"
   },

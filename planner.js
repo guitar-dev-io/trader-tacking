@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { ICON } from './icons.js';
 import { MM } from './src/legacy/core.ts';
 import { $, DOWN, S, TC, UP, digits, esc, fmt, store } from './app-core.js';
 import { activeSignal } from './app-analysis.js';
@@ -146,7 +147,7 @@ function renderPlanner() {
       ${inp('lotStep', 'lot step')}
     </div>
     <p class="muted">อัตโนมัติ: ${S.symbol} 1 lot = ${contractSize(S.symbol).toLocaleString()} หน่วย${av ? ` → ราคาขยับ 1.0 = ${isCentAcct() ? av.toLocaleString() + ' USC ต่อ cent lot' : '$' + av.toLocaleString() + ' ต่อ lot'}` : ''}${isCentAcct() ? ' (บัญชีเซ็นต์: 1 cent lot = 1/100 ของ lot มาตรฐาน)' : ''} · ตรวจกับสเปกโบรกเกอร์อีกครั้ง</p>
-    ${r.warn.map((w) => `<div class="warn">${PT.ICON.html('triangle-alert', 14)}${esc(w)}</div>`).join('')}
+    ${r.warn.map((w) => `<div class="warn">${ICON.html('triangle-alert', 14)}${esc(w)}</div>`).join('')}
     ${r.rows.length ? `
     <div class="sum">
       <span>ความเสี่ยงที่ตั้ง</span><b>${money(r.risk)}${usdOf(r.risk)}</b>

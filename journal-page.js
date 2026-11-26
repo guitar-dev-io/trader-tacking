@@ -1,9 +1,10 @@
 import { PT, def } from './src/pt.ts';
+import { toast } from './src/ui/toast.ts';
+import { ICON } from './icons.js';
 import { JOURNAL } from './src/legacy/core.ts';
 import { $, S, TC, TFS, THEME, TZ, drawings, esc, store } from './app-core.js';
 import { chart, chartThemeOptions } from './app-chart.js';
 import { connStatus, switchSymbol } from './app-data.js';
-import { toast } from './settings.js';
 import { SETUP } from './setup.js';
 import { POSITIONS } from './positions.js';
 import { PAGES } from './pages.js';
@@ -12,8 +13,8 @@ def({ JOURNALPAGE: [() => JOURNALPAGE] });
 // Desktop: a page tab (titlebar button, Ctrl/⌘+J). Phone: a full-screen page from the More page. "ดูตัวอย่าง" shows sample data.
 const JOURNALPAGE = (() => {
   const mobile = document.body.classList.contains('mobile');
-  const ic = (n, s = 16, c) => (PT.ICON.html ? PT.ICON.html(n, s, c) : '');
-  const inner = (n) => (PT.ICON.svg(n, 14) || '').replace(/^<svg[^>]*>|<\/svg>$/g, '');
+  const ic = (n, s = 16, c) => (ICON.html ? ICON.html(n, s, c) : '');
+  const inner = (n) => (ICON.svg(n, 14) || '').replace(/^<svg[^>]*>|<\/svg>$/g, '');
   const TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
   const TH_WD = ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'];
   const SESS = { asia: 'เอเชีย', london: 'ลอนดอน', newyork: 'นิวยอร์ก' };

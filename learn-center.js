@@ -1,6 +1,10 @@
 import { PT, def } from './src/pt.ts';
+import { toast } from './src/ui/toast.ts';
+import { MM_LEARN } from './mm-learn.js';
+import { LESSONS_EXTRA, LESSON_CATS, LESSON_CAT_OF } from './lessons-guide.js';
+import { LESSONS } from './lessons.js';
+import { ICON } from './icons.js';
 import { $, S, esc, store } from './app-core.js';
-import { toast } from './settings.js';
 import { QUIZ, REPLAY } from './learn.js';
 import { PAGES } from './pages.js';
 def({ LEARN: [() => LEARN] });
@@ -9,12 +13,12 @@ def({ LEARN: [() => LEARN] });
 // Desktop: a page tab (pages.js). Phone: a full-screen page with list → reader → back.
 const LEARN = (() => {
   const mobile = document.body.classList.contains('mobile');
-  const ic = (n, s = 16, c) => (PT.ICON.html ? PT.ICON.html(n, s, c) : '');
-  const cats = PT.LESSON_CATS || [{ id: 'all', name: 'บทเรียน', icon: 'book-open' }];
+  const ic = (n, s = 16, c) => (ICON.html ? ICON.html(n, s, c) : '');
+  const cats = LESSON_CATS || [{ id: 'all', name: 'บทเรียน', icon: 'book-open' }];
   // stable id from the title (lessons have no ids; titles are unique)
   const hash = (t) => { let h = 5381; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return 'L' + (h >>> 0).toString(36); };
   const strip = (h) => h.replace(/<svg[\s\S]*?<\/svg>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
-  const raw = [...PT.LESSONS.map((l, i) => ({ ...l, c: (PT.LESSON_CAT_OF || {})[i] || cats[0].id })), ...(PT.LESSONS_EXTRA || [])];
+  const raw = [...LESSONS.map((l, i) => ({ ...l, c: (LESSON_CAT_OF || {})[i] || cats[0].id })), ...(LESSONS_EXTRA || [])];
   // reading order = category order, then the order inside each category
   const all = cats.flatMap((c) => raw.filter((l) => l.c === c.id)).map((l) => {
     const text = strip(l.b), title = l.t.replace(/^\d+\.\s*/, '');
@@ -115,7 +119,7 @@ const LEARN = (() => {
     const l = byId.get(view), p = PRACTICE.find((x) => x.id === view);
     doc.className = 'lc-doc' + (l ? ' lesson' : p ? ' practice' : ' home');
     doc.innerHTML = l ? lessonHtml(l) : p ? practiceHtml(p) : homeHtml();
-    if (PT.MM_LEARN) PT.MM_LEARN.mount(doc);
+    if (MM_LEARN) MM_LEARN.mount(doc);
     scrolls._v = view;
     main.scrollTop = (l && scrolls[view]) || 0;
     store.set('lc.scroll', Object.fromEntries(Object.entries(scrolls).filter(([k]) => k !== '_v').slice(-60)));
@@ -179,7 +183,7 @@ const LEARN = (() => {
     const prevBack = PT.__mobileBack;
     PT.__mobileBack = () => { if (!root.classList.contains('hidden')) { if (!mListMode) { mListMode = true; root.classList.remove('m-reading'); } else close(); return true; } return prevBack ? prevBack() : false; };
   } else {
-    const inner = (n) => (PT.ICON.svg(n, 14) || '').replace(/^<svg[^>]*>|<\/svg>$/g, '');
+    const inner = (n) => (ICON.svg(n, 14) || '').replace(/^<svg[^>]*>|<\/svg>$/g, '');
     const btn = document.createElement('button');
     btn.id = 'learn-btn'; btn.className = 'ib tb-learn'; btn.title = 'ศูนย์การเรียนรู้ — บทเรียนและแบบฝึก (Ctrl/⌘ + L)';
     btn.innerHTML = `${ic('graduation-cap', 16)}<span>เรียนรู้</span>`;

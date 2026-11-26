@@ -1,9 +1,9 @@
 import { PT, def } from './src/pt.ts';
+import { toast } from './src/ui/toast.ts';
 import { AN, BOUNCE } from './src/legacy/core.ts';
 import { $, DOWN, S, TC, TFS, THEME, TZ, UP, esc, store } from './app-core.js';
 import { chartThemeOptions } from './app-chart.js';
 import { connStatus, dedupe, renderAlerts, switchSymbol, toCandle, valid } from './app-data.js';
-import { toast } from './settings.js';
 import { DEMO, NEWS } from './extras.js';
 import { HEADLINES } from './news.js';
 import { POSITIONS } from './positions.js';

@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { ICON } from './icons.js';
 import { $, S, store } from './app-core.js';
 import { REPLAY } from './learn.js';
 // Show/hide panels (everything closable), mobile layout, Esc closes popups.
@@ -18,15 +19,15 @@ import { REPLAY } from './learn.js';
   document.querySelectorAll('[data-ui]').forEach((i) => (i.onchange = () => PT.setUI(i.dataset.ui, i.checked)));
   $('settings-btn').addEventListener('click', () => setTimeout(syncSettings, 50));
 
-  $('side-btn').innerHTML = PT.ICON.svg('expand', 18);
+  $('side-btn').innerHTML = ICON.svg('expand', 18);
   $('side-btn').onclick = () => PT.setUI('side', !S.ui.side);
-  $('side-collapse').innerHTML = PT.ICON.svg('collapse', 16);
+  $('side-collapse').innerHTML = ICON.svg('collapse', 16);
   $('side-collapse').onclick = () => PT.setUI('side', false);
 
   // collapsed right panel → a slim rail of tab icons (desktop), like TradingView's right toolbar
   const RAIL = [['market', 'list', 'ราคา'], ['analysis', 'brain', 'วิเคราะห์'], ['practice', 'play', 'ฝึก'], ['calc', 'calc', 'คำนวณ'], ['log', 'logs', 'Log']];   // lessons + news are pages (titlebar buttons)
-  $('side-rail').innerHTML = `<button data-open="" title="ขยายแถบด้านขวา">${PT.ICON.svg('expand', 18)}</button><div class="sep"></div>` +
-    RAIL.map(([t, i, n]) => `<button data-open="${t}" title="${n}">${PT.ICON.svg(i, 18)}<span>${n}</span></button>`).join('');
+  $('side-rail').innerHTML = `<button data-open="" title="ขยายแถบด้านขวา">${ICON.svg('expand', 18)}</button><div class="sep"></div>` +
+    RAIL.map(([t, i, n]) => `<button data-open="${t}" title="${n}">${ICON.svg(i, 18)}<span>${n}</span></button>`).join('');
   $('side-rail').querySelectorAll('[data-open]').forEach((b) => (b.onclick = () => {
     PT.setUI('side', true);
     if (b.dataset.open) document.querySelector(`#tabs [data-tab="${b.dataset.open}"]`).click();
@@ -65,7 +66,7 @@ import { REPLAY } from './learn.js';
     const p = $(id); if (!p) return;
     new MutationObserver(() => {
       if (p.querySelector(':scope > .pop-x')) return;
-      const x = document.createElement('button'); x.className = 'pop-x'; x.innerHTML = PT.ICON.svg('x', 16); x.setAttribute('aria-label', 'ปิด'); x.title = 'ปิด (Esc)';
+      const x = document.createElement('button'); x.className = 'pop-x'; x.innerHTML = ICON.svg('x', 16); x.setAttribute('aria-label', 'ปิด'); x.title = 'ปิด (Esc)';
       x.onclick = (e) => { e.stopPropagation(); p.classList.add('hidden'); };
       p.prepend(x);
     }).observe(p, { childList: true });

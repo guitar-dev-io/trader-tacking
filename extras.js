@@ -1,9 +1,11 @@
 import { PT, def } from './src/pt.ts';
+import { toast } from './src/ui/toast.ts';
+import { ICON } from './icons.js';
 import { $, S, TZ, esc, store, tf } from './app-core.js';
 import { chart } from './app-chart.js';
 import { beep, desktopNotify, loadChart, onChartMsg, onQuotesMsg, renderConnect, renderWatchlist, setAllData } from './app-data.js';
 import { el, lToX, timeToLogical, txt } from './app-overlay.js';
-import { toast } from './settings.js';
+
 def({ fetchJSON: [() => fetchJSON], DEMO: [() => DEMO], setSource: [() => setSource, (v) => { setSource = v; }], renderSourceSel: [() => renderSourceSel, (v) => { renderSourceSel = v; }], CACHE: [() => CACHE], NEWS: [() => NEWS], UPDATE: [() => UPDATE] });
 // Extras: Demo data source (Binance public market data), local candle cache, economic calendar, update checker.
 
@@ -202,7 +204,7 @@ const UPDATE = (() => {
       const r = await fetchJSON(`https://api.github.com/repos/${REPO}/releases/latest`);
       if (cur && r.tag_name && cmp(r.tag_name, cur) > 0) {
         const t = document.createElement('div'); t.className = 'toast ok'; t.style.pointerEvents = 'auto';
-        t.innerHTML = `${PT.ICON.html('sparkles', 16, 'toast-ic')}มีเวอร์ชันใหม่ ${esc(r.tag_name)} (ตอนนี้ ${esc(cur)}) <a href="${esc(r.html_url)}" target="_blank" style="color:var(--link, #82aaff)">ดาวน์โหลด</a> <button style="margin-left:6px" aria-label="ปิด">${PT.ICON.svg('x', 14)}</button>`;
+        t.innerHTML = `${ICON.html('sparkles', 16, 'toast-ic')}มีเวอร์ชันใหม่ ${esc(r.tag_name)} (ตอนนี้ ${esc(cur)}) <a href="${esc(r.html_url)}" target="_blank" style="color:var(--link, #82aaff)">ดาวน์โหลด</a> <button style="margin-left:6px" aria-label="ปิด">${ICON.svg('x', 14)}</button>`;
         t.querySelector('button').onclick = () => t.remove();
         $('toasts').appendChild(t);
         vcg.log('info', `มีเวอร์ชันใหม่ ${r.tag_name}`, null, 'update');

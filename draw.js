@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { ICON } from './icons.js';
 import { $, DOWN, FIB, FIBX, FIBX_DEF, FIB_DEF, FIB_PRESETS, FIB_PRESET_REVERSE, FIB_REVERSE, S, TC, THEME, TZ, UP, digits, drawings, drawingsKey, esc, fibColor, fmt, saveDrawings, store, tf, zoneOffsetSec } from './app-core.js';
 import { buildIndicators, buildMain, chart, main } from './app-chart.js';
 import { addAlert, loadChart } from './app-data.js';
@@ -57,18 +58,18 @@ const DEFAULT_COLOR = { hline: '#f5a623', vline: '#9aa0ad', text: '#ffffff', arr
 // ---------------------------------------------------------------- toolbar
 function buildToolbar() {
   const tb = $('tools');
-  const btn = (name, cls = '') => `<button data-tool="${name}" class="${cls}" title="${TOOLS[name].name}${TOOLS[name].key ? ' (' + TOOLS[name].key + ')' : ''}">${PT.ICON.svg(TOOLS[name].icon)}</button>`;
+  const btn = (name, cls = '') => `<button data-tool="${name}" class="${cls}" title="${TOOLS[name].name}${TOOLS[name].key ? ' (' + TOOLS[name].key + ')' : ''}">${ICON.svg(TOOLS[name].icon)}</button>`;
   let h = '';
   GROUPS.forEach((g, gi) => {
     const cur = groupSel[gi];
     h += `<div class="tg" data-g="${gi}">${btn(cur, S.tool === cur ? 'active' : '')}${g.length > 1 ? '<span class="more"></span>' : ''}</div>`;
   });
   h += '<div class="sep"></div>';
-  h += `<div class="tg"><button id="t-magnet" class="${S.magnet ? 'on' : ''}" title="Magnet: ดูดเข้าราคา OHLC">${PT.ICON.svg('magnet')}</button></div>`;
-  h += `<div class="tg"><button id="t-lock" class="${S.locked ? 'on' : ''}" title="ล็อกรูปวาด (กันลาก/ลบโดยไม่ตั้งใจ)">${PT.ICON.svg(S.locked ? 'lock' : 'unlock')}</button></div>`;
-  h += `<div class="tg"><button id="t-hide" class="${S.hidden ? 'on' : ''}" title="ซ่อน/แสดงรูปวาด">${PT.ICON.svg(S.hidden ? 'eyeOff' : 'eye')}</button></div>`;
-  h += `<div class="tg"><button id="t-layers" title="รายการรูปวาด (Object tree)">${PT.ICON.svg('layers')}</button></div>`;
-  h += `<div class="tg"><button id="t-clear" title="ลบรูปวาดทั้งหมด">${PT.ICON.svg('trash')}</button></div>`;
+  h += `<div class="tg"><button id="t-magnet" class="${S.magnet ? 'on' : ''}" title="Magnet: ดูดเข้าราคา OHLC">${ICON.svg('magnet')}</button></div>`;
+  h += `<div class="tg"><button id="t-lock" class="${S.locked ? 'on' : ''}" title="ล็อกรูปวาด (กันลาก/ลบโดยไม่ตั้งใจ)">${ICON.svg(S.locked ? 'lock' : 'unlock')}</button></div>`;
+  h += `<div class="tg"><button id="t-hide" class="${S.hidden ? 'on' : ''}" title="ซ่อน/แสดงรูปวาด">${ICON.svg(S.hidden ? 'eyeOff' : 'eye')}</button></div>`;
+  h += `<div class="tg"><button id="t-layers" title="รายการรูปวาด (Object tree)">${ICON.svg('layers')}</button></div>`;
+  h += `<div class="tg"><button id="t-clear" title="ลบรูปวาดทั้งหมด">${ICON.svg('trash')}</button></div>`;
   tb.innerHTML = h;
 
   tb.querySelectorAll('.tg[data-g]').forEach((g) => {
@@ -79,7 +80,7 @@ function buildToolbar() {
       if (g.querySelector('.fly')) { closeFly(); return; }
       closeFly();
       const fly = document.createElement('div'); fly.className = 'fly';
-      fly.innerHTML = group.map((t) => `<button data-t="${t}">${PT.ICON.svg(TOOLS[t].icon, 18)} ${TOOLS[t].name}<small>${TOOLS[t].key || ''}</small></button>`).join('');
+      fly.innerHTML = group.map((t) => `<button data-t="${t}">${ICON.svg(TOOLS[t].icon, 18)} ${TOOLS[t].name}<small>${TOOLS[t].key || ''}</small></button>`).join('');
       fly.querySelectorAll('button').forEach((b) => (b.onclick = (ev) => { ev.stopPropagation(); groupSel[gi] = b.dataset.t; store.set('groupSel', groupSel); closeFly(); setTool(b.dataset.t); }));
       g.appendChild(fly);
     };
@@ -399,8 +400,8 @@ function renderLayers() {
   const p = $('layers-pop'); if (p.classList.contains('hidden')) return;
   const desc = (d) => d.type === 'hline' ? fmt(d.pts[0].price) : (d.type === 'text' || d.type === 'callout') ? esc(String(d.text || '').split('\n')[0]) : d.label ? esc(d.label.split('\n')[0]) : d.type === 'vline' ? fmtTime(d.pts[0].time) : d.pts[0] ? fmt(d.pts[0].price) : '';
   p.innerHTML = `<div class="group">รูปวาดบน ${S.symbol} (${drawings.length})</div>` + (drawings.map((d, i) =>
-    `<div class="item ${S.selected === i ? 'sel' : ''}" data-i="${i}"><span>${PT.ICON.svg(TOOLS[d.type]?.icon || 'trend', 16)} ${TOOLS[d.type]?.name.split(' (')[0] || d.type} <small>${desc(d)}</small></span>
-     <span><input type="color" data-c="${i}" value="${(d.color || '#2962ff').slice(0, 7)}" style="width:22px;height:18px;padding:0;border:none;background:none"> <button data-del="${i}" aria-label="ลบ">${PT.ICON.svg('x', 14)}</button></span></div>`).join('') || '<div class="item muted">ยังไม่มีรูปวาด</div>');
+    `<div class="item ${S.selected === i ? 'sel' : ''}" data-i="${i}"><span>${ICON.svg(TOOLS[d.type]?.icon || 'trend', 16)} ${TOOLS[d.type]?.name.split(' (')[0] || d.type} <small>${desc(d)}</small></span>
+     <span><input type="color" data-c="${i}" value="${(d.color || '#2962ff').slice(0, 7)}" style="width:22px;height:18px;padding:0;border:none;background:none"> <button data-del="${i}" aria-label="ลบ">${ICON.svg('x', 14)}</button></span></div>`).join('') || '<div class="item muted">ยังไม่มีรูปวาด</div>');
   p.querySelectorAll('[data-i]').forEach((r) => (r.onclick = (e) => { if (e.target.closest('button, input')) return; S.selected = +r.dataset.i; PT.dirty = true; renderLayers(); }));
   p.querySelectorAll('[data-del]').forEach((b) => (b.onclick = () => { if (S.locked) return; pushHistory(); drawings.splice(+b.dataset.del, 1); S.selected = null; saveDrawings(); PT.dirty = true; renderLayers(); }));
   p.querySelectorAll('[data-c]').forEach((c) => (c.oninput = () => { drawings[+c.dataset.c].color = c.value; saveDrawings(); PT.dirty = true; }));
@@ -422,8 +423,8 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ---------------------------------------------------------------- top bar buttons
-$('undo').innerHTML = PT.ICON.svg('undo', 18); $('redo').innerHTML = PT.ICON.svg('redo', 18);
-$('cs-btn').innerHTML = PT.ICON.svg('gear', 18); $('full').innerHTML = PT.ICON.svg('full', 18); $('shot').innerHTML = PT.ICON.svg('camera', 18);
+$('undo').innerHTML = ICON.svg('undo', 18); $('redo').innerHTML = ICON.svg('redo', 18);
+$('cs-btn').innerHTML = ICON.svg('gear', 18); $('full').innerHTML = ICON.svg('full', 18); $('shot').innerHTML = ICON.svg('camera', 18);
 $('undo').onclick = undo; $('redo').onclick = redo;
 $('full').onclick = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen());
 $('shot').onclick = async () => {
@@ -479,7 +480,7 @@ document.addEventListener('click', (e) => { if (!e.target.closest('#cs-menu') &&
 // ---------------------------------------------------------------- zoom bar
 const ZI = { out: 'minus', in: 'plus', left: 'left', right: 'right', reset: 'reset' };
 document.querySelectorAll('#zoombar [data-z]').forEach((b) => {
-  b.innerHTML = PT.ICON.svg(ZI[b.dataset.z], 16);
+  b.innerHTML = ICON.svg(ZI[b.dataset.z], 16);
   b.onclick = () => ({ out: () => zoom(1.25), in: () => zoom(0.8), left: () => scrollBars(-1), right: () => scrollBars(1), reset: resetView })[b.dataset.z]();
 });
 function zoom(f) { const r = chart.timeScale().getVisibleLogicalRange(); if (!r) return; const w = (r.to - r.from) * f; chart.timeScale().setVisibleLogicalRange({ from: r.to - w, to: r.to }); }
@@ -585,7 +586,7 @@ $('sess-status').onclick = (e) => {
       const isOpen = now >= x.a && now < x.b;
       return `<div class="item"><span style="color:${s.color}">● ${s.name}</span><span>${hm(x.a)}–${hm(x.b)} ${isOpen ? '<b class="up">เปิดอยู่</b>' : `<small>เปิดอีก ${fmtDur(x.a - now)}</small>`}</span></div>`; }).join('') +
     `<div class="item muted" style="display:block;line-height:1.5">ช่วง London+New York ซ้อนกันมักผันผวนสูงสุด · เวลาปรับตามเวลาฤดูร้อน (DST) อัตโนมัติ</div>
-    <div class="item"><button id="sess-edit">${PT.ICON.html('settings', 14)}แก้ไขช่วงเวลา…</button></div>`;
+    <div class="item"><button id="sess-edit">${ICON.html('settings', 14)}แก้ไขช่วงเวลา…</button></div>`;
   $('sess-edit').onclick = () => { p.classList.add('hidden'); PT.openSettings('sess'); };
   p.classList.remove('hidden'); p.style.left = 'auto'; p.style.right = '10px'; p.style.top = 'auto'; p.style.bottom = '6px';
   setTimeout(() => { p.style.left = ''; }, 0);

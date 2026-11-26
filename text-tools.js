@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { ICON } from './icons.js';
 import { $, S, TC, digits, drawings, esc, fmt, saveDrawings, store } from './app-core.js';
 import { addAlert } from './app-data.js';
 import { el, yOf } from './app-overlay.js';
@@ -25,7 +26,7 @@ const TXT = (() => {
   };
   const ic = (n, s = 16) => `<svg class="ico" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LI[n] || ''}</svg>`;
   // the drawing toolbar asks ICON.svg('callout') → serve it from here
-  if (PT.ICON && PT.ICON.svg) { const base = PT.ICON.svg; PT.ICON.svg = (n, s = 20) => (n === 'callout' ? ic('callout', s) : base(n, s)); }
+  if (ICON && ICON.svg) { const base = ICON.svg; ICON.svg = (n, s = 20) => (n === 'callout' ? ic('callout', s) : base(n, s)); }
 
   const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans Thai", "Sukhumvit Set", Tahoma, sans-serif';
   const SIZES = [['S', 12], ['M', 14], ['L', 18], ['XL', 24]];
