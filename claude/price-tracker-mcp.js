@@ -51,10 +51,10 @@ const TOOLS = [
     run: () => cmd('analysis') },
   { name: 'get_bounce_zones', description: 'Bounce finder: ranked buy/sell reaction zones (order block, FVG, S/R, Fibo pocket) with entry/SL/TP/RR, live status, reasons and historical bounce rates; plus liquidity pools (equal highs/lows, PDH/PDL, stop clusters) and recent sweeps.', inputSchema: { type: 'object', properties: {} },
     run: () => cmd('bounce') },
-  { name: 'draw_on_chart', description: 'Draw on the user\'s chart to explain an idea. Types: hline(1 point), trend/ray/rect/fib/long/short(2 points), fibext(3), text/arrowUp/arrowDown(1). Drawings are marked as Claude\'s and can be removed with clear_claude_drawings.',
+  { name: 'draw_on_chart', description: 'Draw on the user\'s chart to explain an idea. Types: hline(1 point), trend/ray/rect/fib/long/short(2 points), fibext(3), text/callout/arrowUp/arrowDown(1). callout = a note box pointing at the point (good for "entry here"). label puts a caption ON the shape. Drawings are marked as Claude\'s and can be removed with clear_claude_drawings.',
     inputSchema: { type: 'object', properties: {
-      type: { type: 'string', enum: ['hline', 'trend', 'ray', 'rect', 'fib', 'fibext', 'text', 'arrowUp', 'arrowDown', 'long', 'short'] },
-      points: { type: 'array', items: POINT }, text: { type: 'string', description: 'for type=text' },
+      type: { type: 'string', enum: ['hline', 'trend', 'ray', 'rect', 'fib', 'fibext', 'text', 'callout', 'arrowUp', 'arrowDown', 'long', 'short'] },
+      points: { type: 'array', items: POINT }, text: { type: 'string', description: 'for type=text/callout; may contain line breaks' }, fontSize: { type: 'number', description: 'text/callout: 12-24' }, bg: { type: 'boolean', description: 'text/callout: filled background' }, bold: { type: 'boolean' },
       label: { type: 'string', description: 'optional caption shown next to the drawing' },
       reverse: { type: 'boolean', description: 'fib only: true = first point is 0 and second is 1, so levels 1.272/1.618/2/2.618 project beyond the second point (targets)' }, color: { type: 'string', description: 'hex colour, e.g. #26a69a' } }, required: ['type', 'points'] },
     run: (a) => cmd('draw', a) },
