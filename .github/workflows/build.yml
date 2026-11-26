@@ -125,6 +125,26 @@ jobs:
       - uses: actions/upload-artifact@v4
         with: { name: windows, path: out/* }
 
+  # Website (GitHub Pages, "Deploy from a branch: gh-pages"): download page + installable web app at /app/
+  site:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: node scripts/build-site.js
+      - name: Publish to gh-pages branch
+        working-directory: _site
+        run: |
+          git init -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A && git commit -qm "site: ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
+
   release:
     needs: [android, mac, windows]
     runs-on: ubuntu-latest

@@ -143,3 +143,8 @@ body.m2 #tab-market label:has(#csv), body.m2 #open-csv, body.m2 #api-info, body.
 body.m2 #toasts .toast { font-size: 12.5px; padding: 8px 10px; }
 body.m2 #toasts .toast:nth-last-child(n+3) { display: none; }
 body.m2:not(.hide-side) > #netbanner { display: none; }   /* on full-screen pages the status dot is enough */
+/* "install as app" (web/PWA only — pwa.js) */
+#pwa-install { position: fixed; left: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 8000; display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px 9px 14px; border-radius: 999px; border: 1px solid var(--accent); background: var(--accent); color: #fff; font-weight: 600; box-shadow: 0 6px 20px #0006; cursor: pointer; }
+#pwa-install.hidden { display: none; }
+#pwa-install i { font-style: normal; opacity: .8; padding: 0 4px; font-size: 16px; line-height: 1; }
+body.mobile #pwa-install { bottom: calc(70px + env(safe-area-inset-bottom)); }

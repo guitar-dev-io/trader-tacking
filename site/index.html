@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Price Tracker — ดาวน์โหลด และวิธีติดตั้ง</title>
+<meta name="description" content="Price Tracker: กราฟ วิเคราะห์ Price Action จุดเด้ง เครื่องคำนวณ lot และบทเรียน สำหรับ Mac, Windows, Android และเว็บ — อ่านราคาอย่างเดียว ไม่ส่งคำสั่งซื้อขาย">
+<meta name="theme-color" content="#0f1115">
+<link rel="icon" href="app/assets/icon-192.png">
+<style>
+  :root { --bg: #0b0d12; --panel: #131722; --panel2: #181d2a; --line: #262c3b; --text: #e3e6ec; --muted: #8a93a6; --accent: #2962ff; --up: #26a69a; --warn: #f5a623; --radius: 14px; }
+  @media (prefers-color-scheme: light) { :root { --bg: #f6f7fb; --panel: #fff; --panel2: #f0f2f7; --line: #e1e5ee; --text: #161a23; --muted: #5d6475; } }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans Thai", "Sukhumvit Set", Roboto, sans-serif; }
+  a { color: #6f9bff; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+  svg.i { width: 18px; height: 18px; vertical-align: -3px; flex: none; }
+  header.top { position: sticky; top: 0; z-index: 5; backdrop-filter: blur(10px); background: color-mix(in srgb, var(--bg) 82%, transparent); border-bottom: 1px solid var(--line); }
+  header.top .wrap { display: flex; align-items: center; gap: 18px; height: 58px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; color: var(--text); text-decoration: none; }
+  .brand img { width: 30px; height: 30px; border-radius: 8px; }
+  nav { margin-left: auto; display: flex; gap: 18px; font-size: 14px; }
+  nav a { color: var(--muted); text-decoration: none; } nav a:hover { color: var(--text); }
+  @media (max-width: 720px) { nav { display: none; } }
+  .hero { padding: 64px 0 36px; text-align: center; }
+  .hero h1 { font-size: clamp(30px, 5vw, 46px); line-height: 1.2; margin: 0 0 14px; letter-spacing: -.01em; }
+  .hero h1 span { background: linear-gradient(90deg, #2962ff, #26a69a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero p { color: var(--muted); max-width: 640px; margin: 0 auto 26px; font-size: 17px; }
+  .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--text); text-decoration: none; font-weight: 600; cursor: pointer; font-size: 15px; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn small { font-weight: 400; opacity: .8; }
+  .meta { margin-top: 14px; color: var(--muted); font-size: 13px; }
+  .ro { display: inline-flex; align-items: center; gap: 8px; margin-top: 22px; padding: 6px 14px; border-radius: 999px; background: color-mix(in srgb, var(--up) 14%, transparent); color: var(--up); font-size: 13px; }
+  section { padding: 38px 0; }
+  h2 { font-size: 24px; margin: 0 0 6px; } .sub { color: var(--muted); margin: 0 0 22px; }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+  .card.mine { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .card h3 { margin: 0; font-size: 18px; display: flex; align-items: center; gap: 10px; }
+  .card h3 svg { width: 24px; height: 24px; }
+  .card p { margin: 0; color: var(--muted); font-size: 14px; }
+  .card .dl { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
+  .card .dl a { justify-content: space-between; }
+  .tag { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--panel2); color: var(--muted); font-weight: 500; }
+  .card.mine .tag.you { background: var(--accent); color: #fff; }
+  table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; font-size: 14px; }
+  th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--panel2); font-weight: 600; } tr:last-child td { border-bottom: none; }
+  td small { color: var(--muted); display: block; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .tabs button { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); cursor: pointer; font: inherit; }
+  .tabs button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .steps { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 22px 14px; }
+  .steps ol { padding-left: 22px; } .steps li { margin: 10px 0; } .steps li small { display: block; color: var(--muted); }
+  .steps .note { padding: 10px 14px; border-radius: 10px; background: var(--panel2); font-size: 14px; margin: 10px 0; }
+  .hidden { display: none !important; }
+  kbd, code { background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 0 6px; font-size: 13px; }
+  code { user-select: all; }
+  details { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin: 10px 0; }
+  summary { cursor: pointer; font-weight: 600; } details p, details ul { color: var(--muted); margin: 8px 0 0; }
+  footer { border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--muted); font-size: 13px; }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: space-between; }
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <a class="brand" href="#"><img src="app/assets/icon-192.png" alt="">Price Tracker</a>
+  <nav><a href="#download">ดาวน์โหลด</a><a href="#req">โปรแกรมที่ต้องใช้</a><a href="#install">วิธีติดตั้ง</a><a href="#mt5">เชื่อม MT5</a><a href="#faq">คำถาม</a></nav>
+</div></header>
+
+<main>
+<div class="wrap hero">
+  <h1>อ่านกราฟเป็น<br><span>ด้วย Price Action</span></h1>
+  <p>กราฟราคาสดจาก VCG หรือ MT5 ของโบรกเกอร์คุณ · วิเคราะห์โครงสร้างตลาด จุดเด้ง Demand &amp; Supply · เครื่องคำนวณ lot / MM · บทเรียนและโจทย์ฝึก</p>
+  <div class="cta">
+    <a class="btn primary" id="cta-main" href="#download"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg><span>ดาวน์โหลด</span></a>
+    <a class="btn" href="app/"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>เปิดเว็บแอป <small>ไม่ต้องติดตั้ง</small></a>
+  </div>
+  <div class="meta" id="rel-meta">กำลังโหลดข้อมูลเวอร์ชันล่าสุด…</div>
+  <div class="ro"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>อ่านราคาอย่างเดียว — ไม่ส่งคำสั่งซื้อขาย · ใช้ฟรี</div>
+</div>
+
+<section id="download"><div class="wrap">
+  <h2>ดาวน์โหลด</h2>
+  <p class="sub">เลือกตามเครื่องของคุณ — ไฟล์ทั้งหมดมาจากหน้า <a id="rel-link" href="https://github.com/guitar-dev-io/trader-tacking/releases" target="_blank" rel="noopener">GitHub Releases</a></p>
+  <div class="grid">
+    <div class="card" data-os="mac">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>Mac <span class="tag you hidden">เครื่องคุณ</span></h3>
+      <p>macOS 12 ขึ้นไป · ราคาแสดงบนแถบเมนูด้านบน</p>
+      <div class="dl">
+        <a class="btn primary" data-asset="mac-arm64"><span>Apple ชิป (M1–M4)</span><small>.zip</small></a>
+        <a class="btn" data-asset="mac-x64"><span>Mac Intel</span><small>.zip</small></a>
+      </div>
+    </div>
+    <div class="card" data-os="win">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 12h18"/><path d="M12 3v18"/></svg>Windows <span class="tag you hidden">เครื่องคุณ</span></h3>
+      <p>Windows 10 / 11 (64-bit)</p>
+      <div class="dl">
+        <a class="btn primary" data-asset="win-setup"><span>ตัวติดตั้ง (แนะนำ)</span><small>Setup .exe</small></a>
+        <a class="btn" data-asset="win-portable"><span>Portable — ไม่ต้องติดตั้ง</span><small>.exe</small></a>
+        <a class="btn" data-asset="win-zip"><span>ไฟล์ zip</span><small>.zip</small></a>
+      </div>
+    </div>
+    <div class="card" data-os="android">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>Android <span class="tag you hidden">เครื่องคุณ</span></h3>
+      <p>Android 7.0 ขึ้นไป · ราคาจาก VCG หรือ Demo</p>
+      <div class="dl"><a class="btn primary" data-asset="apk"><span>ดาวน์โหลด APK</span><small>.apk</small></a></div>
+    </div>
+    <div class="card" data-os="web">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>เว็บแอป <span class="tag you hidden">เครื่องคุณ</span></h3>
+      <p>ใช้ในเบราว์เซอร์ได้ทุกเครื่อง (รวม iPhone/iPad) กด "ติดตั้งเป็นแอป" ให้มีไอคอนบนหน้าจอ · ใช้ราคา Demo ฝึก บทเรียน เครื่องคำนวณ</p>
+      <div class="dl"><a class="btn primary" href="app/"><span>เปิดเว็บแอป</span><small>ฟรี</small></a></div>
+    </div>
+  </div>
+</div></section>
+
+<section id="req"><div class="wrap">
+  <h2>โปรแกรมที่ต้องใช้</h2>
+  <p class="sub">ใช้ฝึกและเรียนได้ทันทีโดยไม่ต้องมีอะไรเพิ่ม — ถ้าต้องการราคาจริง เลือกอย่างใดอย่างหนึ่งด้านล่าง</p>
+  <table>
+    <tr><th style="width:24%">ต้องการ</th><th>ต้องมี</th><th style="width:30%">ใช้กับ</th></tr>
+    <tr><td><b>ฝึก / เรียน (Demo)</b></td><td>ไม่ต้องมีอะไรเพิ่ม<small>ราคาตัวอย่างจากตลาดคริปโตสาธารณะ ใช้ฝึกอ่านกราฟ ตีเส้น วิเคราะห์ ฝึกเทรดจำลอง</small></td><td>Mac · Windows · Android · เว็บ</td></tr>
+    <tr><td><b>ราคาจริงจาก VCG Markets</b></td><td>บัญชี VCG Markets (อีเมล + รหัสผ่าน)<small>login ครั้งเดียวในหน้าของ VCG เอง แอปไม่เห็นรหัสผ่าน · บัญชีที่สมัครด้วย Google ให้ตั้งรหัสผ่านที่เว็บ VCG ก่อน</small></td><td>Mac · Windows · Android</td></tr>
+    <tr><td><b>ราคาจริงจากโบรกเกอร์ของคุณ (MT5)</b></td><td>
+      1. <a href="https://www.metatrader5.com/en/download" target="_blank" rel="noopener">MetaTrader 5</a> (ฟรี จาก MetaQuotes หรือเว็บโบรกเกอร์)<br>
+      2. บัญชีเทรดของโบรกเกอร์ที่มี MT5 (demo ก็ได้ · ใช้รหัสผ่านนักลงทุนได้)<br>
+      3. EA <b>PriceTrackerBridge</b> — มาพร้อมแอป กดปุ่มเดียวติดตั้งให้
+      <small>ไม่รองรับ MT4 · ต้องเปิด MT5 ค้างไว้ขณะใช้</small></td><td>Mac · Windows</td></tr>
+    <tr><td><b>ให้ Claude ช่วยวิเคราะห์ (ไม่บังคับ)</b></td><td><a href="https://claude.ai/download" target="_blank" rel="noopener">Claude Desktop</a><small>เปิดในแอป: การตั้งค่า → Claude</small></td><td>Mac · Windows</td></tr>
+  </table>
+  <p class="sub" style="margin-top:12px">ไม่ต้องติดตั้ง Node.js, Python หรือโปรแกรมอื่น — แอปรวมทุกอย่างไว้แล้ว</p>
+</div></section>
+
+<section id="install"><div class="wrap">
+  <h2>วิธีติดตั้ง</h2>
+  <p class="sub">แอปยังไม่ได้ลงทะเบียนกับ Apple/Microsoft/Google Play ครั้งแรกจึงมีคำเตือน ทำตามนี้ได้เลย</p>
+  <div class="tabs" id="itabs"><button data-t="mac">Mac</button><button data-t="win">Windows</button><button data-t="android">Android</button><button data-t="web">เว็บแอป / iPhone</button></div>
+  <div class="steps" data-t="mac"><ol>
+    <li>ดาวน์โหลด <b>Apple ชิป (M1–M4)</b> หรือ <b>Mac Intel</b> ให้ตรงเครื่อง<small>เช็กที่เมนู Apple → About This Mac — ถ้าโหลดผิดตัว แอปจะช้ามาก</small></li>
+    <li>ดับเบิลคลิกไฟล์ zip แล้วลาก <b>Price Tracker</b> ไปไว้ใน <b>Applications</b></li>
+    <li>เปิดครั้งแรก: <b>คลิกขวา → Open → Open</b><small>ถ้าขึ้น "ไม่สามารถตรวจสอบผู้พัฒนาได้": System Settings → Privacy &amp; Security → เลื่อนลง → <b>Open Anyway</b></small></li>
+    <li>ยังเปิดไม่ได้? เปิด Terminal แล้ววาง: <code>xattr -cr "/Applications/Price Tracker.app"</code></li>
+    <li>อัปเดต: โหลด zip ใหม่แล้วลากทับของเดิม — การตั้งค่าและ watchlist ยังอยู่</li>
+  </ol></div>
+  <div class="steps hidden" data-t="win"><ol>
+    <li><b>ตัวติดตั้ง</b>: ดับเบิลคลิก <code>Price-Tracker-Setup-….exe</code> → เลือกโฟลเดอร์ → Install<small>มี shortcut ที่ Desktop และ Start menu</small></li>
+    <li>ถ้าขึ้น <b>Windows protected your PC</b> (SmartScreen): กด <b>More info → Run anyway</b></li>
+    <li><b>Portable</b>: วาง <code>Price-Tracker-portable-….exe</code> ไว้ที่ไหนก็ได้ (เช่น USB) แล้วดับเบิลคลิก<small>การตั้งค่าเก็บในโฟลเดอร์ "Price Tracker Data" ข้างไฟล์</small></li>
+    <li><b>Zip</b>: แตกไฟล์แล้วเปิด <code>Price Tracker.exe</code> · สร้างโฟลเดอร์ "Price Tracker Data" ข้างไฟล์ถ้าอยากให้เป็นแบบ portable</li>
+    <li>ปิดหน้าต่างแล้วแอปยังทำงานที่ System tray (ข้างนาฬิกา) — คลิกไอคอนเพื่อเปิดกลับ</li>
+  </ol></div>
+  <div class="steps hidden" data-t="android"><ol>
+    <li>เปิดหน้านี้บนมือถือ แล้วกด <b>ดาวน์โหลด APK</b></li>
+    <li>แตะไฟล์ที่โหลด → ถ้าขึ้น "ไม่อนุญาตให้ติดตั้งจากแหล่งนี้" แตะ <b>การตั้งค่า → อนุญาตจากแหล่งนี้</b> → กลับมาแตะ <b>ติดตั้ง</b></li>
+    <li>ถ้า Play Protect เตือน แตะ <b>รายละเอียดเพิ่มเติม → ติดตั้งต่อไป</b></li>
+    <li>เปิดแอป → เลือก Demo หรือ <b>เข้าสู่ระบบ VCG</b> ด้วยอีเมล + รหัสผ่าน (ปุ่ม Google ใช้ในแอปไม่ได้)</li>
+    <li>อัปเดต: ติดตั้ง APK ใหม่ทับได้เลย ไม่ต้องลบของเดิม</li>
+  </ol></div>
+  <div class="steps hidden" data-t="web"><ol>
+    <li>เปิด <a href="app/">เว็บแอป</a> ใน Chrome, Edge หรือ Safari</li>
+    <li><b>คอม / Android</b>: กดปุ่ม <b>ติดตั้งเป็นแอป</b> มุมซ้ายล่าง (หรือไอคอนติดตั้งในแถบที่อยู่) → Install</li>
+    <li><b>iPhone / iPad</b>: Safari → ปุ่มแชร์ → <b>เพิ่มไปยังหน้าจอโฮม</b></li>
+    <li>เปิดจากไอคอนบนหน้าจอได้เหมือนแอปทั่วไป ใช้งานออฟไลน์ได้ (ยกเว้นราคาและข่าว)</li>
+    <div class="note">เว็บแอปใช้ราคา Demo ฝึก บทเรียน เครื่องคำนวณ MM และแดชบอร์ดได้ — ราคาจริงจาก VCG/MT5 ต้องใช้แอป Mac, Windows หรือ Android</div>
+  </ol></div>
+</div></section>
+
+<section id="mt5"><div class="wrap">
+  <h2>เชื่อมต่อ MT5 (Mac / Windows)</h2>
+  <p class="sub">ใช้ได้ทุกโบรกเกอร์ที่มี MT5 — แอปอ่านราคา (และออเดอร์ของคุณ) จาก MT5 ในเครื่อง ไม่ส่งคำสั่งซื้อขาย</p>
+  <div class="steps"><ol>
+    <li>ติดตั้ง <a href="https://www.metatrader5.com/en/download" target="_blank" rel="noopener">MetaTrader 5</a> แล้วเปิด 1 ครั้ง</li>
+    <li>ใน MT5: <b>File → Login to Trade Account</b> → เลขบัญชี + รหัสผ่าน + Server ของโบรกเกอร์<small>ใช้ "รหัสผ่านนักลงทุน (investor password)" ได้ — ดูราคาได้ ส่งออเดอร์ไม่ได้</small></li>
+    <li><b>Tools → Options → Expert Advisors</b> → ติ๊ก <b>Allow WebRequest for listed URL</b> → เพิ่ม <code>http://127.0.0.1</code></li>
+    <li>ปิด MT5 แล้วในแอป Price Tracker: <b>คู่มือเริ่มต้น → MT5 → เปิด MT5 พร้อม EA</b><small>แอปจะคัดลอก EA, compile และเปิด MT5 พร้อม EA บนกราฟให้</small></li>
+    <li>เห็น "เชื่อมต่อแล้ว: ชื่อโบรกเกอร์" ในแอป = เสร็จ · เปิด MT5 ค้างไว้ขณะใช้งาน</li>
+  </ol></div>
+</div></section>
+
+<section id="faq"><div class="wrap">
+  <h2>คำถามที่พบบ่อย</h2>
+  <details><summary>แอปนี้ส่งคำสั่งซื้อขายได้ไหม</summary><p>ไม่ได้ แอปอ่านราคาและแสดงผลเท่านั้น EA ใน MT5 ก็อ่านอย่างเดียว ไม่มีคำสั่งเปิด/แก้/ปิดออเดอร์ ส่วน "ฝึกเทรด" ในแอปใช้เงินสมมติทั้งหมด</p></details>
+  <details><summary>รหัสผ่านปลอดภัยไหม</summary><p>รหัสผ่าน VCG กรอกในหน้าเว็บของ VCG เอง และรหัส MT5 กรอกในโปรแกรม MT5 — แอปไม่เห็นและไม่เก็บรหัสผ่าน</p></details>
+  <details><summary>เสียเงินไหม</summary><p>ใช้ฟรี ถ้ามีประโยชน์ สนับสนุนผู้พัฒนาได้ในแอป: การตั้งค่า → เกี่ยวกับ</p></details>
+  <details><summary>ทำไมเครื่องขึ้นคำเตือนตอนติดตั้ง</summary><p>แอปยังไม่ได้ซื้อใบรับรองจาก Apple/Microsoft และไม่ได้อยู่ใน Play Store ระบบจึงเตือนไว้ก่อน ทำตามขั้นตอนในหัวข้อวิธีติดตั้งได้เลย ซอร์สโค้ดเปิดดูได้บน GitHub</p></details>
+  <details><summary>มีปัญหา / อยากเสนอไอเดีย</summary><p>แจ้งได้ที่ <a href="https://github.com/guitar-dev-io/trader-tacking/issues" target="_blank" rel="noopener">GitHub Issues</a> — แนบภาพหน้าแท็บ Log ในแอปจะช่วยให้แก้ได้เร็ว</p></details>
+</div></section>
+</main>
+
+<footer><div class="wrap">
+  <span>Price Tracker · พัฒนาโดย <b>guiar-dev</b> · <a href="https://github.com/guitar-dev-io/trader-tacking" target="_blank" rel="noopener">GitHub</a></span>
+  <span>เนื้อหาเพื่อการเรียนรู้ ไม่ใช่คำแนะนำการลงทุน — การเทรดมีความเสี่ยง</span>
+</div></footer>
+
+<script>
+(() => {
+  const REPO = 'guitar-dev-io/trader-tacking';
+  const ua = navigator.userAgent, plat = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+  const os = /android/i.test(ua) ? 'android' : /iphone|ipad|ipod/i.test(ua) || (/mac/i.test(plat) && navigator.maxTouchPoints > 1) ? 'web' : /win/i.test(plat) ? 'win' : /mac/i.test(plat) ? 'mac' : 'web';
+  const card = document.querySelector(`.card[data-os="${os}"]`);
+  if (card) { card.classList.add('mine'); card.querySelector('.tag.you').classList.remove('hidden'); }
+  const label = { mac: 'ดาวน์โหลดสำหรับ Mac', win: 'ดาวน์โหลดสำหรับ Windows', android: 'ดาวน์โหลดสำหรับ Android', web: 'ดาวน์โหลดแอป' }[os];
+  const cta = document.getElementById('cta-main'); cta.querySelector('span').textContent = label;
+  // install tabs follow the detected OS
+  const show = (t) => { document.querySelectorAll('#itabs button').forEach((b) => b.classList.toggle('on', b.dataset.t === t)); document.querySelectorAll('.steps[data-t]').forEach((s) => s.classList.toggle('hidden', s.dataset.t !== t)); };
+  document.querySelectorAll('#itabs button').forEach((b) => (b.onclick = () => show(b.dataset.t))); show(os);
+
+  const PICK = { 'mac-arm64': /mac-arm64\.zip$/i, 'mac-x64': /mac-x64\.zip$/i, 'win-setup': /setup.*\.exe$/i, 'win-portable': /portable.*\.exe$/i, 'win-zip': /win.*\.zip$/i, apk: /\.apk$/i };
+  const mb = (n) => (n / 1048576).toFixed(0) + ' MB';
+  fetch(`https://api.github.com/repos/${REPO}/releases?per_page=10`).then((r) => r.json()).then((list) => {
+    const rel = (list || []).find((x) => x.assets && x.assets.length); if (!rel) throw new Error('no release');
+    const ver = (rel.name.match(/v(\d+\.\d+\.\d+)/) || [])[1] || rel.tag_name;
+    document.getElementById('rel-meta').textContent = `เวอร์ชันล่าสุด ${ver} · ${new Date(rel.published_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+    document.getElementById('rel-link').href = rel.html_url;
+    document.querySelectorAll('[data-asset]').forEach((a) => {
+      const f = rel.assets.find((x) => PICK[a.dataset.asset].test(x.name));
+      if (f) { a.href = f.browser_download_url; a.querySelector('small').textContent = mb(f.size); } else { a.href = rel.html_url; }
+    });
+    const mine = { mac: 'mac-arm64', win: 'win-setup', android: 'apk' }[os];
+    if (mine) { const a = document.querySelector(`[data-asset="${mine}"]`); if (a && a.href) cta.href = a.href; }
+  }).catch(() => {
+    document.getElementById('rel-meta').textContent = 'ดูไฟล์ทั้งหมดได้ที่ GitHub Releases';
+    document.querySelectorAll('[data-asset]').forEach((a) => (a.href = `https://github.com/${REPO}/releases`));
+
+  });
+})();
+</script>
+</body>
+</html>
