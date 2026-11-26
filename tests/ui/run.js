@@ -64,7 +64,7 @@ app.whenReady().then(async () => {
 
   try {
     // ------------------------------------------------------------------ desktop app
-    const A = await open(path.join(ROOT, 'index.html'));
+    const A = await open(path.join(ROOT, 'dist-renderer', 'index.html'));   // the Vite build (npm run build:renderer)
     const { js, send, shot } = A;
     send('status', { connected: true, loggedIn: true, symbols: ['XAUUSD'], traySymbol: 'XAUUSD', source: 'vcg' });
     send('net', { level: 'ok', rtt: 80, feedDelay: 50, lastTickAgo: 1, reconnects: 0, connected: true });

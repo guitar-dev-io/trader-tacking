@@ -169,7 +169,9 @@ function createMain() {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true },
   });
   mainWin.webContents.setWindowOpenHandler(({ url }) => { if (/^https:\/\//.test(url)) shell.openExternal(url); return { action: 'deny' }; });
-  mainWin.loadFile(path.join(__dirname, 'index.html'));
+  // renderer: Vite dev server in `npm run dev`, otherwise the built files (npm run build:renderer → dist-renderer/)
+  if (process.env.VITE_DEV_SERVER_URL) mainWin.loadURL(process.env.VITE_DEV_SERVER_URL);
+  else mainWin.loadFile(path.join(__dirname, 'dist-renderer', 'index.html'));
   mainWin.on('close', (e) => { if (!quitting) { e.preventDefault(); mainWin.hide(); } });
   mainWin.webContents.on('did-finish-load', () => {
     sendStatus();
