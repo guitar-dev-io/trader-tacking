@@ -145,6 +145,9 @@ function planLaunch({ expertsDir, platform, appBundles = [], symbol, period = 'M
   try { const o = fs.readFileSync(path.join(dataDir, 'origin.txt'), 'utf16le').replace(/^\uFEFF/, '').trim(); if (o && /terminal/i.test(dataDir)) installDir = o; } catch (_) {}
   const exe = (n) => { for (const x of [n, n.toLowerCase()]) { const f = path.join(installDir, x); if (fs.existsSync(f)) return f; } return null; };
   const terminal = exe('terminal64.exe'), editor = exe('MetaEditor64.exe');
+  // data inside the install folder = portable mode (always the case for MT5 on Mac): start it the same way,
+  // otherwise MT5 would open a fresh profile without the user's login.
+  const portable = installDir === dataDir ? ['/portable'] : [];
   const ini = ['[StartUp]', 'Expert=PriceTrackerBridge', symbol ? 'Symbol=' + symbol : '', 'Period=' + period,
     '[Experts]', 'Enabled=1', 'AllowLiveTrading=0', 'AllowDllImport=0', 'WebRequest=1', 'WebRequestUrl=http://127.0.0.1', ''].filter((l) => l !== '').join('\r\n') + '\r\n';
   const iniPath = path.join(dataDir, 'config', 'pricetracker-start.ini');
@@ -159,12 +162,12 @@ function planLaunch({ expertsDir, platform, appBundles = [], symbol, period = 'M
     if (!terminal || !wine) return { terminal, wine, ini, iniPath, missing: !terminal ? 'terminal64.exe' : 'wine' };
     return { ini, iniPath, env: { WINEPREFIX: prefix, WINEDEBUG: '-all' },
       compile: editor && { cmd: wine, args: [win(editor), '/compile:' + win(path.join(expertsDir, 'PriceTrackerBridge.mq5')), '/log'] },
-      launch: { cmd: wine, args: [win(terminal), '/config:' + win(iniPath)] } };
+      launch: { cmd: wine, args: [win(terminal), ...portable, '/config:' + win(iniPath)] } };
   }
   if (!terminal) return { ini, iniPath, missing: 'terminal64.exe' };
   return { ini, iniPath, env: {},
     compile: editor && { cmd: editor, args: ['/compile:' + path.join(expertsDir, 'PriceTrackerBridge.mq5'), '/log'] },
-    launch: { cmd: terminal, args: ['/config:' + iniPath] } };
+    launch: { cmd: terminal, args: [...portable, '/config:' + iniPath] } };
 }
 
 module.exports = { findExpertDirs, resolve, planLaunch,

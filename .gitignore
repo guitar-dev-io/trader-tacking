@@ -6,3 +6,4 @@ www/
 android/app/build/
 android/.gradle/
 android/build/
+dist-win/

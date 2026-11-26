@@ -1,7 +1,19 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+// OS class on <html> (os-darwin / os-win32) + Windows title bar: no traffic lights on the left,
+// window buttons (titleBarOverlay) on the right.
+window.addEventListener('DOMContentLoaded', () => {
+  document.documentElement.classList.add('os-' + process.platform);
+  if (process.platform !== 'darwin') {
+    const st = document.createElement('style');
+    st.textContent = '#titlebar{padding:0 150px 0 14px !important}';
+    document.head.appendChild(st);
+  }
+});
+
 contextBridge.exposeInMainWorld('vcg', {
   platform: 'desktop',
+  os: process.platform,
   capabilities: { vcg: true, api: true, csv: true, files: true, mt5: true },
   setSource: (src) => ipcRenderer.send('set-source', src),
   saveEA: () => ipcRenderer.invoke('save-ea'),

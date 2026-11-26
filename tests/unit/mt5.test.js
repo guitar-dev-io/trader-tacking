@@ -59,8 +59,23 @@ test('planLaunch builds a Wine command for a macOS MT5 bottle', () => {
   const p = mt5.planLaunch({ expertsDir: exp, platform: 'darwin', appBundles: [path.join(root, 'MetaTrader 5.app')], symbol: 'XAUUSDbrex.' });
   assert.equal(p.launch.cmd, path.join(bin, 'wine64'));
   assert.equal(p.env.WINEPREFIX, path.join(root, 'bottle'));
-  assert.deepEqual(p.launch.args, ['C:\\Program Files\\MetaTrader 5\\terminal64.exe', '/config:C:\\Program Files\\MetaTrader 5\\config\\pricetracker-start.ini']);
+  assert.deepEqual(p.launch.args, ['C:\\Program Files\\MetaTrader 5\\terminal64.exe', '/portable', '/config:C:\\Program Files\\MetaTrader 5\\config\\pricetracker-start.ini']);
   assert.match(p.compile.args[1], /^\/compile:C:\\Program Files\\MetaTrader 5\\MQL5\\Experts\\PriceTrackerBridge\.mq5$/);
   assert.match(p.ini, /Expert=PriceTrackerBridge\r\nSymbol=XAUUSDbrex\.\r\nPeriod=M5/);
   assert.equal(mt5.planLaunch({ expertsDir: exp, platform: 'darwin', appBundles: [] }).missing, 'wine');
+});
+
+test('planLaunch on Windows: portable install and AppData data folder', () => {
+  const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mt5w-'));
+  const port = path.join(root, 'MT5'), exp = path.join(port, 'MQL5', 'Experts'); fs.mkdirSync(exp, { recursive: true }); fs.writeFileSync(path.join(port, 'terminal64.exe'), '');
+  const p = mt5.planLaunch({ expertsDir: exp, platform: 'win32' });
+  assert.equal(p.launch.cmd, path.join(port, 'terminal64.exe'));
+  assert.equal(p.launch.args[0], '/portable');
+  const inst = path.join(root, 'Program Files', 'MetaTrader 5'); fs.mkdirSync(inst, { recursive: true }); fs.writeFileSync(path.join(inst, 'terminal64.exe'), '');
+  const data = path.join(root, 'AppData', 'MetaQuotes', 'Terminal', 'ABC123'), exp2 = path.join(data, 'MQL5', 'Experts'); fs.mkdirSync(exp2, { recursive: true });
+  fs.writeFileSync(path.join(data, 'origin.txt'), Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(inst, 'utf16le')]));
+  const q = mt5.planLaunch({ expertsDir: exp2, platform: 'win32' });
+  assert.equal(q.launch.cmd, path.join(inst, 'terminal64.exe'));
+  assert.ok(!q.launch.args.includes('/portable'));
 });

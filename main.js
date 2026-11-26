@@ -1,4 +1,4 @@
-// Price Tracker — macOS app
+// Price Tracker — desktop app (macOS + Windows)
 // Opens VCG WebTrader in a hidden browser window (it handles login + 15-min token refresh),
 // reads the Socket.IO price stream (wss://prod-ws-server.anttix.app, namespace /symbol)
 // through the Chrome DevTools protocol, and shows live prices, charts and analysis.
@@ -10,6 +10,22 @@ const log = require('./logger');
 const api = require('./api');
 const notify = require('./notify');
 const mt5 = require('./mt5');
+const IS_WIN = process.platform === 'win32', IS_MAC = process.platform === 'darwin';
+
+// Portable Windows build: keep settings/logs/login next to the .exe instead of %APPDATA%.
+//  - portable .exe: electron-builder sets PORTABLE_EXECUTABLE_DIR
+//  - zip: create a folder named "Price Tracker Data" next to Price Tracker.exe to make it portable
+(() => {
+  const base = process.env.PORTABLE_EXECUTABLE_DIR || (IS_WIN && path.dirname(process.execPath));
+  if (!base) return;
+  const dir = path.join(base, 'Price Tracker Data');
+  if (process.env.PORTABLE_EXECUTABLE_DIR || fs.existsSync(dir)) {
+    try { fs.mkdirSync(dir, { recursive: true }); app.setPath('userData', dir); } catch (_) {}
+  }
+})();
+// one copy only: opening the app again just brings the running window back (it lives in the tray)
+if (!app.requestSingleInstanceLock()) app.exit(0);
+app.on('second-instance', () => showMain());
 
 const { WEBTRADER_URL, WS_HOST, SUB_JS, CONNECTED_JS, FEED_JS, CHART_JS, CHART_REQ_JS, parseQuote } = require('./vcg-inject');
 
@@ -118,7 +134,8 @@ function updateTray() {
   if (!tray) return;
   const q = state.quotes[settings.traySymbol];
   const label = settings.traySymbol.replace(/USD$/, '');
-  tray.setTitle(q ? ` ${label} ${q.bid.toFixed(q.digits)}` : ` ${label} …`);
+  const txt = q ? `${label} ${q.bid.toFixed(q.digits)}` : `${label} …`;
+  if (IS_MAC) tray.setTitle(' ' + txt); else tray.setToolTip('Price Tracker — ' + txt);
 }
 function buildTrayMenu() {
   return Menu.buildFromTemplate([
@@ -146,7 +163,7 @@ function createMain() {
   mainWin = new BrowserWindow({
     width: 1440, height: 880, minWidth: 980, minHeight: 600,
     title: 'Price Tracker', backgroundColor: '#0f1115',
-    titleBarStyle: 'hiddenInset',
+    ...(IS_MAC ? { titleBarStyle: 'hiddenInset' } : { titleBarStyle: 'hidden', titleBarOverlay: { color: '#0f1115', symbolColor: '#d6d9e0', height: 38 }, autoHideMenuBar: true, icon: path.join(__dirname, 'assets', 'tray@2x.png') }),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true },
   });
   mainWin.webContents.setWindowOpenHandler(({ url }) => { if (/^https:\/\//.test(url)) shell.openExternal(url); return { action: 'deny' }; });
@@ -315,12 +332,12 @@ async function chartScreenshot() {
 }
 
 // ---------------- Claude (MCP) setup: local API on 127.0.0.1 + token, MCP script, Claude Desktop config ----------------
-const claudeConfigFile = () => path.join(app.getPath('home'), 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json');
+const claudeConfigFile = () => path.join(app.getPath('appData'), 'Claude', 'claude_desktop_config.json');   // mac: ~/Library/Application Support · win: %APPDATA%
 function mcpEntry() {
   const script = path.join(app.getPath('userData'), 'claude', 'price-tracker-mcp.js');
   fs.mkdirSync(path.dirname(script), { recursive: true });
   fs.writeFileSync(script, fs.readFileSync(path.join(__dirname, 'claude', 'price-tracker-mcp.js')));
-  return { command: process.execPath, args: [script], env: { ELECTRON_RUN_AS_NODE: '1', PT_API_URL: `http://127.0.0.1:${settings.api.port}`, PT_API_TOKEN: settings.claude.token } };
+  return { command: process.env.PORTABLE_EXECUTABLE_FILE || process.execPath, args: [script], env: { ELECTRON_RUN_AS_NODE: '1', PT_API_URL: `http://127.0.0.1:${settings.api.port}`, PT_API_TOKEN: settings.claude.token } };
 }
 function ensureClaudeApi() {
   const c = settings.claude; let changed = false;
@@ -581,8 +598,11 @@ app.whenReady().then(() => {
   loadSettings();
   log.info('app', `เริ่มโปรแกรม v${app.getVersion()} (Electron ${process.versions.electron}, ${process.platform}/${process.arch})`);
   if (app.runningUnderARM64Translation) log.warn('app', 'แอปนี้เป็นรุ่น Intel (x64) แต่ Mac เป็นชิป Apple (M1/M2/M3/M4) — ทำงานผ่าน Rosetta จะช้ากว่า ให้ติดตั้งไฟล์ Price-Tracker-mac-arm64.zip แทน');
-  tray = new Tray(nativeImage.createEmpty());
+  // macOS shows the price as menu-bar text; Windows needs an icon (otherwise the tray is invisible and a
+  // closed window could not be reopened) and shows the price in the tooltip.
+  tray = new Tray(IS_MAC ? nativeImage.createEmpty() : nativeImage.createFromPath(path.join(__dirname, 'assets', 'tray.png')));
   tray.setToolTip('Price Tracker');
+  if (!IS_MAC) { tray.on('click', showMain); tray.on('double-click', showMain); }
   refreshTrayMenu();
   updateTray();
   createMain();
