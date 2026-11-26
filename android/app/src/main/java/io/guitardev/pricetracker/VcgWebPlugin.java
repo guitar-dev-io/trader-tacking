@@ -16,6 +16,7 @@ import android.webkit.WebStorage;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.os.Message;
+import android.app.AlertDialog;
 import androidx.webkit.WebSettingsCompat;
 import androidx.webkit.WebViewFeature;
 import java.util.Collections;
@@ -107,7 +108,12 @@ public class VcgWebPlugin extends Plugin {
             popup = new WebView(getContext());
             configure(popup);
             popup.setWebChromeClient(this);
-            popup.setWebViewClient(new WebViewClient());
+            popup.setWebViewClient(new WebViewClient() {
+                @Override
+                public void onPageStarted(WebView v, String url, Bitmap favicon) { checkGoogleBlock(url); }
+                @Override
+                public void onPageFinished(WebView v, String url) { checkGoogleBlock(url); }
+            });
             popup.setBackgroundColor(Color.WHITE);
             content.addView(popup, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             WebView.WebViewTransport t = (WebView.WebViewTransport) resultMsg.obj;
@@ -119,6 +125,32 @@ public class VcgWebPlugin extends Plugin {
         @Override
         public void onCloseWindow(WebView window) { if (window == popup) closePopup(); }
     };
+
+    // Google refuses sign-in inside embedded web views ("ลงชื่อเข้าใช้ให้คุณไม่ได้ / เบราว์เซอร์หรือแอปนี้อาจไม่ปลอดภัย").
+    // We don't try to get around that: close the page and explain how to log in with e-mail + password instead.
+    private boolean googleNoticeShown = false;
+    private void checkGoogleBlock(String url) {
+        if (url == null || !url.contains("accounts.google.com")) return;
+        if (!(url.contains("/rejected") || url.contains("disallowed_useragent") || url.contains("signin/oauth/error"))) return;
+        getActivity().runOnUiThread(() -> {
+            closePopup();
+            notifyListeners("googleBlocked", new JSObject());
+            if (googleNoticeShown) return;
+            googleNoticeShown = true;
+            new AlertDialog.Builder(getActivity())
+                .setTitle("Google ไม่อนุญาตให้ login ในแอป")
+                .setMessage("Google บล็อกการ login ด้วยบัญชี Google ในหน้าเว็บที่อยู่ในแอป (เป็นนโยบายของ Google ทุกแอปเจอเหมือนกัน)\n\n"
+                    + "ให้ login VCG ด้วย อีเมล + รหัสผ่าน แทน\n\n"
+                    + "ถ้าบัญชีสมัครด้วย Google และยังไม่มีรหัสผ่าน: เปิดหน้า login ของ VCG ใน Chrome แล้วกด \"ลืมรหัสผ่าน\" ด้วยอีเมลเดียวกัน เพื่อตั้งรหัสผ่าน แล้วกลับมา login ในแอป")
+                .setPositiveButton("เข้าใจแล้ว", (d, w) -> { googleNoticeShown = false; })
+                .setNeutralButton("เปิดหน้า VCG ใน Chrome", (d, w) -> {
+                    googleNoticeShown = false;
+                    try { getActivity().startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://vcgmarkets.com/webtrader"))); } catch (Exception ignored) {}
+                })
+                .setOnCancelListener((d) -> { googleNoticeShown = false; })
+                .show();
+        });
+    }
 
     private void closePopup() {
         if (popup == null) return;

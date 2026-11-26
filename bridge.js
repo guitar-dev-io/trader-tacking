@@ -220,6 +220,7 @@
     V.addListener('pageError', (e) => log('error', 'webtrader', `โหลดหน้าไม่สำเร็จ ${e.code} ${e.description}`));
     V.addListener('hidden', () => { shownForLogin = false; hiddenAt = Date.now(); state.overlay = false; sendStatus(); });
     V.addListener('back', () => emit('back'));
+    V.addListener('googleBlocked', () => log('warn', 'auth', 'Google บล็อกการ login ในแอป — ให้ใช้อีเมล + รหัสผ่านของ VCG แทน'));
     V.start({ url: VCGI.WEBTRADER_URL }).then(() => {
       // first run (never connected yet): show the VCG login page straight away instead of waiting for the checks
       if (!ls.get('bridge.everConnected', false)) { shownForLogin = true; showOverlay('เปิดครั้งแรก — แสดงหน้า login'); }

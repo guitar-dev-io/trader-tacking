@@ -213,7 +213,7 @@ function renderConnect(st = connStatus) {
         ${li(2, 'รับราคาสด', stage === 'connecting' ? 'กำลังเชื่อมต่อ… (ถ้านานเกิน 1 นาที กดเชื่อมต่อใหม่)' : '')}
       </ol>
       <button class="cn-primary" data-cn="login">🔐 ${stage === 'connecting' ? 'เปิดหน้า VCG' : 'เข้าสู่ระบบ VCG'}</button>
-      <p class="muted cn-hint">${mobile ? 'หน้า login จะเปิดเต็มจอ · login เสร็จแอปจะปิดให้เอง หรือกด "กลับไปที่แอป" ด้านบน' : 'จะเปิดหน้าต่าง VCG WebTrader · login แล้วปิดหน้าต่างได้เลย แอปยังรับราคาต่อ'}</p>
+      <p class="muted cn-hint">${mobile ? 'หน้า login จะเปิดเต็มจอ · ใช้ <b>อีเมล + รหัสผ่าน</b> (Google ไม่อนุญาตให้ login ด้วยบัญชี Google ในแอป) · login เสร็จแอปจะปิดให้เอง' : 'จะเปิดหน้าต่าง VCG WebTrader · login แล้วปิดหน้าต่างได้เลย แอปยังรับราคาต่อ'}</p>
       <div class="cn-row"><button data-cn="demo">ลองด้วยข้อมูล Demo<small>ไม่ต้อง login</small></button><button data-cn="retry">↻ เชื่อมต่อใหม่</button></div>
       <button class="cn-link" data-cn="log">ดู Log — ถ้ามีปัญหาส่งภาพหน้านี้ให้ผู้พัฒนา</button>
       <div class="cn-diag">${esc(stage)}${st.page ? ' · ' + esc(st.page) : ''}${st.nativeOk === false ? ' · ⚠️ native bridge ไม่ทำงาน' : ''}${st.overlay ? ' · login window เปิดอยู่' : ''}</div>
