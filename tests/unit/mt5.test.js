@@ -40,3 +40,12 @@ test('finds MT5 Experts folders in macOS Wine bottles (MetaQuotes app, broker-br
   assert.ok(dirs.some((d) => d.includes('MetaTrader 5')) && dirs.some((d) => d.includes('ABC123')));
   assert.deepEqual(mt5.findExpertDirs({ home: path.join(home, 'nope'), platform: 'darwin' }), []);
 });
+
+test('resolve maps watchlist names to broker MT5 names', () => {
+  const { resolve } = require('../../mt5');
+  const L = ['XAUUSDbrex.', 'EURUSDbrex.', 'BTCUSD'];
+  assert.equal(resolve('XAUUSD', L), 'XAUUSDbrex.');
+  assert.equal(resolve('XAUUSDBREX.', L), 'XAUUSDbrex.');
+  assert.equal(resolve('BTCUSD', L), 'BTCUSD');
+  assert.equal(resolve('GBPJPY', L), 'GBPJPY');
+});

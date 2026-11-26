@@ -46,8 +46,10 @@ function handle(line) {
     case 'tick': {
       st.lastTick = Date.now();
       const dg = m.dg, ch = m.open ? m.bid - m.open : null;
-      hooks.quote({ symbol: m.s, time: new Date(m.ms).toISOString(), bid: m.bid, ask: m.ask, digits: dg, spread: +(m.ask - m.bid).toFixed(dg),
-        change: ch == null ? null : +ch.toFixed(dg), changePct: ch == null ? null : +((ch / m.open) * 100).toFixed(3) });
+      const q = { time: new Date(m.ms).toISOString(), bid: m.bid, ask: m.ask, digits: dg, spread: +(m.ask - m.bid).toFixed(dg),
+        change: ch == null ? null : +ch.toFixed(dg), changePct: ch == null ? null : +((ch / m.open) * 100).toFixed(3) };
+      const names = new Set([m.s, ...(alias.get(m.s) || [])]);
+      for (const n of names) hooks.quote({ symbol: n, ...q });
       break;
     }
     case 'bars': {
@@ -58,7 +60,7 @@ function handle(line) {
       break;
     }
     case 'bar':
-      hooks.chart({ type: 'chart', slot: m.slot || 'main', data: { symbol: m.s, updates: { candles: (m.bars || []).map((b) => ({ timeSeconds: b[0], open: b[1], high: b[2], low: b[3], close: b[4] })) } } });
+      hooks.chart({ type: 'chart', slot: m.slot || 'main', data: { symbol: (st.last[m.slot || 'main'] || {}).symbol || m.s, updates: { candles: (m.bars || []).map((b) => ({ timeSeconds: b[0], open: b[1], high: b[2], low: b[3], close: b[4] })) } } });
       break;
     case 'err': {
       const p = st.pending.get(String(m.id));
@@ -76,7 +78,7 @@ function handle(line) {
 
 function sendHist(id, p) {
   const o = p.o;
-  send(`HIST|${id}|${o.symbol}|${TF[o.candleType] || 'H1'}|${o.limit || 1500}|${Math.floor(Date.parse(o.to) / 1000)}`);
+  send(`HIST|${id}|${resolve(o.symbol)}|${TF[o.candleType] || 'H1'}|${o.limit || 1500}|${Math.floor(Date.parse(o.to) / 1000)}`);
 }
 function request(o) {
   const slot = o.slot || 'main';
@@ -85,9 +87,31 @@ function request(o) {
   const id = String(++st.reqId), p = { slot, symbol: o.symbol, o };
   st.pending.set(id, p);
   sendHist(id, p);
-  if (o.inclusive) send(`SUB|${slot}|${o.symbol}|${TF[o.candleType] || 'H1'}`);
+  if (o.inclusive) send(`SUB|${slot}|${resolve(o.symbol)}|${TF[o.candleType] || 'H1'}`);
 }
-function watch(symbols) { st.unknown.clear(); send('WATCH|' + symbols.join(',')); }
+// Watchlist names are upper-case and generic (XAUUSD); MT5 names are case-sensitive and often carry a
+// broker suffix (XAUUSDbrex.). Map each watchlist name to the name this terminal really has.
+function resolve(sym, list = st.info ? st.info.symbols : []) {
+  sym = String(sym || '');
+  if (!list.length || list.includes(sym)) return sym;
+  const up = sym.toUpperCase(), ci = list.find((x) => x.toUpperCase() === up);
+  if (ci) return ci;
+  const base = up.replace(/[^A-Z0-9]/g, '');
+  const pre = list.filter((x) => x.toUpperCase().replace(/[^A-Z0-9]/g, '').startsWith(base)).sort((a, b) => a.length - b.length);
+  return pre[0] || sym;
+}
+const alias = new Map();   // MT5 name -> watchlist names that point to it
+function watch(symbols) {
+  st.unknown.clear(); alias.clear();
+  const out = [];
+  for (const s of symbols) {
+    const r = resolve(s);
+    if (!alias.has(r)) { alias.set(r, new Set()); out.push(r); }
+    alias.get(r).add(s);
+    if (r !== s) log.info('mt5', `${s} → ใช้ชื่อใน MT5: ${r}`);
+  }
+  send('WATCH|' + out.join(','));
+}
 
 
 // MT5 "Experts" folders on this computer (for installing the EA):
@@ -111,7 +135,7 @@ function findExpertDirs({ home, appData, platform, env = {} }) {
   return [...out];
 }
 
-module.exports = { findExpertDirs,
+module.exports = { findExpertDirs, resolve,
   start, stop, request, watch,
   status: () => ({ listening: !!st.server, connected: st.connected, broker: st.info && st.info.broker, server: st.info && st.info.server,
     symbols: st.info ? st.info.symbols : [], unknown: [...st.unknown], port, lastTick: st.lastTick }),
