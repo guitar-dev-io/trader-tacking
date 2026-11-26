@@ -164,6 +164,23 @@ function renderMt5Info() {
     : m.connected ? `✅ EA เชื่อมต่อแล้ว: <b>${esc(m.broker || '')}</b> (${esc(m.server || '')}) · ${(m.symbols || []).length} symbol ใน Market Watch${(m.unknown || []).length ? `<br>⚠️ ไม่พบใน MT5: ${esc(m.unknown.join(', '))}` : ''}`
     : `⏳ รอ EA เชื่อมต่อที่ 127.0.0.1:${m.port || 7788}`;
 }
+if ($('st-install-ea')) {
+  if (!vcg.mt5InstallEA) { $('st-install-ea').disabled = $('st-copy-ea').disabled = true; }
+  $('st-install-ea').onclick = async () => {
+    const r = await vcg.mt5InstallEA(), out = $('st-ea-out'); out.classList.remove('hidden');
+    out.textContent = r.installed.length
+      ? `ติดตั้งแล้ว ${r.installed.length} ที่:\n${r.installed.join('\n')}\n\nต่อไปใน MT5: Navigator → คลิกขวา Expert Advisors → Refresh → ดับเบิลคลิก PriceTrackerBridge เพื่อเปิดใน MetaEditor แล้วกด Compile (F7) → Tools → Options → Expert Advisors เพิ่ม 127.0.0.1 → ลาก EA ไปวางบนกราฟ`
+      : 'ไม่พบโฟลเดอร์ MT5 ในเครื่องนี้ (ต้องเปิด MT5 อย่างน้อย 1 ครั้งก่อน) — ใช้ปุ่ม "คัดลอกโค้ด EA" แล้วไปที่ MetaEditor → New → Expert Advisor ตั้งชื่อ PriceTrackerBridge ลบโค้ดเดิมแล้ววาง กด Compile';
+    if (r.failed.length) out.textContent += '\n\nเขียนไม่ได้: ' + r.failed.join('\n');
+    toast(r.installed.length ? 'ติดตั้ง EA ลง MT5 แล้ว' : 'ไม่พบ MT5 ในเครื่อง', r.installed.length ? 'ok' : 'warn', 6000);
+  };
+  $('st-copy-ea').onclick = async () => {
+    const code = await vcg.mt5EASource();
+    try { await navigator.clipboard.writeText(code); toast('คัดลอกโค้ด EA แล้ว — ไปวางใน MetaEditor', 'ok', 5000); } catch (e) { toast('คัดลอกไม่ได้: ' + e.message, 'error'); }
+    const out = $('st-ea-out'); out.classList.remove('hidden');
+    out.textContent = 'คัดลอกแล้ว: MetaEditor → File → New → Expert Advisor (template) → ชื่อ PriceTrackerBridge → Finish → กด ⌘A ลบโค้ดเดิม → ⌘V วาง → Compile (F7)';
+  };
+}
 if ($('st-save-ea')) $('st-save-ea').onclick = async () => { const f = vcg.saveEA && (await vcg.saveEA()); if (f) toast('บันทึก EA แล้ว: ' + f, 'ok'); };
 
 // ---------------------------------------------------------------- sessions editor

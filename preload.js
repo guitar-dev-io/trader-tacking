@@ -20,6 +20,8 @@ contextBridge.exposeInMainWorld('vcg', {
   apiResult: (r) => ipcRenderer.send('api-cmd-result', r),
   claudeSetup: (o) => ipcRenderer.invoke('claude-setup', o),
   claudeStatus: () => ipcRenderer.invoke('claude-status'),
+  mt5InstallEA: () => ipcRenderer.invoke('mt5-install-ea'),
+  mt5EASource: () => ipcRenderer.invoke('mt5-ea-source'),
   claudeDisable: () => ipcRenderer.invoke('claude-disable'),
   log: (level, msg, data, source = 'ui') => ipcRenderer.send('log', { level, msg, data, source }),
   notify: (event, payload, text) => ipcRenderer.invoke('notify', { event, payload, text }),

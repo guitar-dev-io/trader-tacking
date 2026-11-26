@@ -89,7 +89,29 @@ function request(o) {
 }
 function watch(symbols) { st.unknown.clear(); send('WATCH|' + symbols.join(',')); }
 
-module.exports = {
+
+// MT5 "Experts" folders on this computer (for installing the EA):
+//  macOS: MetaTrader runs in a Wine bottle under ~/Library/Application Support/<bottle>/drive_c/… (or ~/.wine)
+//  Windows: %APPDATA%\MetaQuotes\Terminal\<id>\MQL5\Experts and Program Files installs
+function findExpertDirs({ home, appData, platform, env = {} }) {
+  const fs = require('fs'), path = require('path'), out = new Set();
+  const ls = (d) => { try { return fs.readdirSync(d, { withFileTypes: true }).filter((x) => x.isDirectory()).map((x) => path.join(d, x.name)); } catch (_) { return []; } };
+  const add = (d) => { const e = path.join(d, 'MQL5', 'Experts'); if (fs.existsSync(e)) out.add(e); };
+  const scanDriveC = (c) => {
+    for (const pf of ['Program Files', 'Program Files (x86)']) ls(path.join(c, pf)).forEach(add);
+    for (const u of ls(path.join(c, 'users'))) ls(path.join(u, 'AppData', 'Roaming', 'MetaQuotes', 'Terminal')).forEach(add);
+  };
+  if (platform === 'darwin') {
+    for (const b of ls(path.join(home, 'Library', 'Application Support'))) if (fs.existsSync(path.join(b, 'drive_c'))) scanDriveC(path.join(b, 'drive_c'));
+    if (fs.existsSync(path.join(home, '.wine', 'drive_c'))) scanDriveC(path.join(home, '.wine', 'drive_c'));
+  } else if (platform === 'win32') {
+    ls(path.join(appData, 'MetaQuotes', 'Terminal')).forEach(add);
+    for (const pf of [env.ProgramFiles, env['ProgramFiles(x86)']].filter(Boolean)) ls(pf).forEach(add);
+  }
+  return [...out];
+}
+
+module.exports = { findExpertDirs,
   start, stop, request, watch,
   status: () => ({ listening: !!st.server, connected: st.connected, broker: st.info && st.info.broker, server: st.info && st.info.server,
     symbols: st.info ? st.info.symbols : [], unknown: [...st.unknown], port, lastTick: st.lastTick }),

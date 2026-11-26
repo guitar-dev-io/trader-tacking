@@ -26,3 +26,17 @@ test('EA hello → watch, ticks become quotes, HIST → candles', async () => {
   assert.ok(mt5.status().connected);
   sock.end(); mt5.stop();
 });
+
+test('finds MT5 Experts folders in macOS Wine bottles (MetaQuotes app, broker-branded, terminal data folders)', () => {
+  const fs = require('node:fs'), os = require('node:os'), path = require('node:path');
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'pt-home-'));
+  const mk = (...p) => fs.mkdirSync(path.join(home, ...p), { recursive: true });
+  const AS = ['Library', 'Application Support'];
+  mk(...AS, 'net.metaquotes.wine.metatrader5', 'drive_c', 'Program Files', 'MetaTrader 5', 'MQL5', 'Experts');
+  mk(...AS, 'com.brex.mt5', 'drive_c', 'users', 'user', 'AppData', 'Roaming', 'MetaQuotes', 'Terminal', 'ABC123', 'MQL5', 'Experts');
+  mk(...AS, 'Slack', 'Cache');                                           // unrelated app
+  const dirs = mt5.findExpertDirs({ home, platform: 'darwin' });
+  assert.equal(dirs.length, 2);
+  assert.ok(dirs.some((d) => d.includes('MetaTrader 5')) && dirs.some((d) => d.includes('ABC123')));
+  assert.deepEqual(mt5.findExpertDirs({ home: path.join(home, 'nope'), platform: 'darwin' }), []);
+});

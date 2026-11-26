@@ -409,6 +409,19 @@ ipcMain.handle('save-ea', async () => {
   shell.showItemInFolder(r.filePath);
   return r.filePath;
 });
+// Find MT5 "Experts" folders on this computer:
+//  macOS: MetaTrader runs in a Wine bottle under ~/Library/Application Support/<bottle>/drive_c/…
+//  Windows: %APPDATA%\MetaQuotes\Terminal\<id>\MQL5\Experts and Program Files installs
+const findMt5ExpertDirs = () => mt5.findExpertDirs({ home: app.getPath('home'), appData: app.getPath('appData'), platform: process.platform, env: process.env });
+ipcMain.handle('mt5-install-ea', async () => {
+  const src = fs.readFileSync(path.join(__dirname, 'mt5', 'PriceTrackerBridge.mq5'));
+  const dirs = findMt5ExpertDirs(), done = [], failed = [];
+  for (const d of dirs) { try { fs.writeFileSync(path.join(d, 'PriceTrackerBridge.mq5'), src); done.push(d); } catch (e) { failed.push(d + ': ' + e.message); } }
+  log.info('mt5', done.length ? 'ติดตั้ง EA ลง MT5: ' + done.join(' | ') : 'ไม่พบโฟลเดอร์ MT5 ในเครื่อง', failed.length ? failed : undefined);
+  if (done[0]) shell.showItemInFolder(path.join(done[0], 'PriceTrackerBridge.mq5'));
+  return { installed: done, failed };
+});
+ipcMain.handle('mt5-ea-source', () => fs.readFileSync(path.join(__dirname, 'mt5', 'PriceTrackerBridge.mq5'), 'utf8'));
 function startMt5() {
   mt5.start(settings.mt5.port, {
     symbols: () => settings.symbols,
