@@ -18,12 +18,14 @@ const DEMO = (() => {
 
   async function requestChart(o, handler) {
     if (o.slot === 'mtf') handler = (m) => MTF.onMsg({ ...m, slot: 'mtf' });
+    const extra = o.slot && o.slot !== 'main';          // MTF / dashboard widgets: never replace the main request
+    if (extra && !handler && typeof DASH !== 'undefined') handler = (m) => DASH.onMsg({ ...m, slot: o.slot });
     handler = handler || onChartMsg;
-    if (o.slot !== 'mtf') cur = o;
+    if (!extra) cur = o;
     try {
       const url = `${REST}?symbol=${map(o.symbol)}&interval=${IV[o.candleType]}&limit=${Math.min(1000, o.limit || 1000)}&endTime=${Date.parse(o.to)}`;
       const rows = await fetchJSON(url);
-      if (o.slot !== 'mtf' && cur !== o && o.inclusive) return;
+      if (!extra && cur !== o && o.inclusive) return;
       const candles = rows.map((r) => ({ timeSeconds: r[0] / 1000, open: +r[1], high: +r[2], low: +r[3], close: +r[4] }));
       handler({ type: 'chart', data: { symbol: o.symbol, history: { candles } } });
       vcg.log('info', `Demo: ได้ ${candles.length} แท่ง ${o.symbol} (${map(o.symbol)})`, null, 'demo');

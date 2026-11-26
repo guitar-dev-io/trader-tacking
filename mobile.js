@@ -144,6 +144,7 @@
   const side = $('side');
   side.insertAdjacentHTML('afterbegin', '<div id="m-page-h"><button class="mph-back" aria-label="กลับ">‹</button><b class="mph-t"></b></div>');
   side.insertAdjacentHTML('beforeend', `<div class="tab hidden" id="tab-more"><div class="m-more">
+    <button data-do="dash">${ICON.svg('chart-candlestick', 22)}<span><b>แดชบอร์ด</b><small>หลายกราฟพร้อมกัน + ข่าว ราคา Session</small></span></button>
     <button data-go="calc">${ICON.svg('calc', 22)}<span><b>คำนวณ lot / จุดเติม</b><small>ขนาดไม้จาก % ความเสี่ยง, SL เป็นจุด</small></span></button>
     <button data-go="news">${ICON.svg('newspaper', 22)}<span><b>ข่าวตลาด</b><small>FXStreet, Investing, Fed, ECB, BLS + ปฏิทินเศรษฐกิจ</small></span></button>
     <button data-go="learn">${ICON.svg('book', 22)}<span><b>บทเรียน</b><small>แท่งเทียน, Demand & Supply, บริหารเงิน</small></span></button>
@@ -173,6 +174,7 @@
   side.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => showPage(b.dataset.go)));
   on(side.querySelector('[data-do=settings]'), 'click', () => $('open-settings').click());
   on(side.querySelector('[data-do=guide]'), 'click', () => SETUP.open());
+  on(side.querySelector('[data-do=dash]'), 'click', () => window.DASH && DASH.open());
   on(side.querySelector('[data-do=login]'), 'click', () => { vcg.showTrader(); });
   on(side.querySelector('[data-do=reconnect]'), 'click', () => { vcg.reloadTrader(); toast('กำลังเชื่อมต่อใหม่…', 'info'); });
   side.querySelector('.m-ver').textContent = 'Price Tracker ' + (window.APP_VERSION || '');

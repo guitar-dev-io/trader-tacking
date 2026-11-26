@@ -77,7 +77,7 @@ function onChartMsg(m) {
   }
   if (d.updates && d.updates.candles && !S.pendingHistory) d.updates.candles.map(toCandle).filter(valid).forEach(upsert);
 }
-vcg.onChart((m) => { if (S.source === 'demo') return; if (m.slot === 'mtf') { if (typeof MTF !== 'undefined') MTF.onMsg(m); } else onChartMsg(m); });
+vcg.onChart((m) => { if (S.source === 'demo') return; if (m.slot === 'mtf') { if (typeof MTF !== 'undefined') MTF.onMsg(m); } else if (m.slot && /^w\d/.test(m.slot)) { if (typeof DASH !== 'undefined') DASH.onMsg(m); } else onChartMsg(m); });
 
 function upsert(c) {
   if (S.replay) return;

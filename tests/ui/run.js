@@ -12,6 +12,13 @@ const check = (name, ok, info) => { results.push({ name, ok: !!ok, info }); if (
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // candles in VCG wire format
+// random-walk candles in {timeSeconds, open, high, low, close} with a relative step (for any price level)
+function walk(n, sec, start, vol = 0.0015, seed = 7) {
+  const now = Math.floor(Date.now() / 1000 / sec) * sec; let p = start, x = seed; const out = [];
+  for (let i = n; i >= 0; i--) { x = (x * 16807) % 2147483647; const o = p; p = p * (1 + (x / 2147483647 - 0.5) * vol * 2 + Math.sin(i / 25) * vol * 0.3);
+    const hi = Math.max(o, p) * (1 + vol * 0.4 * (x % 7) / 7), lo = Math.min(o, p) * (1 - vol * 0.4 * (x % 5) / 5); out.push({ timeSeconds: now - i * sec, open: o, high: hi, low: lo, close: p }); }
+  return out;
+}
 function candles(n, sec, seed, start = 3500) {
   const now = Math.floor(Date.now() / 1000 / sec) * sec; let p = start, s = seed; const c = [];
   for (let i = n; i >= 0; i--) {
@@ -272,6 +279,64 @@ app.whenReady().then(async () => {
     check('mt5 positions: read-only panel with position + pending order', pp.shown && pp.rows === 2 && pp.ro && pp.eq, pp);
     check('mt5 positions: entry/SL/TP + order lines on the chart', pp.lines === -1 || pp.lines >= 4, pp.lines);
     await js(`S.source = 'vcg'; true`); send('positions', null);
+    // page tabs: open บทเรียน as a full page, side panel keeps working, close puts it back
+    const pg = JSON.parse(await js(`(async () => { const w = (ms) => new Promise((r) => setTimeout(r, ms));
+      PAGES.open('learn'); await w(150);
+      const r = { bar: !document.getElementById('pagebar').classList.contains('hidden'), inPage: !!document.querySelector('#pages .page [id=tab-learn]'),
+        chartHidden: getComputedStyle(document.getElementById('chart-wrap')).display === 'none' || document.getElementById('chart-wrap').offsetParent === null, lessonsShown: document.querySelectorAll('#tab-learn *').length > 20 };
+      document.querySelector('#tabs [data-tab="calc"]').click(); await w(50);
+      r.sideCalc = !document.getElementById('tab-calc').classList.contains('hidden') && !document.getElementById('tab-learn').classList.contains('hidden');
+      document.querySelector('#tabs [data-tab="learn"]').click(); await w(50);
+      r.learnTabFocusesPage = PAGES.active() === 'learn' && document.querySelector('#tabs [data-tab="calc"]').classList.contains('active');
+      PAGES.activate('chart'); await w(50); r.chartBack = getComputedStyle(document.getElementById('chart-wrap')).display !== 'none';
+      PAGES.close('learn'); await w(50);
+      r.docked = document.getElementById('tab-learn').parentElement.id === 'side' && document.getElementById('tab-learn').classList.contains('tab') && document.getElementById('pagebar').classList.contains('hidden');
+      return JSON.stringify(r); })()`));
+    check('page tabs: lesson opens as a page, side tabs still work, close docks it back', Object.values(pg).every(Boolean), pg);
+    await js(`PAGES.open('news'); PAGES.open('learn'); true`); await new Promise((r) => setTimeout(r, 300)); await shot('page-tabs'); await js(`PAGES.close('learn'); PAGES.close('news'); true`);
+    const abd = JSON.parse(await js(`(() => { const a = document.querySelector('[data-sec="about"] .about-dev'); return JSON.stringify({ dev: !!a && /guiar-dev/.test(a.textContent), support: !!a && /สนับสนุนผู้พัฒนา/.test(a.textContent), issues: !!a && !!a.querySelector('a[href$="/issues"]') }); })()`));
+    check('about: developer credit + support section', abd.dev && abd.support && abd.issues, abd);
+    // ---------------- dashboard: many symbol charts + widgets, drag & drop, themes
+    {
+      reqs.length = 0;
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      await js(`DASH.open(); const sel = document.querySelector('#dashboard .dash-layout'); sel.value = '__p:ทองคำ'; sel.dispatchEvent(new Event('change')); true`);
+      await wait(700);
+      const d1 = JSON.parse(await js(`JSON.stringify({ active: PAGES.active(), n: document.querySelectorAll('#dashboard .wd').length, charts: document.querySelectorAll('#dashboard .wd-chart').length,
+        kinds: [...new Set([...document.querySelectorAll('#dashboard .wd')].map((e) => e.className.match(/wd-(\\w+)/)[1]))] })`));
+      const slots = reqs.filter((r) => /^w\d/.test(r.slot || ''));
+      check('dashboard: opens as a page with the default widgets', d1.active === 'dashboard' && d1.n === 7 && d1.charts === 4 && ['quotes', 'sessions', 'news'].every((k) => d1.kinds.includes(k)), d1);
+      check('dashboard: separate chart slots for several symbols (visible ones only)', new Set(slots.map((r) => r.slot)).size >= 3 && new Set(slots.map((r) => r.symbol)).size >= 2, slots.map((r) => r.slot + ':' + r.symbol + '/' + r.candleType));
+      const base = { XAUUSD: 3510, EURUSD: 1.0861, BTCUSD: 96800 }, ending = (arr, px) => { const k = px / arr.at(-1).close; return arr.map((c) => ({ ...c, open: c.open * k, high: c.high * k, low: c.low * k, close: c.close * k })); };
+      for (const r of slots) send('chart', { type: 'chart', slot: r.slot, data: { symbol: r.symbol, history: { candles: ending(walk(400, r.candleType === 2 ? 900 : 3600, base[r.symbol] || 100, r.symbol === 'EURUSD' ? 0.0009 : 0.0016, r.slot.length + r.candleType * 13), base[r.symbol] || 100) } } });
+      send('quotes', [{ symbol: 'EURUSD', time: new Date().toISOString(), bid: 1.0861, ask: 1.0862, digits: 5, spread: 0.0001, change: 0.002, changePct: 0.18 }, { symbol: 'BTCUSD', time: new Date().toISOString(), bid: 96800, ask: 96820, digits: 2, spread: 20, change: -800, changePct: -0.82 }]);
+      await wait(1500);
+      const d2 = JSON.parse(await js(`JSON.stringify({ feeds: DASH.feeds(), msgs: [...document.querySelectorAll('#dashboard .wd-msg:not(.hidden)')].length, px: [...document.querySelectorAll('#dashboard .wd-px b')].map((e) => e.textContent) })`));
+      check('dashboard: chart widgets get their own candles', d2.feeds.length >= 3 && d2.feeds.every((f) => f.n > 300) && d2.msgs === 0, d2);
+      await A.shot('dashboard-dark');
+      // drag the first widget onto the 4th one
+      const dr = JSON.parse(await js(`(async () => { const w = (ms) => new Promise((r) => setTimeout(r, ms)); DASH.setEdit(true); await w(100);
+        const before = DASH.layout().map((x) => x.id), els = [...document.querySelectorAll('#dashboard .wd')];
+        const h = els[0].querySelector('.wd-drag').getBoundingClientRect(), t = els[2].getBoundingClientRect();
+        const ev = (type, x, y, el) => (el || window).dispatchEvent(new PointerEvent(type, { bubbles: true, clientX: x, clientY: y, pointerId: 1, button: 0, isPrimary: true }));
+        ev('pointerdown', h.x + 5, h.y + 5, els[0].querySelector('.wd-drag'));
+        for (let i = 1; i <= 8; i++) { ev('pointermove', h.x + (t.x + t.width * 0.75 - h.x) * i / 8, h.y + (t.y + t.height * 0.8 - h.y) * i / 8); await w(16); }
+        ev('pointerup', t.x + t.width * 0.75, t.y + t.height * 0.8); await w(100);
+        const after = DASH.layout().map((x) => x.id), saved = JSON.parse(localStorage.getItem('dash.layout')).layouts[DASH.cfg().cur].map((x) => x.id);
+        return JSON.stringify({ order: after.map((id) => before.indexOf(id)).join(), moved: before[0] !== after[0] && after.indexOf(before[0]) >= 1, saved: JSON.stringify(saved) === JSON.stringify(after), dom: [...document.querySelectorAll('#dashboard .wd')].map((e) => e.dataset.id).join() === after.join() }); })()`));
+      check('dashboard: drag & drop reorders and saves the layout', dr.moved && dr.saved && dr.dom, dr);
+      await js(`document.querySelector('#dashboard .dash-add').click(); true`); await wait(200); await A.shot('dashboard-edit');
+      const ar = JSON.parse(await js(`(() => { const n0 = DASH.layout().length; document.querySelector('#dashboard [data-add="notes"]').click(); const n1 = DASH.layout().length;
+        const id = DASH.layout().at(-1).id; document.querySelector('#dashboard .wd[data-id="' + id + '"] .wd-rm').click(); return JSON.stringify({ n0, n1, n2: DASH.layout().length, dom: document.querySelectorAll('#dashboard .wd').length }); })()`));
+      check('dashboard: add and remove a widget from the catalog', ar.n1 === ar.n0 + 1 && ar.n2 === ar.n0 && ar.dom === ar.n0, ar);
+      await js(`document.querySelector('#dashboard .cat-x').click(); DASH.setEdit(false); THEME.set('light'); true`); await wait(400);
+      const lt = JSON.parse(await js(`JSON.stringify({ bg: getComputedStyle(document.querySelector('#dashboard .wd')).backgroundColor, dash: getComputedStyle(document.querySelector('#dashboard')).backgroundColor })`));
+      const lum = (c) => { const m = c.match(/\d+/g).map(Number); return (m[0] + m[1] + m[2]) / 3; };
+      check('dashboard: light theme applies to widgets', lum(lt.bg) > 200 && lum(lt.dash) > 200, lt);
+      await A.shot('dashboard-light');
+      await js(`THEME.set('dark'); DASH.close(); true`); await wait(200);
+      check('dashboard: closing returns to the chart', await js(`PAGES.active() === 'chart' && getComputedStyle(document.getElementById('chart-wrap')).display !== 'none'`));
+    }
     // ---- money management: lessons, plan table, practice problems, cent accounts (mm.js / mm-learn.js / planner.js)
     await js(`document.querySelector('#tabs [data-tab="learn"]').click(); true`);
     const mmL = JSON.parse(await js(`(() => { const g = document.querySelector('#lessons .lesson-cat[data-cat="mm"]'); const b = document.querySelector('.lesson-cats [data-lc="mm"]'); if (b) b.click();
@@ -318,6 +383,11 @@ app.whenReady().then(async () => {
       const mb = JSON.parse(await M.js(`JSON.stringify({ mobile: document.body.classList.contains('mobile'), nav: !!document.querySelector('#mnav2'), platform: vcg.platform })`));
       check('mobile: boots in mobile layout', mb.mobile && mb.nav, mb);
       await M.js(`SETUP.open('mt5', 1)`); await sleep(300); await M.shot('setup-mobile'); await M.js(`SETUP.close()`);
+      await M.js(`DASH.open(); true`); await sleep(600);
+      const dm = JSON.parse(await M.js(`JSON.stringify({ shown: !document.getElementById('dashboard').classList.contains('hidden'), w: document.querySelector('#dashboard .wd') ? Math.round(document.querySelector('#dashboard .wd').getBoundingClientRect().width) : 0, n: document.querySelectorAll('#dashboard .wd').length })`));
+      await M.shot('dashboard-mobile');
+      check('mobile: dashboard in one column', dm.shown && dm.n > 0 && dm.w > 340, dm);
+      await M.js(`DASH.close(); true`);
       await M.shot('mobile');
       const real = M.errs.filter((e) => !/net::|Failed to fetch|WebSocket|offline/i.test(e));
       check('mobile: no console errors', real.length === 0, real.slice(0, 3));
