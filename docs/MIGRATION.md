@@ -108,6 +108,23 @@ Branch: `feat/framework-migration`. The plan has 5 phases: 0 Vite, 1 TypeScript 
   - Item 5: ~165 `PT.x` uses left in app code (top: `MTF` 17, `yOf` 11, `__mobileBack` 9, `el` 8, `drawings` 8, `xIdx`/`pushHistory`/`ltxt` 6) — mostly chart/drawing (item 4) plus `SIM/REPLAY/NEWS/DEMO/CACHE/setSource`.
   - Item 6: the remaining root `.js` app modules are not type-checked yet.
 
+### Phase 4b: side tabs → Svelte (checklist items 1, 3, 5) — in progress
+- **Done (each a Svelte component in `src/ui/tabs/`, mounted into the existing tab container so the page pop-out in `pages.js` still moves it):**
+  - **Log tab** → `LogTab.svelte` + `log.ts` (log buffer, error badge). `app.js` only calls `logTab.init()` / `logTab.opened()`.
+  - **คำนวณ** → `Planner.svelte` (+ `planner-view.ts` tick). `planner.js` keeps the maths (`computePlan`, `plannerLot`, …) and the chart plan; `renderPlanner()` now just re-renders.
+  - **วิเคราะห์** → `Analysis.svelte` (structure / signal card / back-test, one component mounted 3×, `part` prop) and `Bounce.svelte` (จุดเด้ง zone cards, stats, liquidity). `app-analysis.js` / `app-bounce.js` keep running the analysis and the chart drawing.
+  - **ราคา → ออเดอร์ของฉัน (MT5)** → `Positions.svelte` (+ `positions-view.ts`). `positions.js` keeps the EA data, deal history and chart lines.
+  - **News list** (news page `#newsfeed`) → `NewsFeed.svelte` (+ `news-view.ts`). `news.js` keeps the RSS fetch/merge/relevance and the badge.
+  - UI registry gained `ui.planner` (save/render) and `ui.sim` (trade simulator) — the bounce panel no longer uses `PT.savePlan/renderPlanner/SIM`.
+  - UI tests load `gen/main/preload.js` (the interim root `preload.js` copy is gone); new check that the EA "update now"/"MetaEditor" buttons call IPC.
+- **Pattern used:** the `.js` module keeps state + logic and pushes a snapshot (or bumps a `tick` store) then `flushSync()`; the component only renders and calls back. Same ids/classes as before (tests unchanged), same store keys.
+- **Gotchas:** Svelte trims whitespace at `{#if}`/`{#each}` edges — write separators as `{' · '}`. `PT.*` names removed with a module's old renderer were also removed from its `def()`.
+- **Left in 4b (not started):**
+  - ฝึก tab UI in `learn.js` (SIM order form/positions/stats, REPLAY controls, QUIZ, lesson pack) — the biggest remaining tab.
+  - ราคา tab parts still in `app-data.js` (watchlist table, alerts section, connection & tools section, latest-news teaser in `src/pages/news/index.ts`).
+  - Mobile shell (`mobile.js`: bottom nav, sheets, More page; replace `window.__mobileBack` with a module), `ui.js` (panel toggles, rail, Esc, folds).
+  - PT uses in app `.js`: 143 left (was ~165). Chart/drawing names (`MTF` 17, `yOf` 11, `el` 8, `drawings` 7, `xIdx`/`pushHistory`/`ltxt` 6, `setTool`, `inkColor`, `xOfT`, `renderLayers`, `FIB`) belong to item 4; the rest are `REPLAY`/`NEWS`/`DEMO`/`CACHE`/`setSource`/`onChartLoaded`/`__mobileBack`/`plannerLot`/`plannerFrom`/`onQuotesMsg`.
+
 ## Interim items from Phase 2 (partly resolved in Phase 3 — see the Phase 4 checklist)
 - **Late-bound names through PT inside the app:** about 55 names, used about 280 times; run `grep -o "PT\.[A-Za-z_$]*" *.js`. The most used are `setUI`, `MTF`, `LEARN`, `DASH`, `yOf`, `NEWSPAGE`, `__mobileBack` and `drawings`. They exist because files call "forward" into modules loaded later.
   - In Phase 3/4, untangle them by moving each shared piece into a small module that both sides import: app state from `app-core.js` → `src/state.ts`; overlay helpers (`yOf`, `xIdx`, `el`, `ltxt`) → `src/ui/overlay.ts`; page objects registered in `src/pages.ts`.
