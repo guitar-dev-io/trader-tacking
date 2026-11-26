@@ -154,6 +154,9 @@ app.whenReady().then(async () => {
       const ocr = await oc;
       check('claude: open_chart switches timeframe and waits for candles', ocr.data && ocr.data.timeframe === '4H' && ocr.data.bars > 300, ocr.error || (ocr.data && ocr.data.timeframe));
       const r = await cmd('chart_rect'); check('claude: chart rect for screenshots', r.data && r.data.width > 300, r.data);
+      await cmd('open_chart', { timeframe: '1H' }); send('chart', { type: 'chart', slot: 'main', data: { history: { candles: candles(1500, 3600, 11) } } }); await sleep(1500);
+      const pf = await cmd('perf');
+      check('claude: perf measurement', pf.data && pf.data.analyzeMs >= 0 && pf.data.bounceMs >= 0 && pf.data.frameMs > 0 && pf.data.cacheReadMs >= 0, pf.data || pf.error);
       const nope = await cmd('rm_rf'); check('claude: unknown command rejected', /ไม่รู้จักคำสั่ง/.test(nope.error || ''), nope.error);
     }
 

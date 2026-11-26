@@ -63,6 +63,13 @@ const TOOLS = [
     inputSchema: { type: 'object', properties: { side: { type: 'string', enum: ['buy', 'sell'] }, entry: { type: 'number' }, sl: { type: 'number' }, tp1: { type: 'number' }, tp2: { type: 'number' },
       balance: { type: 'number' }, riskPct: { type: 'number' }, adds: { type: 'number' }, spacing: { type: 'number' }, mode: { type: 'string', enum: ['avg', 'pyramid'] } }, required: ['side', 'entry', 'sl'] },
     run: (a) => cmd('plan', a) },
+  { name: 'measure_performance', description: 'Measure how fast the app is on this Mac: start-up time to first price, CPU architecture / Rosetta, network ping, and timings of analysis, bounce finder, chart redraw, cache read and frame time on the open chart.',
+    inputSchema: { type: 'object', properties: {} },
+    run: async () => {
+      const t0 = Date.now(); const st = await call('GET', '/api/status'); const apiMs = Date.now() - t0;
+      const t1 = Date.now(); const p = await cmd('perf'); const cmdMs = Date.now() - t1;
+      return { app: { version: st.version, arch: st.arch, rosetta: st.rosetta, secondsToFeedReady: st.bootSec, source: st.source, connected: st.connected, net: st.net }, apiRoundTripMs: apiMs, perfCommandMs: cmdMs, chart: p };
+    } },
   { name: 'add_symbol', description: 'Add a symbol to the watchlist (e.g. EURUSD, BTCUSD).', inputSchema: { type: 'object', properties: { symbol: { type: 'string' } }, required: ['symbol'] },
     run: (a) => call('POST', '/api/symbols', { symbol: a.symbol }) },
   { name: 'get_logs', description: 'Recent app log lines (connection problems etc.).', inputSchema: { type: 'object', properties: { limit: { type: 'number' }, level: { type: 'string', enum: ['info', 'warn', 'error'] } } },

@@ -111,7 +111,25 @@
       rows: (r.rows || []).map((x) => ({ price: x.price, lot: x.lot, cumLot: x.cumLot, avg: x.avg, lossAtSL: x.slLoss, profitTP1: x.tp1, profitTP2: x.tp2 })),
       warnings: r.warn, error: r.error || r.err || null };
   }
+  async function perf() {
+    const n = S.candles.length, closed = S.candles.slice(0, -1);
+    const time = (f, k = 3) => { const t = []; for (let i = 0; i < k; i++) { const a = performance.now(); f(); t.push(performance.now() - a); } return Math.round(Math.min(...t)); };
+    const out = { symbol: S.symbol, timeframe: tf().label, bars: n, lastRun: { ...PERF } };
+    if (closed.length >= 60) {
+      let A = null;
+      out.analyzeMs = time(() => { A = AN.analyze(closed, { swingLen: S.an.swingLen, digits: 2 }); });
+      out.bounceMs = time(() => BOUNCE.find(closed, A, {}));
+      out.redrawMs = time(() => { dirty = true; redraw(); }, 5);
+    }
+    if (typeof CACHE !== 'undefined') { const a = performance.now(); await CACHE.peek(); out.cacheReadMs = Math.round(performance.now() - a); }
+    const fr = await new Promise((res) => { let k = 0; const a = performance.now(); const f = () => (++k < 30 ? requestAnimationFrame(f) : res(Math.round((performance.now() - a) / 30 * 10) / 10)); requestAnimationFrame(f); });
+    out.frameMs = fr;
+    out.memoryMB = performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1e6) : null;
+    out.cpuCores = navigator.hardwareConcurrency;
+    return out;
+  }
   const CMDS = {
+    perf,
     view, open_chart: openChart, candles, analysis, bounce, draw, clear_drawings: clearDrawings, plan,
     chart_rect: () => { const r = document.getElementById('chart-wrap').getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; },
   };

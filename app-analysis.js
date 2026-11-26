@@ -32,11 +32,17 @@ const resTH = (r) => ({ win: 'ชนะ', loss: 'แพ้', open: 'ยังไ
 const pct = (v) => (v == null ? '—' : (v * 100).toFixed(0) + '%');
 const rr = (v) => (v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + 'R');
 
+const PERF = { analyze: 0, bounce: 0, render: 0, n: 0, at: 0 };
 function runAnalysis() {
   const closed = S.candles.slice(0, -1); // never analyse the candle that is still forming
+  const t0 = performance.now();
   S.A = closed.length >= 50 ? AN.analyze(closed, { swingLen: S.an.swingLen, digits: digits(), rr1: +S.prefs.rr1, rr2: +S.prefs.rr2, slBuf: +S.prefs.slBuf, minSamples: +S.prefs.minSamples, maxBars: +S.prefs.maxBars }) : null;
+  const t1 = performance.now();
   runBounce();
+  const t2 = performance.now();
   renderAnalysis();
+  Object.assign(PERF, { analyze: Math.round(t1 - t0), bounce: Math.round(t2 - t1), render: Math.round(performance.now() - t2), n: closed.length, at: Date.now() });
+  if (performance.now() - t0 > 400) vcg.log('warn', `วิเคราะห์ช้า: ${Math.round(performance.now() - t0)} ms (${closed.length} แท่ง · โครงสร้าง ${PERF.analyze} · จุดเด้ง ${PERF.bounce} · แสดงผล ${PERF.render} ms)`, null, 'perf');
   pushAnalysis();
   checkNewSignal();
   dirty = true;

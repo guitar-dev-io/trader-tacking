@@ -78,6 +78,8 @@ function acceptQuote(q) {
   {
     if (!settings.symbols.includes(q.symbol)) return;
     state.quotes[q.symbol] = q;
+    if (state.invalid.has(q.symbol)) state.invalid.delete(q.symbol);
+    subTries.delete(q.symbol);
     state.lastTick = Date.now(); state.ticks++;
     const dl = Date.now() - Date.parse(q.time); if (isFinite(dl)) { netState.delays.push(dl); if (netState.delays.length > 40) netState.delays.shift(); netState.base.push(dl); if (netState.base.length > 600) netState.base.shift(); }
     pendingQuotes[q.symbol] = q;
@@ -108,8 +110,8 @@ function send(ch, data) {
   if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send(ch, data);
 }
 function statusObj() {
-  return { stage: state.connected ? 'connected' : state.loggedIn ? 'connecting' : 'login', connected: state.connected, loggedIn: state.loggedIn, csv: settings.csv, symbols: settings.symbols,
-    traySymbol: settings.traySymbol, lastTick: state.lastTick, ticks: state.ticks, api: settings.api, invalid: [...state.invalid], source: settings.source, mt5: mt5.status() };
+  return { version: app.getVersion(), stage: state.connected ? 'connected' : state.loggedIn ? 'connecting' : 'login', connected: state.connected, loggedIn: state.loggedIn, csv: settings.csv, symbols: settings.symbols,
+    traySymbol: settings.traySymbol, lastTick: state.lastTick, ticks: state.ticks, api: { ...settings.api, token: settings.api.token ? '***' : '' }, invalid: [...state.invalid], net: { level: netState.level, detail: netState.detail, pingMs: netState.rtt }, arch: process.arch, rosetta: !!app.runningUnderARM64Translation, bootSec: feedReadyAt ? +((feedReadyAt - BOOT) / 1000).toFixed(1) : null, source: settings.source, mt5: mt5.status() };
 }
 function sendStatus() { send('status', statusObj()); }
 function updateTray() {
@@ -163,7 +165,9 @@ function createTrader() {
     width: 1280, height: 820, show: false, title: 'VCG WebTrader',
     // backgroundThrottling ON: the hidden WebTrader stops drawing its own charts (big CPU saver);
     // the WebSocket keeps streaming normally.
-    webPreferences: { partition: 'persist:vcg', backgroundThrottling: true,
+    // throttling stays OFF while the page boots (timers in a hidden throttled page run at most 1×/s, which made
+    // VCG's own start-up take 10–20 s); switched on once our feed is installed and prices flow (see tick()).
+    webPreferences: { partition: 'persist:vcg', backgroundThrottling: false,
       preload: path.join(__dirname, 'trader-preload.js'), contextIsolation: true },
   });
   traderWin.on('close', (e) => { if (!quitting) { e.preventDefault(); traderWin.hide(); } });
@@ -185,9 +189,13 @@ function createTrader() {
 // Price feed: listen on the page's own /symbol socket and post quotes in batches.
 // Flushing is driven by incoming data (not timers), so it keeps up even in a hidden, throttled window.
 
+let feedReadyAt = 0, throttled = false;
 async function ensureFeed() {
-  try { const r = await traderWin.webContents.executeJavaScript(FEED_JS, true); if (r === 'ok') log.info('feed', 'ติดตั้งตัวรับราคาในหน้า WebTrader แล้ว'); }
-  catch (e) { log.error('feed', 'ensureFeed: ' + e.message); }
+  try {
+    const r = await traderWin.webContents.executeJavaScript(FEED_JS, true);
+    if (r === 'ok') { feedReadyAt = Date.now(); log.info('feed', `ติดตั้งตัวรับราคาในหน้า WebTrader แล้ว (${((Date.now() - BOOT) / 1000).toFixed(1)} วิหลังเปิดแอป)`); }
+    else if (r && !feedReadyAt) feedReadyAt = Date.now();
+  } catch (e) { log.error('feed', 'ensureFeed: ' + e.message); }
 }
 
 // Chart history: a second Socket.IO connection (namespace /chart-history), created inside the
@@ -208,6 +216,7 @@ async function sendChartReq(o) {
 }
 
 const subTries = new Map();
+const BOOT = Date.now();
 let notConnectedSince = Date.now();
 let shownForLogin = false;
 let staleWarned = false;
@@ -231,12 +240,17 @@ async function tick() {
     if (shownForLogin) { shownForLogin = false; traderWin.hide(); showMain(); log.info('auth', 'login สำเร็จ ซ่อนหน้าต่าง WebTrader'); }
     await ensureFeed();
     await ensureChart();
+    if (!throttled && feedReadyAt && state.lastTick > feedReadyAt) {   // prices flow → let Chromium save CPU on the hidden page again
+      throttled = true; try { traderWin.webContents.setBackgroundThrottling(true); } catch (_) {}
+      log.info('feed', `ราคาแรกมาถึง ${((state.lastTick - BOOT) / 1000).toFixed(1)} วิหลังเปิดแอป`);
+    }
     const want = settings.symbols.filter((s) => !state.invalid.has(s));
-    const missing = want.filter((s) => !state.serverSubs.has(s));
+    const missing = want.filter((s) => !state.serverSubs.has(s) && !(state.quotes[s] && Date.now() - state.lastTick < 60000));
     if (missing.length) {
+      const settled = feedReadyAt && Date.now() - feedReadyAt > 15000;   // the server's subscription list arrives a few seconds after start-up
       for (const s of missing) {
-        const t = (subTries.get(s) || 0) + 1; subTries.set(s, t);
-        if (t > 3) { state.invalid.add(s); log.warn('feed', `ไม่พบ ${s} ใน VCG (server ไม่รับ subscribe) — หยุดขอแล้ว ตรวจชื่อ symbol อีกครั้ง`); }
+        const t = settled ? (subTries.get(s) || 0) + 1 : 0; subTries.set(s, t);
+        if (t > 5) { state.invalid.add(s); log.warn('feed', `ไม่พบ ${s} ใน VCG (server ไม่รับ subscribe) — หยุดขอแล้ว ตรวจชื่อ symbol อีกครั้ง`); }
       }
       const merged = [...new Set([...state.serverSubs, ...want.filter((s) => !state.invalid.has(s))])];
       try { await traderWin.webContents.executeJavaScript(SUB_JS(merged), true); log.debug('feed', 'subscribe', merged); } catch (_) {}
@@ -482,6 +496,7 @@ function evalNet() {
   else if (state.loggedIn && !state.connected) { level = 'down'; detail = 'การเชื่อมต่อราคาหลุด กำลังต่อใหม่'; }
   else if (state.connected && since != null && since > n.staleSec && (hasCrypto() || !fxWeekend())) { level = 'stale'; detail = `ไม่มีราคาใหม่ ${Math.round(since)} วินาที`; }
   else if ((netState.rtt != null && netState.rtt > n.slowMs) || (delay != null && delay > n.delayMs)) { level = 'slow'; detail = `เน็ตช้า: ping ${netState.rtt ?? '—'} ms, ราคามาช้ากว่าปกติ ~${delay ?? '—'} ms`; }
+  if (Date.now() - BOOT < 30000 && level !== 'ok' && !state.connected) { level = netState.level; detail = 'กำลังเริ่มต้น…'; }   // start-up: not an outage
   if (level !== netState.level) {
     const worse = ['ok', 'slow', 'stale', 'down', 'offline'].indexOf(level) > ['ok', 'slow', 'stale', 'down', 'offline'].indexOf(netState.level);
     log[level === 'ok' ? 'info' : 'warn']('network', level === 'ok' ? 'การเชื่อมต่อกลับมาปกติ' : detail);
@@ -512,6 +527,7 @@ app.whenReady().then(() => {
   log.init(path.join(app.getPath('userData'), 'logs'));
   loadSettings();
   log.info('app', `เริ่มโปรแกรม v${app.getVersion()} (Electron ${process.versions.electron}, ${process.platform}/${process.arch})`);
+  if (app.runningUnderARM64Translation) log.warn('app', 'แอปนี้เป็นรุ่น Intel (x64) แต่ Mac เป็นชิป Apple (M1/M2/M3/M4) — ทำงานผ่าน Rosetta จะช้ากว่า ให้ติดตั้งไฟล์ Price-Tracker-mac-arm64.zip แทน');
   tray = new Tray(nativeImage.createEmpty());
   tray.setToolTip('Price Tracker');
   refreshTrayMenu();
@@ -522,7 +538,8 @@ app.whenReady().then(() => {
   restartApi();
   if (settings.source === 'mt5') startMt5();
   probe();
-  setInterval(tick, 3000);
+  // start-up: check every 0.7 s until the feed is installed and the first price arrives, then every 3 s
+  (function loop() { tick().finally(() => setTimeout(loop, throttled || Date.now() - BOOT > 60000 ? 3000 : 700)); })();
 });
 process.on('uncaughtException', (e) => log.error('app', 'uncaughtException: ' + e.stack));
 process.on('unhandledRejection', (e) => log.error('app', 'unhandledRejection: ' + (e && e.stack || e)));

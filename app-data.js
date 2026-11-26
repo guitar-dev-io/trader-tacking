@@ -258,7 +258,9 @@ vcg.onStatus((st) => {
   if (S.source === 'vcg') $('conn').classList.toggle('ok', st.connected);
   if (S.source === 'vcg') $('conn-text').textContent = st.connected ? 'เชื่อมต่อแล้ว' : st.loggedIn ? 'กำลังเชื่อมต่อ…' : 'ยังไม่ได้ login';
   $('api-info').innerHTML = st.api && st.api.enabled ? `API: <b>http://127.0.0.1:${st.api.port}</b>${st.api.lan ? ' (เปิดให้วง LAN)' : ''}` : 'API: ปิดอยู่';
-  if (st.connected && lastConnected === false && S.pendingHistory) loadChart();
+  // VCG: the main process re-sends the pending chart request itself once chart-history is ready, so no reload here
+  // (reloading cleared the cached chart and repeated the analysis). MT5 handles its own reconnect above.
+  if (st.connected && lastConnected === false && S.pendingHistory && S.source !== 'vcg') loadChart();
   lastConnected = st.connected;
 });
 $('csv').onchange = () => vcg.toggleCsv();

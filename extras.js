@@ -113,6 +113,7 @@ const CACHE = (() => {
         vcg.log('info', `แสดงกราฟจากแคช (${S.candles.length} แท่ง) ระหว่างรอข้อมูลใหม่`, null, 'cache');
       } catch (_) {}
     },
+    async peek() { return get(key()); },
     save() {
       if (S.replay || S.pendingHistory || !S.candles.length) return;
       put(key(), { saved: Date.now(), candles: S.candles.slice(-3000).map((x) => ({ time: x.time - TZ, open: x.open, high: x.high, low: x.low, close: x.close })) }).catch(() => {});
