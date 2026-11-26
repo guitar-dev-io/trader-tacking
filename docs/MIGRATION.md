@@ -89,6 +89,25 @@ Branch: `feat/framework-migration`. The plan has 5 phases: 0 Vite, 1 TypeScript 
   - Packaging: `src/`, `claude/` and the root `preload.js` copy are excluded (mac ignore regex + electron-builder `files`); `gen/` is included.
 - **Verified:** `npm run typecheck` clean, unit 41/41, UI 106/106, headless `electron .` boots and `/api/status` answers on 127.0.0.1:8787, MCP `tools/list` over stdio lists 17 tools.
 
+### Phase 4a: renderer UI → Svelte (checklist items 1–3, 5, 6) — in progress
+- **Done:**
+  - **Settings window** → `src/ui/settings/Settings.svelte` (+ `index.ts`: titlebar gear/theme buttons, ⌘, , MT5/EA toasts). Same ids/classes and the same `set-settings` payload. Network pill/banner/toasts → `src/ui/net.ts` (`netState` store).
+  - **Setup guide** → `src/ui/setup/Setup.svelte`; step bodies are HTML snippets in `src/ui/setup/content.ts` (rendered with `{@html}`, buttons via `data-act`). Source pill + menu → `src/ui/setup/source-pill.ts`. `isWin`/`osKeys` → `src/ui/os.ts`.
+  - **About box** → `src/ui/about/About.svelte` (settings renders it; the mobile More page mounts it) + `support.ts` (channels). `pwa.js` → `src/ui/pwa.ts`.
+  - **UI registry** `src/ui/registry.ts` (leaf module): `ui.settings`, `ui.setup`, `ui.srcPill`, `ui.setUI`, `ui.msheet` replace `PT.openSettings/SETUP/SRC_UI/setUI/MSHEET` for modules loaded earlier. `PT.openSettings`, `PT.SETUP`, `PT.MSHEET` stay only for the UI tests.
+  - Deleted: `settings.js`, `setup.js`, `about.js`, `pwa.js`.
+- **Gotchas:**
+  - Svelte updates the DOM in a microtask; tests (and old callers) expect synchronous DOM after a click/open → components call `flushSync()` after navigation (`Setup.go/pick/back`, `Settings.show`).
+  - `Icon.svelte` has `bare` (plain `<svg>` like `ICON.svg`) for places that never had the `span.ic` wrapper; the settings markup's `<i data-icon>` matches `span.ic` visually, so it uses the default.
+  - A UI test toggled a checkbox with `.checked = false` only; with `bind:checked` it now also dispatches `change` (same meaning).
+  - Fixed on the way: the EA "update now"/"MetaEditor" buttons were only wired when `vcg.onMt5Auto` was missing (if/else slip from v2.16.0 — also present on feat/price-tracker-app).
+  - `mobile.png` in the UI run is racy (dashboard close vs screenshot, from Phase 3); diffs there are not regressions.
+- **Left in 4a:**
+  - Item 1 (side tabs → Svelte): ราคา (watchlist/alerts/tools in `app-data.js`, `positions.js`), วิเคราะห์ (`app-analysis.js`, `app-bounce.js` UI), ฝึก (`learn.js` SIM/REPLAY/QUIZ), คำนวณ (`planner.js`), Log.
+  - Item 3 rest: mobile shell (`mobile.js`), `ui.js` (panel toggles, rail, Esc), `news.js` list logic → `.ts`/Svelte.
+  - Item 5: ~165 `PT.x` uses left in app code (top: `MTF` 17, `yOf` 11, `__mobileBack` 9, `el` 8, `drawings` 8, `xIdx`/`pushHistory`/`ltxt` 6) — mostly chart/drawing (item 4) plus `SIM/REPLAY/NEWS/DEMO/CACHE/setSource`.
+  - Item 6: the remaining root `.js` app modules are not type-checked yet.
+
 ## Interim items from Phase 2 (partly resolved in Phase 3 — see the Phase 4 checklist)
 - **Late-bound names through PT inside the app:** about 55 names, used about 280 times; run `grep -o "PT\.[A-Za-z_$]*" *.js`. The most used are `setUI`, `MTF`, `LEARN`, `DASH`, `yOf`, `NEWSPAGE`, `__mobileBack` and `drawings`. They exist because files call "forward" into modules loaded later.
   - In Phase 3/4, untangle them by moving each shared piece into a small module that both sides import: app state from `app-core.js` → `src/state.ts`; overlay helpers (`yOf`, `xIdx`, `el`, `ltxt`) → `src/ui/overlay.ts`; page objects registered in `src/pages.ts`.
