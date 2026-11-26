@@ -139,7 +139,7 @@ app.whenReady().then(async () => {
     if (fs.existsSync(www)) {
       const M = await open(www, { width: 390, height: 844, preload: false });
       await sleep(1500);
-      const mb = JSON.parse(await M.js(`JSON.stringify({ mobile: document.body.classList.contains('mobile'), nav: !!document.querySelector('#tabs.mnav'), platform: vcg.platform })`));
+      const mb = JSON.parse(await M.js(`JSON.stringify({ mobile: document.body.classList.contains('mobile'), nav: !!document.querySelector('#mnav2'), platform: vcg.platform })`));
       check('mobile: boots in mobile layout', mb.mobile && mb.nav, mb);
       await M.shot('mobile');
       const real = M.errs.filter((e) => !/net::|Failed to fetch|WebSocket|offline/i.test(e));
@@ -158,6 +158,23 @@ app.whenReady().then(async () => {
       await N.js(`__mock.visible = false; document.querySelector('[data-cn=login]').click(); 1`); await sleep(400);
       check('android: login button opens the login window', await N.js(`__mock.shows`) >= 2);
       await N.shot('android-connect');
+      // phone shell: pages are full width, sheets open and close, back button unwinds
+      const shell = JSON.parse(await N.js(`(async () => { const W = (ms) => new Promise((r) => setTimeout(r, ms)); const r = {};
+        document.getElementById('connect').classList.add('hidden');
+        for (const p of ['market', 'analysis', 'practice', 'more']) { document.querySelector('[data-nav=' + p + ']').click(); await W(80); r[p] = Math.round(document.getElementById('side').getBoundingClientRect().width); }
+        document.querySelector('[data-go=learn]').click(); await W(80); r.learnVisible = !document.getElementById('tab-learn').classList.contains('hidden');
+        document.querySelector('[data-nav=chart]').click(); await W(80); r.chartHidden = document.body.classList.contains('hide-side');
+        document.getElementById('m-draw').click(); await W(80); r.toolsSheet = MSHEET.isOpen() && document.querySelectorAll('#msheet [data-t]').length >= 15;
+        document.querySelector('#msheet [data-t=trend]').click(); await W(80); r.pill = !document.getElementById('m-pill').classList.contains('hidden') && S.tool === 'trend';
+        r.back1 = window.__mobileBack() && S.tool === 'cursor';
+        document.querySelector('[data-m=ind]').dispatchEvent(new MouseEvent('click', { bubbles: true })); await W(80); r.indSheet = MSHEET.isOpen() && !!document.querySelector('#msheet #ind-menu');
+        r.back2 = window.__mobileBack() && !MSHEET.isOpen() && !!document.querySelector('.dropdown #ind-menu');
+        return JSON.stringify(r); })()`));
+      check('android shell: pages fill the screen', ['market', 'analysis', 'practice', 'more'].every((k) => shell[k] >= 380), shell);
+      check('android shell: more → lessons, back to chart', shell.learnVisible && shell.chartHidden, shell);
+      check('android shell: drawing sheet + tool pill + back', shell.toolsSheet && shell.pill && shell.back1, shell);
+      check('android shell: indicator sheet borrows and returns the menu', shell.indSheet && shell.back2, shell);
+      await N.js(`document.getElementById('connect').classList.remove('hidden'); renderConnect(); 1`);
       await N.js(`document.querySelector('[data-cn=demo]').click(); 1`); await sleep(800);
       check('android: demo button hides connect screen', await N.js(`S.source === 'demo' && document.getElementById('connect').classList.contains('hidden')`));
       N.w.destroy();

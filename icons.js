@@ -6,6 +6,7 @@
     trend: '<path d="M5.5 18.5l13-13"/><circle cx="5" cy="19" r="2" fill="var(--icon-bg)"/><circle cx="19" cy="5" r="2" fill="var(--icon-bg)"/>',
     ray: '<path d="M6 18l15-12"/><circle cx="5.5" cy="18.5" r="2" fill="var(--icon-bg)"/><circle cx="12" cy="13.2" r="2" fill="var(--icon-bg)"/>',
     fibext: '<path d="M3 19l5-9 4 5" stroke-dasharray="2 2" opacity=".7"/><path d="M12 4h9M12 8h9M12 13h9"/><circle cx="12" cy="15" r="1.3"/>',
+    menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
     fib: '<path d="M3 5h18M3 9.5h18M3 14h18M3 19h18"/><path d="M5 19L19 5" stroke-dasharray="2 2.5" opacity=".7"/>',
     rect: '<rect x="4" y="6.5" width="16" height="11" rx="1"/><circle cx="4" cy="6.5" r="1.8" fill="var(--icon-bg)"/><circle cx="20" cy="17.5" r="1.8" fill="var(--icon-bg)"/>',
     measure: '<path d="M4 20V4M4 20h16"/><path d="M8 16l4-5 3 2.5L20 7"/><path d="M16.5 7H20v3.5"/>',
