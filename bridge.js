@@ -200,8 +200,21 @@
     reloadTrader: () => { if (V) { log('info', 'feed', 'ผู้ใช้สั่งเชื่อมต่อใหม่'); V.reload(); } },
   };
 
-  if (native) {
-    V = C.registerPlugin('VcgWeb');
+  // The Android WebView only injects Capacitor's native bridge; registerPlugin() comes from @capacitor/core
+  // (www/capacitor.js). Fall back to the raw bridge calls if core is missing, so the app never silently loses VCG.
+  function getPlugin(name) {
+    if (typeof C.registerPlugin === 'function') return C.registerPlugin(name);
+    if (C.Plugins && C.Plugins[name]) return C.Plugins[name];
+    if (typeof C.nativePromise === 'function') {
+      log('warn', 'app', 'ไม่มี @capacitor/core — เรียก plugin ผ่าน native bridge โดยตรง');
+      return new Proxy({}, { get: (_, m) => (m === 'then' ? undefined
+        : m === 'addListener' ? (ev, cb) => Promise.resolve(C.nativeCallback(name, 'addListener', { eventName: ev }, cb))
+          : (opts) => C.nativePromise(name, String(m), opts || {})) });
+    }
+    throw new Error('Capacitor bridge has no registerPlugin/nativePromise (keys: ' + Object.keys(C).join(',') + ')');
+  }
+  if (native) try {
+    V = getPlugin('VcgWeb');
     V.addListener('message', (e) => { try { handlePageMsg(JSON.parse(e.data)); } catch (_) {} });
     V.addListener('page', (e) => log('info', 'webtrader', 'เปิดหน้า ' + e.url));
     V.addListener('pageError', (e) => log('error', 'webtrader', `โหลดหน้าไม่สำเร็จ ${e.code} ${e.description}`));
@@ -213,7 +226,8 @@
     }, (e) => log('error', 'app', 'เริ่มหน้า VCG ไม่ได้: ' + (e && e.message)));
     log('info', 'app', `เริ่มโปรแกรม (Android) · Capacitor ${C.getPlatform ? C.getPlatform() : ''} · plugins: ${Object.keys(C.Plugins || {}).join(', ')}`);
     setInterval(tick, 3000); setInterval(probe, 10000); setInterval(evalNet, 2000); probe();
-  } else {
+  } catch (e) { V = null; log('error', 'app', 'เริ่มส่วนเชื่อมต่อ Android ไม่สำเร็จ: ' + (e && e.message)); }
+  else {
     log(/Android/.test(navigator.userAgent) && /wv\)/.test(navigator.userAgent) ? 'error' : 'info', 'app',
       `เปิดแบบเว็บ (Capacitor=${!!C}, native=${native}) — ไม่มีการเชื่อมต่อ VCG ใช้ข้อมูล Demo ได้`);
   }

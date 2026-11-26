@@ -17,4 +17,16 @@ const VcgWeb = {
   hide: async () => { mock.visible = false; (listeners.hidden || []).forEach((f) => f({})); return {}; },
   navigate: async () => ({}), reload: async () => ({}), clearData: async () => ({}), minimize: async () => ({}),
 };
-window.Capacitor = { isNativePlatform: () => true, getPlatform: () => 'android', Plugins: { VcgWeb }, registerPlugin: () => VcgWeb };
+// Emulate what the real Android WebView injects: window.androidBridge + Capacitor's native bridge (PluginHeaders,
+// nativePromise, nativeCallback) — but NOT registerPlugin, which only @capacitor/core (www/capacitor.js) provides.
+// This is exactly the situation that broke v2.x on real phones.
+window.androidBridge = { postMessage() {} };
+const METHODS = ['start', 'navigate', 'eval', 'getUrl', 'show', 'hide', 'reload', 'clearData', 'minimize'];
+let cbId = 0;
+window.Capacitor = {
+  Plugins: {},
+  PluginHeaders: [{ name: 'VcgWeb', methods: [...METHODS.map((name) => ({ name, rtype: 'promise' })), { name: 'addListener', rtype: 'callback' }, { name: 'removeListener', rtype: 'promise' }] }],
+  getPlatform: () => 'android', isNativePlatform: () => true,
+  nativePromise: (plugin, method, opts) => { mock.calls = (mock.calls || 0) + 1; return plugin === 'VcgWeb' && VcgWeb[method] ? VcgWeb[method](opts || {}) : Promise.reject(new Error('no ' + plugin + '.' + method)); },
+  nativeCallback: (plugin, method, opts, cb) => { if (plugin === 'VcgWeb' && method === 'addListener') (listeners[opts.eventName] ||= []).push(cb); return String(++cbId); },
+};
