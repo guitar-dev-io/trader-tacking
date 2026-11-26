@@ -2,6 +2,7 @@
 // Phone: a full-screen page with list → reader → back.
 import { mount, flushSync } from 'svelte';
 import { PT, def } from '../../pt';
+import { ui } from '../../ui/registry';
 import { toast } from '../../ui/toast';
 import { S, store } from '../../state';
 import { pages, lazyMount, type PageApi } from '../registry';
@@ -114,9 +115,9 @@ export const LEARN: PageApi = (() => {
     let sideWas: boolean | null = null;
     window.addEventListener('pagechange', (e) => {
       const k = (e as CustomEvent).detail, reading = k === 'learn' || k === 'news';
-      if (!PT.setUI || !S.ui) return;
-      if (reading && sideWas === null) { sideWas = !!S.ui.side; if (sideWas) PT.setUI('side', false); }
-      else if (k === 'chart' && sideWas !== null) { if (sideWas) PT.setUI('side', true); sideWas = null; }
+      if (!ui.setUI || !S.ui) return;
+      if (reading && sideWas === null) { sideWas = !!S.ui.side; if (sideWas) ui.setUI('side', false); }
+      else if (k === 'chart' && sideWas !== null) { if (sideWas) ui.setUI('side', true); sideWas = null; }
     });
   }
   return {

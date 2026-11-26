@@ -2,6 +2,7 @@
 // More page. "ดูตัวอย่าง" shows sample data.
 import { mount, flushSync } from 'svelte';
 import { PT, def } from '../../pt';
+import { ui } from '../../ui/registry';
 import { toast } from '../../ui/toast';
 import { S, store, view } from '../../state';
 import { pages, lazyMount, type PageApi } from '../registry';
@@ -96,9 +97,9 @@ export const JOURNALPAGE: PageApi = (() => {
     let sideWas: boolean | null = null;
     window.addEventListener('pagechange', (e) => {
       const k = (e as CustomEvent).detail;
-      if (!PT.setUI || !S.ui) return;
-      if (k === 'journal' && sideWas === null) { sideWas = !!S.ui.side; if (sideWas) PT.setUI('side', false); }
-      else if (k === 'chart' && sideWas !== null) { if (sideWas) PT.setUI('side', true); sideWas = null; }
+      if (!ui.setUI || !S.ui) return;
+      if (k === 'journal' && sideWas === null) { sideWas = !!S.ui.side; if (sideWas) ui.setUI('side', false); }
+      else if (k === 'chart' && sideWas !== null) { if (sideWas) ui.setUI('side', true); sideWas = null; }
     });
     window.addEventListener('pagechange', (e) => { const k = (e as CustomEvent).detail; btn.classList.toggle('on', k === 'journal'); if (k === 'journal' && !shown) { shown = true; void reload(); } else if (k !== 'journal' && shown) shown = false; });
     document.addEventListener('keydown', (e) => {

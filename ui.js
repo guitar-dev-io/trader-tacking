@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { ui } from './src/ui/registry.ts';
 import { view } from './src/state.ts';
 import { ICON } from './icons.js';
 import { $, S, store } from './app-core.js';
@@ -15,22 +16,23 @@ import { REPLAY } from './learn.js';
     store.set(mobile ? 'ui.m' : 'ui', S.ui);
     setTimeout(() => { view.dirty = true; }, 50);
   }
-  PT.setUI = (k, v) => { S.ui[k] = v; apply(); syncSettings(); };
+  function setUI(k, v) { S.ui[k] = v; apply(); syncSettings(); }
+  ui.setUI = setUI;
   function syncSettings() { document.querySelectorAll('[data-ui]').forEach((i) => { i.checked = !!S.ui[i.dataset.ui]; }); }
-  document.querySelectorAll('[data-ui]').forEach((i) => (i.onchange = () => PT.setUI(i.dataset.ui, i.checked)));
+  document.querySelectorAll('[data-ui]').forEach((i) => (i.onchange = () => setUI(i.dataset.ui, i.checked)));
   $('settings-btn').addEventListener('click', () => setTimeout(syncSettings, 50));
 
   $('side-btn').innerHTML = ICON.svg('expand', 18);
-  $('side-btn').onclick = () => PT.setUI('side', !S.ui.side);
+  $('side-btn').onclick = () => setUI('side', !S.ui.side);
   $('side-collapse').innerHTML = ICON.svg('collapse', 16);
-  $('side-collapse').onclick = () => PT.setUI('side', false);
+  $('side-collapse').onclick = () => setUI('side', false);
 
   // collapsed right panel → a slim rail of tab icons (desktop), like TradingView's right toolbar
   const RAIL = [['market', 'list', 'ราคา'], ['analysis', 'brain', 'วิเคราะห์'], ['practice', 'play', 'ฝึก'], ['calc', 'calc', 'คำนวณ'], ['log', 'logs', 'Log']];   // lessons + news are pages (titlebar buttons)
   $('side-rail').innerHTML = `<button data-open="" title="ขยายแถบด้านขวา">${ICON.svg('expand', 18)}</button><div class="sep"></div>` +
     RAIL.map(([t, i, n]) => `<button data-open="${t}" title="${n}">${ICON.svg(i, 18)}<span>${n}</span></button>`).join('');
   $('side-rail').querySelectorAll('[data-open]').forEach((b) => (b.onclick = () => {
-    PT.setUI('side', true);
+    setUI('side', true);
     if (b.dataset.open) document.querySelector(`#tabs [data-tab="${b.dataset.open}"]`).click();
   }));
 
@@ -47,7 +49,7 @@ import { REPLAY } from './learn.js';
   });
   $('side-resizer').addEventListener('dblclick', () => { applyW(330); store.set('sideW', 330); });
   // opening a side tab on mobile shows the panel
-  document.querySelectorAll('#tabs button[data-tab]').forEach((b) => b.addEventListener('click', () => { if (!S.ui.side) PT.setUI('side', true); }));
+  document.querySelectorAll('#tabs button[data-tab]').forEach((b) => b.addEventListener('click', () => { if (!S.ui.side) setUI('side', true); }));
 
   // dropdown menus are positioned against their button (fixed), so the toolbar itself can scroll horizontally
   ['ind-menu', 'an-menu', 'cs-menu'].forEach((id) => {
@@ -80,7 +82,7 @@ import { REPLAY } from './learn.js';
       document.querySelectorAll('.menu, .modal').forEach((m) => m.classList.add('hidden'));
       document.querySelectorAll('#tools .fly').forEach((f) => f.remove());
     }
-    if ((e.metaKey || e.ctrlKey) && e.key === '\\') { e.preventDefault(); PT.setUI('side', !S.ui.side); }
+    if ((e.metaKey || e.ctrlKey) && e.key === '\\') { e.preventDefault(); setUI('side', !S.ui.side); }
   });
   // Android back button: close popups → close side panel → minimise
   if (vcg.onBack) vcg.onBack(() => {
@@ -89,7 +91,7 @@ import { REPLAY } from './learn.js';
     if (open.length) open.forEach((m) => m.classList.add('hidden'));
     else if (document.querySelector('#tools .fly')) document.querySelectorAll('#tools .fly').forEach((f) => f.remove());
     else if (S.replay && typeof REPLAY !== 'undefined') REPLAY.exit();
-    else if (S.ui.side && mobile) PT.setUI('side', false);
+    else if (S.ui.side && mobile) setUI('side', false);
     else vcg.minimize();
   });
   // phones: layout lives in mobile.js (header, bottom nav, sheets)

@@ -3,6 +3,7 @@
 // and saved as named layouts. Desktop: a page tab (titlebar button, Ctrl/⌘+D). Phone: a full-screen page.
 import { mount, flushSync } from 'svelte';
 import { PT, def } from '../../pt';
+import { ui } from '../../ui/registry';
 import { toast } from '../../ui/toast';
 import { S } from '../../state';
 import { pages, lazyMount, type PageApi } from '../registry';
@@ -58,9 +59,9 @@ export const DASH: PageApi = (() => {
   function setActive(on: boolean) {
     if (on === dash.active) return; if (on) ensure(); dash.active = on;
     // give the widgets the whole width: fold the side panel while the dashboard is open, restore it after
-    if (!mobile && PT.setUI && S.ui) {
-      if (on) { sideWas = !!S.ui.side; if (sideWas) PT.setUI('side', false); }
-      else if (sideWas) { PT.setUI('side', true); sideWas = null; }
+    if (!mobile && ui.setUI && S.ui) {
+      if (on) { sideWas = !!S.ui.side; if (sideWas) ui.setUI('side', false); }
+      else if (sideWas) { ui.setUI('side', true); sideWas = null; }
     }
   }
   function open() {

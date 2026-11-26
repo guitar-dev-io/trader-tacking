@@ -6,7 +6,7 @@ export interface SetupApi { open: (path?: string, step?: number) => void; close:
 export const ui: {
   settings?: SettingsApi;
   setup?: SetupApi;
-  msheet?: { open: (...a: any[]) => void; close: () => void; [k: string]: any };
+  msheet?: { open: (...a: any[]) => void; close: () => void; isOpen: () => boolean };
   setUI?: (k: string, v: boolean) => void;
   srcPill?: { render: () => void; info: () => { cls: string; t: string; hint: string }; menu: () => void };
 } = {};

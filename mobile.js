@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { ui } from './src/ui/registry.ts';
 import { view } from './src/state.ts';
 import { toast } from './src/ui/toast.ts';
 import { ICON } from './icons.js';
@@ -59,7 +60,8 @@ import { pages } from './src/pages/registry.ts';
   (() => { let y0 = null; const g = sheet.querySelector('.ms-head');
     on(g, 'touchstart', (e) => { y0 = e.touches[0].clientY; }, { passive: true });
     on(g, 'touchend', (e) => { if (y0 != null && e.changedTouches[0].clientY - y0 > 60) closeSheet(); y0 = null; }); })();
-  PT.MSHEET = { open: openSheet, close: closeSheet, isOpen: () => !sheet.classList.contains('hidden') };
+  const MSHEET = { open: openSheet, close: closeSheet, isOpen: () => !sheet.classList.contains('hidden') };
+  ui.msheet = MSHEET; PT.MSHEET = MSHEET;   // PT: tests
 
   // ------------------------------------------------------------ header + timeframe row
   const tb = $('titlebar');
@@ -177,11 +179,11 @@ import { pages } from './src/pages/registry.ts';
     else document.querySelectorAll('#side .tab').forEach((x) => x.classList.toggle('hidden', x.id !== 'tab-more'));
     side.querySelector('.mph-t').textContent = PAGES[t] || '';
     side.querySelector('.mph-back').classList.toggle('hidden', !SUB[t]);
-    if (!S.ui.side) PT.setUI('side', true);
+    if (!S.ui.side) ui.setUI?.('side', true);
     side.scrollTop = 0; document.querySelectorAll('#side .tab').forEach((x) => { x.scrollTop = 0; });
     syncNav();
   }
-  function goChart() { page = null; if (S.ui.side) PT.setUI('side', false); syncNav(); view.dirty = true; }
+  function goChart() { page = null; if (S.ui.side) ui.setUI?.('side', false); syncNav(); view.dirty = true; }
   on(side.querySelector('.mph-back'), 'click', () => showPage('more'));
   side.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => showPage(b.dataset.go)));
   on(side.querySelector('[data-do=settings]'), 'click', () => $('open-settings').click());
@@ -217,14 +219,14 @@ import { pages } from './src/pages/registry.ts';
   setInterval(syncNav, 1500);
   // other code (bounce card → calculator, SIM.prefill …) switches tabs by clicking #tabs buttons: follow along
   document.querySelectorAll('#tabs button[data-tab]').forEach((b) => b.addEventListener('click', () => {
-    if (page !== b.dataset.tab) { page = b.dataset.tab; side.querySelector('.mph-t').textContent = PAGES[page] || ''; side.querySelector('.mph-back').classList.toggle('hidden', !SUB[page]); if (!S.ui.side) PT.setUI('side', true); syncNav(); }
+    if (page !== b.dataset.tab) { page = b.dataset.tab; side.querySelector('.mph-t').textContent = PAGES[page] || ''; side.querySelector('.mph-back').classList.toggle('hidden', !SUB[page]); if (!S.ui.side) ui.setUI?.('side', true); syncNav(); }
   }));
   // start on the chart
   goChart();
 
   // Android back: sheet → tool → sub page → page → minimise (registered before ui.js's handler via capture flag)
   PT.__mobileBack = () => {
-    if (PT.MSHEET.isOpen()) { closeSheet(); return true; }
+    if (MSHEET.isOpen()) { closeSheet(); return true; }
     if (S.tool && S.tool !== 'cursor') { setTool('cursor'); return true; }
     if (S.ui.side && SUB[page]) { showPage('more'); return true; }
     if (S.ui.side) { goChart(); return true; }
