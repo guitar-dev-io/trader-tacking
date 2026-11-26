@@ -22,7 +22,7 @@
   $('side-collapse').onclick = () => window.setUI('side', false);
 
   // collapsed right panel → a slim rail of tab icons (desktop), like TradingView's right toolbar
-  const RAIL = [['market', 'list', 'ราคา'], ['analysis', 'brain', 'วิเคราะห์'], ['practice', 'play', 'ฝึก'], ['calc', 'calc', 'คำนวณ'], ['learn', 'book', 'บทเรียน'], ['log', 'logs', 'Log']];
+  const RAIL = [['market', 'list', 'ราคา'], ['analysis', 'brain', 'วิเคราะห์'], ['practice', 'play', 'ฝึก'], ['calc', 'calc', 'คำนวณ'], ['log', 'logs', 'Log']];   // lessons + news are pages (titlebar buttons)
   $('side-rail').innerHTML = `<button data-open="" title="ขยายแถบด้านขวา">${ICON.svg('expand', 18)}</button><div class="sep"></div>` +
     RAIL.map(([t, i, n]) => `<button data-open="${t}" title="${n}">${ICON.svg(i, 18)}<span>${n}</span></button>`).join('');
   $('side-rail').querySelectorAll('[data-open]').forEach((b) => (b.onclick = () => {

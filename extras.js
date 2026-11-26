@@ -182,7 +182,9 @@ const NEWS = (() => {
     const now = Date.now() / 1000;
     return relevant().filter((e) => e.t > now - 600).slice(0, n).map((e) => ({ ...e, when: hhmm(e.t) }));
   }
-  return { refresh, render, draw, upcoming };
+  // whole week for the news page: all events, or only those for the open symbol's currencies
+  const week = (onlyRelevant) => (onlyRelevant ? relevant() : events.list).map((e) => ({ ...e, when: hhmm(e.t) }));
+  return { refresh, render, draw, upcoming, week, ccys: () => ccyOf(S.symbol), loadedAt: () => events.at };
 })();
 
 // ---------------------------------------------------------------- update checker (GitHub Releases)

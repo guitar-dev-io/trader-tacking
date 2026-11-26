@@ -1,6 +1,10 @@
+/* lesson figures follow the theme (wicks/labels/background) */
+:root { --fig-bg: #0f1115; --fig-wick: #b2b5be; --fig-text: #d1d4dc; }
+:root[data-theme="light"] { --fig-bg: #ffffff; --fig-wick: #5d6475; --fig-text: #1f2430; }
+:root[data-theme="contrast"], :root[data-theme="hc"] { --fig-bg: #000000; --fig-wick: #ffffff; --fig-text: #ffffff; }
 /* Lesson book (lessons-guide.js) */
 .lg-fig { margin: 8px auto; max-width: 260px; text-align: center; }
-.lg-fig svg { width: 100%; height: auto; display: block; background: #0f1115; border: 1px solid var(--hover); border-radius: 6px; }
+.lg-fig svg { width: 100%; height: auto; display: block; background: var(--fig-bg, #0f1115); border: 1px solid var(--hover); border-radius: 6px; }
 .lg-cap { font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
 #lessons table.lt .lg-fig { margin: 2px auto; max-width: 150px; }
 .lesson-cats { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }

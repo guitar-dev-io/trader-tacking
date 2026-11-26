@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="positions.css">
 <link rel="stylesheet" href="pages.css">
 <link rel="stylesheet" href="about.css">
+<link rel="stylesheet" href="learn-center.css">
 <link rel="stylesheet" href="dashboard.css">
 </head>
 <body>
@@ -95,8 +96,6 @@
       <button data-tab="analysis">วิเคราะห์</button>
       <button data-tab="practice">ฝึก</button>
       <button data-tab="calc">คำนวณ</button>
-      <button data-tab="news">ข่าว <span id="news-badge"></span></button>
-      <button data-tab="learn">บทเรียน</button>
       <button data-tab="log">Log <span id="log-badge"></span></button>
       <button id="side-collapse" class="ib" title="ย่อแถบด้านขวา (⌘\\)"></button>
     </div>
@@ -150,7 +149,6 @@
 
     <div class="tab hidden" id="tab-calc"><div id="planner"></div></div>
 
-    <div class="tab hidden" id="tab-learn"><div class="panel" id="lessons"></div></div>
 
     <div class="tab hidden" id="tab-news"><div id="newsfeed"></div></div>
     <div class="tab hidden" id="tab-log">
@@ -380,6 +378,8 @@
 <script src="pages.js"></script>
 <script src="about.js"></script>
 <script src="dashboard.js"></script>
+<script src="learn-center.js"></script>
+<script src="news-page.js"></script>
 <script src="claude-bridge.js"></script>
 </body>
 </html>

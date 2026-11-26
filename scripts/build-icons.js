@@ -8,7 +8,7 @@ const NAMES = ['lock', 'lock-open', 'log-in', 'book-open', 'graduation-cap', 'gl
   'eye', 'eye-off', 'brush-cleaning', 'chart-column', 'coins', 'sparkles', 'bell', 'undo-2', 'redo-2', 'trash-2', 'layers', 'magnet',
   'calculator', 'list', 'scroll-text', 'maximize', 'zoom-in', 'minus', 'plus', 'chevron-left', 'chevron-right', 'rotate-ccw', 'menu',
   'brain', 'refresh-cw', 'x', 'info', 'shield-check', 'external-link', 'check', 'plug', 'smartphone', 'copy', 'circle-play', 'type',
-  'arrow-up', 'arrow-down', 'sun-moon', 'house', 'wifi-off', 'loader-circle', 'chart-candlestick', 'compass', 'landmark', 'shield', 'library'];
+  'arrow-up', 'arrow-down', 'sun-moon', 'house', 'wifi-off', 'loader-circle', 'chart-candlestick', 'compass', 'landmark', 'shield', 'library', 'search', 'clock', 'list-checks', 'route', 'circle-dashed', 'arrow-left', 'table-2', 'calendar-days', 'trophy', 'flame', 'book-marked'];
 const dir = path.join(root, 'node_modules', 'lucide-static', 'icons');
 const ver = require(path.join(root, 'node_modules', 'lucide-static', 'package.json')).version;
 const out = NAMES.map((n) => {

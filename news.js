@@ -81,7 +81,7 @@ const HEADLINES = (() => {
     const unseen = items.list.filter((x) => x.t > seenAt).length;
     const badge = $('news-badge'); if (badge) badge.textContent = unseen && !box.offsetParent ? unseen > 99 ? '99+' : unseen : '';
     const chips = [['rel', `เกี่ยวกับ ${S.symbol}`], ['all', 'ทั้งหมด'], ['official', 'ทางการ (Fed/ECB/BLS)'], ...FEEDS.filter((f) => f.kind === 'market').map((f) => [f.id, f.name.split(' ·')[0] === 'Investing.com' ? f.name.replace('Investing.com · ', 'Investing ') : f.name])];
-    const cal = typeof NEWS !== 'undefined' && NEWS.upcoming ? NEWS.upcoming(4) : [];
+    const cal = !box.closest('#news-page') && typeof NEWS !== 'undefined' && NEWS.upcoming ? NEWS.upcoming(4) : [];   // the news page shows the full calendar itself
     box.innerHTML = `
       <div class="panel nw-head"><div class="panel-h"><span>${ICON.html('newspaper', 16)}ข่าวตลาด</span><button id="nw-refresh" class="ib" title="โหลดใหม่" aria-label="โหลดใหม่">${ICON.svg(loading ? 'loader-circle' : 'refresh-cw', 16)}</button></div>
         <div class="nw-chips">${chips.map(([k, n]) => `<button data-nf="${k}" class="${filter === k ? 'on' : ''}">${esc(n)}</button>`).join('')}</div>
@@ -95,13 +95,14 @@ const HEADLINES = (() => {
     $('nw-refresh').onclick = () => refresh(true);
   }
   function markSeen() { seenAt = Date.now(); store.set('headlines.seenAt', seenAt); const b = $('news-badge'); if (b) b.textContent = ''; }
-  const tabBtn = document.querySelector('#tabs [data-tab="news"]');
-  if (tabBtn) tabBtn.addEventListener('click', () => { render(); setTimeout(markSeen, 4000); refresh(false); });
+  // the news page (news-page.js) calls show() when it opens
+  function show() { render(); setTimeout(markSeen, 4000); refresh(false); }
   setTimeout(() => refresh(false), 4000);
   timer = setInterval(() => refresh(true), 5 * 60e3);
   void timer;
   return {
-    refresh, render, FEEDS,
+    refresh, render, show, markSeen, FEEDS, unseen: () => items.list.filter((x) => x.t > seenAt).length,
+    latest: (n = 3) => { const words = symbolWords(S.symbol); return items.list.filter((x) => relevantTo(x, words) || x.kind === 'official').slice(0, n).map((x) => ({ ...x, ago: ago(x.t) })); },
     // for Claude (MCP)
     list: (opts = {}) => { const words = symbolWords(opts.symbol || S.symbol); return items.list.filter((x) => !opts.relevant || relevantTo(x, words) || x.kind === 'official').slice(0, Math.min(100, opts.limit || 30)).map((x) => ({ title: x.title, source: x.src, official: x.kind === 'official', time: new Date(x.t).toISOString(), link: x.link })); },
   };

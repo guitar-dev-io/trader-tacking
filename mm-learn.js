@@ -230,7 +230,7 @@ ${bars([100, 500, 2000].map((lv) => ({ label: `1:${lv}`, v: MM.margin('XAUUSD', 
     draw();
   }
 
-  // ------------------------------------------------------------ mount: lessons (when opened) + practice tab
+  // ------------------------------------------------------------ mount: widgets inside a lesson / practice view
   function mount(scope = document) {
     scope.querySelectorAll('.mm-widget[data-w]:not([data-on])').forEach((w) => { w.dataset.on = 1; (w.dataset.w === 'plan' ? planWidget : quizWidget)(w); });
   }
@@ -239,18 +239,9 @@ ${bars([100, 500, 2000].map((lv) => ({ label: `1:${lv}`, v: MM.margin('XAUUSD', 
     const b = e.target.closest('[data-mm-practice]'); if (!b) return;
     e.preventDefault();
     if (b.dataset.mmPractice !== Q.kind) { Q.kind = b.dataset.mmPractice; saveQ(); }
-    const t = document.querySelector('#tabs [data-tab="practice"]'); if (t) t.click();
-    const panel = document.getElementById('mm-quiz-panel');
-    if (panel) { const w = panel.querySelector('.mm-widget'); if (w && w._mm) w._mm.next(); if (panel.tagName === 'DETAILS') panel.open = true; panel.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+    // practice lives in the learning center (learn-center.js)
+    if (window.LEARN) LEARN.open('p:mmquiz');
     if (typeof toast === 'function') toast('ฝึกโจทย์: ' + (MM.KIND_NAME[Q.kind] || 'ทุกหัวข้อ'), 'info', 2500);
   });
-  function addPractice() {
-    const host = document.getElementById('tab-practice'); if (!host || document.getElementById('mm-quiz-panel')) return;
-    const panel = document.createElement('div'); panel.className = 'panel'; panel.id = 'mm-quiz-panel';
-    panel.innerHTML = '<div class="mm-widget" data-w="quiz"></div>';
-    const sim = document.getElementById('sim'); host.insertBefore(panel, sim ? sim.nextSibling : host.firstChild);
-    mount(panel);
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', addPractice); else addPractice();
   window.MM_LEARN = { mount, planWidget, quizWidget };
 })();

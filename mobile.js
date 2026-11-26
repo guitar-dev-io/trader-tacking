@@ -146,8 +146,8 @@
   side.insertAdjacentHTML('beforeend', `<div class="tab hidden" id="tab-more"><div class="m-more">
     <button data-do="dash">${ICON.svg('chart-candlestick', 22)}<span><b>แดชบอร์ด</b><small>หลายกราฟพร้อมกัน + ข่าว ราคา Session</small></span></button>
     <button data-go="calc">${ICON.svg('calc', 22)}<span><b>คำนวณ lot / จุดเติม</b><small>ขนาดไม้จาก % ความเสี่ยง, SL เป็นจุด</small></span></button>
-    <button data-go="news">${ICON.svg('newspaper', 22)}<span><b>ข่าวตลาด</b><small>FXStreet, Investing, Fed, ECB, BLS + ปฏิทินเศรษฐกิจ</small></span></button>
-    <button data-go="learn">${ICON.svg('book', 22)}<span><b>บทเรียน</b><small>แท่งเทียน, Demand & Supply, บริหารเงิน</small></span></button>
+    <button data-do="news">${ICON.svg('newspaper', 22)}<span><b>ข่าวและปฏิทิน</b><small>FXStreet, Investing, Fed, ECB, BLS + ปฏิทินเศรษฐกิจ</small></span></button>
+    <button data-do="learn">${ICON.svg('graduation-cap', 22)}<span><b>ศูนย์การเรียนรู้</b><small>บทเรียน แท่งเทียน, Demand & Supply, MM + แบบฝึก</small></span></button>
     <button data-go="log">${ICON.svg('logs', 22)}<span><b>Log</b><small>สถานะการเชื่อมต่อ · ส่งให้ผู้พัฒนาเมื่อมีปัญหา</small></span><i id="m-logb"></i></button>
     <button data-do="settings">${ICON.svg('gear', 22)}<span><b>การตั้งค่า</b><small>เวลา, แจ้งเตือน, Session, ข้อมูล</small></span></button>
     <div class="m-sec">การเชื่อมต่อ</div>
@@ -156,8 +156,8 @@
     <button data-do="login">${ICON.svg('log-in', 22)}<span><b>เข้าสู่ระบบ VCG</b><small>เปิดหน้า login ของ VCG WebTrader</small></span></button>
     <button data-do="reconnect">${ICON.svg('refresh-cw', 22)}<span><b>เชื่อมต่อใหม่</b><small>โหลดหน้า VCG ใหม่</small></span></button>
     <p class="muted m-ver"></p></div></div>`);
-  const PAGES = { market: 'ราคา', analysis: 'วิเคราะห์', practice: 'ฝึกเทรด', calc: 'คำนวณ', news: 'ข่าว', learn: 'บทเรียน', log: 'Log', more: 'เพิ่มเติม' };
-  const SUB = { calc: 1, news: 1, learn: 1, log: 1 };
+  const PAGES = { market: 'ราคา', analysis: 'วิเคราะห์', practice: 'ฝึกเทรด', calc: 'คำนวณ', log: 'Log', more: 'เพิ่มเติม' };
+  const SUB = { calc: 1, log: 1 };
   let page = null;
   function showPage(t) {
     page = t;
@@ -175,6 +175,10 @@
   on(side.querySelector('[data-do=settings]'), 'click', () => $('open-settings').click());
   on(side.querySelector('[data-do=guide]'), 'click', () => SETUP.open());
   on(side.querySelector('[data-do=dash]'), 'click', () => window.DASH && DASH.open());
+  on(side.querySelector('[data-do=learn]'), 'click', () => window.LEARN && LEARN.open());
+  on(side.querySelector('[data-do=news]'), 'click', () => window.NEWSPAGE && NEWSPAGE.open());
+  // full-screen pages (learning center, news, dashboard) sit above the side panel: close them when the bottom nav is used
+  const closeOverlays = () => { if (window.LEARN) LEARN.close(); if (window.NEWSPAGE) NEWSPAGE.close(); if (window.DASH && document.body.classList.contains('dash-open')) DASH.close(); };
   on(side.querySelector('[data-do=login]'), 'click', () => { vcg.showTrader(); });
   on(side.querySelector('[data-do=reconnect]'), 'click', () => { vcg.reloadTrader(); toast('กำลังเชื่อมต่อใหม่…', 'info'); });
   side.querySelector('.m-ver').textContent = 'Price Tracker ' + (window.APP_VERSION || '');
@@ -182,12 +186,17 @@
   const srcRow = $('src-sel') && $('src-sel').closest('.row'); if (srcRow) side.querySelector('.m-src').appendChild(srcRow);
 
   const nav = document.createElement('nav'); nav.id = 'mnav2';
-  const NAV = [['chart', 'candles', 'กราฟ'], ['market', 'list', 'ราคา'], ['analysis', 'brain', 'วิเคราะห์'], ['practice', 'play', 'ฝึก'], ['more', 'menu', 'เพิ่มเติม']];
+  const NAV = [['chart', 'candles', 'กราฟ'], ['market', 'list', 'ราคา'], ['analysis', 'brain', 'วิเคราะห์'], ['learn', 'graduation-cap', 'เรียนรู้'], ['practice', 'play', 'ฝึก'], ['more', 'menu', 'เพิ่มเติม']];
   nav.innerHTML = NAV.map(([k, i, n]) => `<button data-nav="${k}">${ICON.svg(i, 22) || ''}<span>${n}</span>${k === 'more' ? '<i class="nb"></i>' : ''}</button>`).join('');
   document.body.appendChild(nav);
-  nav.querySelectorAll('[data-nav]').forEach((b) => (b.onclick = () => { closeSheet(); b.dataset.nav === 'chart' ? goChart() : showPage(b.dataset.nav); }));
+  nav.querySelectorAll('[data-nav]').forEach((b) => (b.onclick = () => {
+    closeSheet();
+    if (b.dataset.nav === 'learn') { if (window.NEWSPAGE) NEWSPAGE.close(); if (window.DASH && document.body.classList.contains('dash-open')) DASH.close(); if (window.LEARN) LEARN.open(); syncNav(); return; }
+    closeOverlays();
+    b.dataset.nav === 'chart' ? goChart() : showPage(b.dataset.nav);
+  }));
   function syncNav() {
-    const cur = !S.ui.side ? 'chart' : SUB[page] ? 'more' : page;
+    const cur = document.body.classList.contains('lc-open') ? 'learn' : !S.ui.side ? 'chart' : SUB[page] ? 'more' : page;
     nav.querySelectorAll('[data-nav]').forEach((b) => b.classList.toggle('on', b.dataset.nav === cur));
     const n = ($('log-badge') && $('log-badge').textContent) || '';
     nav.querySelector('.nb').textContent = n; const lb = $('m-logb'); if (lb) lb.textContent = n;

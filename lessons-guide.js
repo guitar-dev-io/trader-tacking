@@ -21,12 +21,12 @@
     }
     cs.forEach((c, i) => {
       const x = X(i), col = c.col || (c.c >= c.o ? UP : DN), yt = Y(Math.max(c.o, c.c), H), yb = Y(Math.min(c.o, c.c), H);
-      s += `<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${Y(c.h, H)}" y2="${Y(c.l, H)}" stroke="${WK}" stroke-width="1.2"/>`;
+      s += `<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${Y(c.h, H)}" y2="${Y(c.l, H)}" style="stroke:var(--fig-wick,${WK})" stroke-width="1.2"/>`;
       s += `<rect x="${(x - bw / 2).toFixed(1)}" y="${yt}" width="${bw.toFixed(1)}" height="${Math.max(1.2, yb - yt).toFixed(1)}" fill="${col}"/>`;
     });
     for (const t of o.labels || []) {
       const x = t.i != null ? X(t.i) : t.x;
-      s += `<text x="${x.toFixed(1)}" y="${t.y != null ? t.y : Y(t.p, H)}" font-size="${t.fs || 7.5}" fill="${t.col || '#d1d4dc'}" text-anchor="middle">${t.t}</text>`;
+      s += `<text x="${x.toFixed(1)}" y="${t.y != null ? t.y : Y(t.p, H)}" font-size="${t.fs || 7.5}" ${t.col ? `fill="${t.col}"` : 'style="fill:var(--fig-text,#d1d4dc)"'} text-anchor="middle">${t.t}</text>`;
     }
     return `<div class="lg-fig">${s}</svg>${o.cap ? `<div class="lg-cap">${o.cap}</div>` : ''}</div>`;
   }

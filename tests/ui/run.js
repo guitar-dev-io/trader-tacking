@@ -199,15 +199,41 @@ app.whenReady().then(async () => {
     check('replay: analysis only uses visible bars', rp.bounceOk, rp);
     await js(`REPLAY.exit(); document.getElementById('mtf-btn').click(); 'ok'`); await sleep(300);
 
-    // lessons tab: categories render
-    const les = JSON.parse(await js(`(() => { document.querySelector('#tabs [data-tab="learn"]').click(); const el = document.getElementById('lessons');
-      return JSON.stringify({ items: el.querySelectorAll('details').length, cats: el.querySelectorAll('.lesson-cats button').length, svgs: el.querySelectorAll('.lg-fig svg').length }); })()`));
-    check('lessons: book with categories and figures', les.items >= 40 && les.cats >= 7 && les.svgs >= 10, les);
-    const srch = JSON.parse(await js(`(() => { const i = document.querySelector('.lesson-search'); i.value = 'hammer'; i.dispatchEvent(new Event('input')); return JSON.stringify({ shown: [...document.querySelectorAll('#lessons details')].filter((d) => d.offsetParent !== null).length }); })()`));
-    check('lessons: search filters', srch.shown >= 1 && srch.shown < les.items, srch);
-    await js(`(() => { document.querySelector('#tabs [data-tab="learn"]').click(); const d = [...document.querySelectorAll('#lessons details')].find((x) => !x.hidden && /Hammer/.test(x.querySelector('summary').textContent)); d.open = true; d.scrollIntoView(); return 1; })()`); await sleep(300);
-    await A.shot('lessons');
-    await js(`(() => { const i = document.querySelector('.lesson-search'); i.value = ''; i.dispatchEvent(new Event('input')); document.querySelector('[data-lc=ds]').click(); const d = document.querySelector('#lessons details:not([hidden])'); d.open = true; return 1; })()`); await sleep(200); await A.shot('lessons-ds');
+    // learning center: its own page (no side tab), categories, reader with prev/next, read progress, search, MM practice
+    {
+      const lc = JSON.parse(await js(`(async () => { const w = (ms) => new Promise((r) => setTimeout(r, ms));
+        store.set('lc.read', []); const noTab = !document.querySelector('#tabs [data-tab="learn"]');
+        document.getElementById('learn-btn').click(); await w(150);
+        const root = document.getElementById('learn-center');
+        const r = { noTab, page: PAGES.active() === 'learn' && !!root.offsetParent, cats: root.querySelectorAll('.lc-nav .lc-cat:not(.lc-prac)').length, catIds: LEARN.cats().length,
+          home: !!root.querySelector('.lc-hero') && root.querySelectorAll('.lc-path li').length >= 5 };
+        const first = root.querySelector('.lc-nav .lc-les'); first.click(); await w(80);
+        r.reader = !!root.querySelector('.lc-doc.lesson h1') && !!root.querySelector('.lc-next') && root.querySelectorAll('.lc-body .lg-fig svg, .lc-body svg').length >= 0;
+        const t1 = root.querySelector('.lc-doc h1').textContent;
+        root.querySelector('.lc-next').click(); await w(80);
+        r.nextMoved = root.querySelector('.lc-doc h1').textContent !== t1 && !!root.querySelector('.lc-prev');
+        r.prevMarkedRead = LEARN.progress().n === 1;
+        root.querySelector('.lc-markbtn').click(); await w(50);
+        r.markRead = LEARN.progress().n === 2 && !!root.querySelector('.lc-markbtn.on');
+        const v0 = LEARN.view(); document.activeElement.blur(); document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); await w(50);
+        r.keyNext = LEARN.view() !== v0 && /^L/.test(LEARN.view());
+        const q = root.querySelector('.lc-search input'); q.value = 'hammer'; q.dispatchEvent(new Event('input')); await w(30);
+        r.search = root.querySelectorAll('.lc-nav .lc-les').length; r.searchTotal = LEARN.lessons().length;
+        q.value = ''; q.dispatchEvent(new Event('input'));
+        const h = LEARN.lessons().find((l) => /^Hammer/.test(l.title)); LEARN.open(h.id); await w(80);
+        r.figs = root.querySelectorAll('.lc-body svg').length;
+        return JSON.stringify(r); })()`));
+      check('learn: no side tab, opens as its own page from the titlebar', lc.noTab && lc.page && lc.home, lc);
+      check('learn: category list lists all categories', lc.cats === lc.catIds && lc.cats >= 8, { cats: lc.cats, ids: lc.catIds });
+      check('learn: reader with prev/next (button + arrow key)', lc.reader && lc.nextMoved && lc.keyNext, lc);
+      check('learn: read progress (next marks read, mark-as-read button)', lc.prevMarkedRead && lc.markRead, lc);
+      check('learn: search filters lessons', lc.search >= 1 && lc.search < lc.searchTotal, { shown: lc.search, of: lc.searchTotal });
+      check('learn: lesson figures in the reader', lc.figs >= 1, lc.figs);
+      await sleep(200); await A.shot('learn-reader');
+      await js(`LEARN.open('home'); true`); await sleep(250); await A.shot('learn-home');
+      await js(`THEME.set('light'); LEARN.open(LEARN.lessons().find((l) => /^Hammer/.test(l.title)).id); true`); await sleep(300); await A.shot('learn-reader-light'); await js(`THEME.set('dark'); true`);
+      await js(`LEARN.close(true); true`); await sleep(100);
+    }
 
     // Claude (MCP) commands: main process → renderer 'api-cmd' → 'api-cmd-result'
     {
@@ -248,14 +274,18 @@ app.whenReady().then(async () => {
 
     // news tab: RSS from several publishers, Investing.com date format, relevance to XAUUSD, links open outside
     {
-      await js(`document.querySelector('#tabs [data-tab="news"]').click(); HEADLINES.refresh(true); 1`); await sleep(1200);
+      await js(`NEWSPAGE.open(); HEADLINES.refresh(true); 1`); await sleep(1200);
+      const np = JSON.parse(await js(`JSON.stringify({ page: PAGES.active() === 'news' && !!document.getElementById('news-page').offsetParent, noTab: !document.querySelector('#tabs [data-tab="news"]'), cal: !!document.querySelector('#news-page .np-cal .np-cal-h'), btn: !!document.getElementById('news-btn') })`));
+      check('news: its own page (headlines + calendar), titlebar button, no side tab', np.page && np.noTab && np.cal && np.btn, np);
       const nw = JSON.parse(await js(`(() => { const items = [...document.querySelectorAll('#newsfeed .nw-item')];
         const rel = items.map((a) => a.querySelector('.nw-t').textContent);
         document.querySelector('[data-nf=all]').click(); const all = document.querySelectorAll('#newsfeed .nw-item').length;
         return JSON.stringify({ rel, all, blank: items.every((a) => a.target === '_blank'), invTime: [...document.querySelectorAll('#newsfeed .nw-m')].map((m) => m.textContent).find((t) => /Investing/.test(t)) }); })()`));
       check('news: relevant headlines for XAUUSD (gold, Fed) and not GBP/JPY', nw.rel.some((t) => /Gold Price/.test(t)) && nw.rel.some((t) => /FOMC/.test(t)) && !nw.rel.some((t) => /GBP\/JPY/.test(t)), nw.rel);
       check('news: all sources merged, open in browser', nw.all === 4 && nw.blank, nw);
-      await js(`document.querySelector('[data-nf=rel]').click(); 1`); await sleep(200); await A.shot('news');
+      await js(`document.querySelector('[data-nf=rel]').click(); 1`); await sleep(200); await A.shot('news-page');
+      const nt = JSON.parse(await js(`(() => { NEWSPAGE.close(); document.querySelector('#tabs [data-tab="market"]').click(); window.dispatchEvent(new Event('focus')); return JSON.stringify({ teaser: !!document.getElementById('news-teaser') }); })()`));
+      check('news: latest-headlines teaser stays in the ราคา tab', nt.teaser, nt);
       check('news: Investing.com time parsed', /30 นาที/.test(nw.invTime || ''), nw.invTime);
     }
 
@@ -279,20 +309,21 @@ app.whenReady().then(async () => {
     check('mt5 positions: read-only panel with position + pending order', pp.shown && pp.rows === 2 && pp.ro && pp.eq, pp);
     check('mt5 positions: entry/SL/TP + order lines on the chart', pp.lines === -1 || pp.lines >= 4, pp.lines);
     await js(`S.source = 'vcg'; true`); send('positions', null);
-    // page tabs: open บทเรียน as a full page, side panel keeps working, close puts it back
+    await js(`PAGES.close('learn'); PAGES.close('news'); PAGES.close('dashboard'); true`);
+    // page tabs: open Log as a full page, side panel keeps working, close puts it back
     const pg = JSON.parse(await js(`(async () => { const w = (ms) => new Promise((r) => setTimeout(r, ms));
-      PAGES.open('learn'); await w(150);
-      const r = { bar: !document.getElementById('pagebar').classList.contains('hidden'), inPage: !!document.querySelector('#pages .page [id=tab-learn]'),
-        chartHidden: getComputedStyle(document.getElementById('chart-wrap')).display === 'none' || document.getElementById('chart-wrap').offsetParent === null, lessonsShown: document.querySelectorAll('#tab-learn *').length > 20 };
+      PAGES.open('log'); await w(150);
+      const r = { bar: !document.getElementById('pagebar').classList.contains('hidden'), inPage: !!document.querySelector('#pages .page [id=tab-log]'),
+        chartHidden: getComputedStyle(document.getElementById('chart-wrap')).display === 'none' || document.getElementById('chart-wrap').offsetParent === null, lessonsShown: document.querySelectorAll('#tab-log *').length > 3 };
       document.querySelector('#tabs [data-tab="calc"]').click(); await w(50);
-      r.sideCalc = !document.getElementById('tab-calc').classList.contains('hidden') && !document.getElementById('tab-learn').classList.contains('hidden');
-      document.querySelector('#tabs [data-tab="learn"]').click(); await w(50);
-      r.learnTabFocusesPage = PAGES.active() === 'learn' && document.querySelector('#tabs [data-tab="calc"]').classList.contains('active');
+      r.sideCalc = !document.getElementById('tab-calc').classList.contains('hidden') && !document.getElementById('tab-log').classList.contains('hidden');
+      document.querySelector('#tabs [data-tab="log"]').click(); await w(50);
+      r.learnTabFocusesPage = PAGES.active() === 'log' && document.querySelector('#tabs [data-tab="calc"]').classList.contains('active');
       PAGES.activate('chart'); await w(50); r.chartBack = getComputedStyle(document.getElementById('chart-wrap')).display !== 'none';
-      PAGES.close('learn'); await w(50);
-      r.docked = document.getElementById('tab-learn').parentElement.id === 'side' && document.getElementById('tab-learn').classList.contains('tab') && document.getElementById('pagebar').classList.contains('hidden');
+      PAGES.close('log'); await w(50);
+      r.docked = document.getElementById('tab-log').parentElement.id === 'side' && document.getElementById('tab-log').classList.contains('tab') && document.getElementById('pagebar').classList.contains('hidden');
       return JSON.stringify(r); })()`));
-    check('page tabs: lesson opens as a page, side tabs still work, close docks it back', Object.values(pg).every(Boolean), pg);
+    check('page tabs: Log opens as a page, side tabs still work, close docks it back', Object.values(pg).every(Boolean), pg);
     await js(`PAGES.open('news'); PAGES.open('learn'); true`); await new Promise((r) => setTimeout(r, 300)); await shot('page-tabs'); await js(`PAGES.close('learn'); PAGES.close('news'); true`);
     const abd = JSON.parse(await js(`(() => { const a = document.querySelector('[data-sec="about"] .about-dev'); return JSON.stringify({ dev: !!a && /guiar-dev/.test(a.textContent), support: !!a && /สนับสนุนผู้พัฒนา/.test(a.textContent), issues: !!a && !!a.querySelector('a[href$="/issues"]') }); })()`));
     check('about: developer credit + support section', abd.dev && abd.support && abd.issues, abd);
@@ -338,31 +369,29 @@ app.whenReady().then(async () => {
       check('dashboard: closing returns to the chart', await js(`PAGES.active() === 'chart' && getComputedStyle(document.getElementById('chart-wrap')).display !== 'none'`));
     }
     // ---- money management: lessons, plan table, practice problems, cent accounts (mm.js / mm-learn.js / planner.js)
-    await js(`document.querySelector('#tabs [data-tab="learn"]').click(); true`);
-    const mmL = JSON.parse(await js(`(() => { const g = document.querySelector('#lessons .lesson-cat[data-cat="mm"]'); const b = document.querySelector('.lesson-cats [data-lc="mm"]'); if (b) b.click();
-      const ds = g ? [...g.querySelectorAll('details')] : []; const plan = ds.find((d) => d.querySelector('.mm-widget[data-w="plan"]')); if (plan) { plan.open = true; }
-      return JSON.stringify({ cat: !!g, n: ds.length, plan: !!plan }); })()`));
+    const mmL = JSON.parse(await js(`(() => { const ls = LEARN.lessons().filter((l) => l.cat === 'mm'); LEARN.open('p:mmplan');
+      return JSON.stringify({ cat: !!document.querySelector('#learn-center .lc-cat[data-cat="mm"]'), n: ls.length, plan: !!document.querySelector('#learn-center .mm-widget[data-w="plan"]') }); })()`));
     await new Promise((r) => setTimeout(r, 200));
-    const mmP = JSON.parse(await js(`(() => { const w = document.querySelector('#lessons .mm-widget[data-w="plan"]'); if (!w || !w.dataset.on) return JSON.stringify({ mounted: false });
+    const mmP = JSON.parse(await js(`(() => { const w = document.querySelector('#learn-center .mm-widget[data-w="plan"]'); if (!w || !w.dataset.on) return JSON.stringify({ mounted: false });
       const click = (k, v) => w.querySelector('[data-p="' + k + '"][data-v="' + v + '"]').click();
       click('risk', 1); click('type', 'auto'); click('size', 100); const s100 = w.querySelector('.mm-sum').textContent, l100 = w.querySelector('.mm-t tbody tr:last-child td:nth-child(2) b').textContent;
       click('size', 10000); const s10k = w.querySelector('.mm-sum').textContent, l10k = w.querySelector('.mm-t tbody tr:first-child td:nth-child(2) b').textContent;
-      click('size', 1000); w.scrollIntoView({ block: 'start' }); return JSON.stringify({ mounted: true, cent100: /เซ็นต์/.test(s100) && /10,000 USC/.test(s100), l100, std10k: /มาตรฐาน/.test(s10k), l10k }); })()`));
+      click('size', 1000); return JSON.stringify({ mounted: true, cent100: /เซ็นต์/.test(s100) && /10,000 USC/.test(s100), l100, std10k: /มาตรฐาน/.test(s10k), l10k }); })()`));
     await new Promise((r) => setTimeout(r, 200)); await shot('mm-plan');
-    await js(`(() => { const d = [...document.querySelectorAll('#lessons .lesson-cat[data-cat="mm"] details')].find((x) => /บัญชีเซ็นต์/.test(x.querySelector('summary').textContent)); if (d) { d.open = true; d.scrollIntoView(); } })(); true`);
+    await js(`(() => { const l = LEARN.lessons().find((x) => x.cat === 'mm' && /บัญชีเซ็นต์/.test(x.title)); if (l) LEARN.open(l.id); })(); true`);
     await new Promise((r) => setTimeout(r, 150)); await shot('mm-lesson');
     check('mm: lessons category with 10+ lessons', mmL.cat && mmL.n >= 10 && mmL.plan, mmL);
     check('mm: plan table switches account size ($100 → cent 0.10 cent lot, $10k → 0.33 lot)', mmP.mounted && mmP.cent100 && mmP.l100 === '0.10' && mmP.std10k && mmP.l10k === '0.33', mmP);
     const mmQ = JSON.parse(await js(`(async () => { const w8 = (ms) => new Promise((r) => setTimeout(r, ms));
-      document.querySelector('#tabs [data-tab="practice"]').click(); await w8(50);
-      const w = document.querySelector('#mm-quiz-panel .mm-widget'); if (!w || !w._mm) return JSON.stringify({ ok: false });
+      const btn = document.createElement('button'); btn.dataset.mmPractice = ''; document.body.appendChild(btn); btn.click(); btn.remove(); await w8(80);   // a lesson's "ฝึกโจทย์" button
+      const w = document.querySelector('#learn-center .mm-widget[data-w="quiz"]'); if (!w || !w._mm) return JSON.stringify({ ok: false, view: LEARN.view() });
       w._mm.next(); const p = w._mm.get(); const put = (v) => { w.querySelector('.mm-ans input').value = v; w.querySelector('.mm-ans button').click(); };
       put(String(p.answer * 1.5 + 1)); await w8(30); const bad = !!w.querySelector('.mm-bad');
       put(String(p.answer)); await w8(30); const good = !!w.querySelector('.mm-ok'), steps = w.querySelectorAll('.mm-steps li').length;
-      document.getElementById('mm-quiz-panel').scrollIntoView();
-      return JSON.stringify({ ok: true, kind: p.kind, bad, good, steps }); })()`));
+      return JSON.stringify({ ok: true, reached: LEARN.view() === 'p:mmquiz' && PAGES.active() === 'learn', kind: p.kind, bad, good, steps }); })()`));
     await shot('mm-quiz');
-    check('mm: random exercise — wrong answer flagged, right answer accepted with worked steps', mmQ.ok && mmQ.bad && mmQ.good && mmQ.steps >= 2, mmQ);
+    check('mm: practice opens in the learning center — wrong answer flagged, right answer accepted with worked steps', mmQ.ok && mmQ.reached && mmQ.bad && mmQ.good && mmQ.steps >= 2, mmQ);
+    await js(`LEARN.close(true); true`);
     const cent = JSON.parse(await js(`(() => { const keep = { ...S.plan }; document.querySelector('#tabs [data-tab="calc"]').click();
       Object.assign(S.plan, { account: 'cent', balance: '10000', riskMode: 'pct', risk: '1', side: 'buy', entry: '3500.00', sl: '3490.00', tp1: '', tp2: '', adds: '0', vpp: '', lotStep: 0.01, minLot: 0.01 });
       renderPlanner(); const r = computePlan(); const t = document.getElementById('planner').textContent;
@@ -409,7 +438,12 @@ app.whenReady().then(async () => {
       const shell = JSON.parse(await N.js(`(async () => { const W = (ms) => new Promise((r) => setTimeout(r, ms)); const r = {};
         document.getElementById('connect').classList.add('hidden');
         for (const p of ['market', 'analysis', 'practice', 'more']) { document.querySelector('[data-nav=' + p + ']').click(); await W(80); r[p] = Math.round(document.getElementById('side').getBoundingClientRect().width); }
-        document.querySelector('[data-go=learn]').click(); await W(80); r.learnVisible = !document.getElementById('tab-learn').classList.contains('hidden');
+        document.querySelector('[data-do=learn]').click(); await W(120); const lc = document.getElementById('learn-center');
+        r.learnVisible = !lc.classList.contains('hidden') && Math.round(lc.getBoundingClientRect().width) >= 380 && !lc.classList.contains('m-reading');
+        lc.querySelector('.lc-nav .lc-les').click(); await W(80); r.reader = lc.classList.contains('m-reading') && !!lc.querySelector('.lc-doc.lesson h1');
+        r.backToList = window.__mobileBack() && !lc.classList.contains('m-reading') && !lc.classList.contains('hidden');
+        r.backClose = window.__mobileBack() && lc.classList.contains('hidden');
+        document.querySelector('[data-nav=learn]').click(); await W(80); r.navLearn = !lc.classList.contains('hidden') && document.querySelector('[data-nav=learn]').classList.contains('on');
         document.querySelector('[data-nav=chart]').click(); await W(80); r.chartHidden = document.body.classList.contains('hide-side');
         document.getElementById('m-draw').click(); await W(80); r.toolsSheet = MSHEET.isOpen() && document.querySelectorAll('#msheet [data-t]').length >= 15;
         document.querySelector('#msheet [data-t=trend]').click(); await W(80); r.pill = !document.getElementById('m-pill').classList.contains('hidden') && S.tool === 'trend';
@@ -418,7 +452,9 @@ app.whenReady().then(async () => {
         r.back2 = window.__mobileBack() && !MSHEET.isOpen() && !!document.querySelector('.dropdown #ind-menu');
         return JSON.stringify(r); })()`));
       check('android shell: pages fill the screen', ['market', 'analysis', 'practice', 'more'].every((k) => shell[k] >= 380), shell);
-      check('android shell: more → lessons, back to chart', shell.learnVisible && shell.chartHidden, shell);
+      check('android shell: learning center list → reader → back, from More and the bottom nav; back to chart', shell.learnVisible && shell.reader && shell.backToList && shell.backClose && shell.navLearn && shell.chartHidden, shell);
+      await N.js(`LEARN.open(); true`); await sleep(250); await N.shot('learn-mobile-list');
+      await N.js(`LEARN.open(LEARN.lessons().find((l) => /^Hammer/.test(l.title)).id); true`); await sleep(300); await N.shot('learn-mobile-reader'); await N.js(`LEARN.close(); true`);
       check('android shell: drawing sheet + tool pill + back', shell.toolsSheet && shell.pill && shell.back1, shell);
       check('android shell: indicator sheet borrows and returns the menu', shell.indSheet && shell.back2, shell);
       await N.js(`document.getElementById('connect').classList.remove('hidden'); renderConnect(); 1`);

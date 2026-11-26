@@ -68,7 +68,8 @@ const SETUP = (() => {
       steps: [{ h: 'ไม่ต้องสมัคร ไม่ต้อง login', body: () => `
         <p>ใช้กราฟตัวอย่างฝึกอ่านแท่งเทียน ตีเส้น วิเคราะห์ และฝึกเทรดจำลองได้ทุกอย่าง</p>
         <p class="muted">อยากได้ราคาจริงเมื่อไร กลับมาที่คู่มือนี้แล้วเลือก VCG หรือ MT5</p>
-        <button class="su-primary" data-act="demo">เริ่มใช้ Demo</button>` }],
+        <button class="su-primary" data-act="demo">เริ่มใช้ Demo</button>
+        <button class="su-secondary" data-act="learn">${ICON.html('graduation-cap', 16)}เปิดศูนย์การเรียนรู้</button>` }],
     },
     vcg: {
       title: 'เชื่อมต่อ VCG Markets',
@@ -178,6 +179,7 @@ const SETUP = (() => {
   }
   async function act(a) {
     if (a === 'demo') { setSource('demo'); close(true); toast('ใช้ข้อมูล Demo แล้ว', 'ok'); }
+    else if (a === 'learn') { if (S.source !== 'demo' && !st().connected) setSource('demo'); close(true); if (window.LEARN) LEARN.open(); }
     else if (a === 'vcg-login') { if (S.source !== 'vcg') setSource('vcg'); const ok = vcg.showTrader(); vcg.log('info', 'คู่มือ: เปิดหน้า login VCG', null, 'auth'); if (ok === false) toast('เปิดหน้า login ไม่ได้ — ดูแท็บ Log', 'error'); }
     else if (a === 'vcg-retry') { vcg.reloadTrader(); toast('กำลังเชื่อมต่อใหม่…', 'info'); }
     else if (a === 'mt5-install') {
