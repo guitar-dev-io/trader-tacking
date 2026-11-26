@@ -1,4 +1,4 @@
-/* "ผลการเทรด" — trading journal dashboard (journal-page.js) */
+/* "ผลการเทรด" — trading journal dashboard (src/pages/journal) */
 .jr { height: 100%; overflow: auto; background: var(--bg); color: var(--text); }
 .jr .jr-in { max-width: 1320px; margin: 0 auto; padding: 18px 24px 40px; display: flex; flex-direction: column; gap: 14px; }
 .jr .pos { color: var(--up); } .jr .neg { color: var(--down); }

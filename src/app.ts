@@ -30,7 +30,7 @@ import '../ui.js';
 import '../mobile.js';
 import '../pages.js';
 import '../about.js';
-import '../journal-page.js';
+import './pages/journal/index';
 import '../dashboard.js';
 import './pages/learn/index';
 import './pages/news/index';
