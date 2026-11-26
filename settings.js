@@ -300,12 +300,12 @@ async function eaInfo() {
 if ($('st-ea-update')) {
   if (!vcg.mt5UpdateEA) { $('st-ea-update').disabled = $('st-ea-editor').disabled = $('st-ea-auto').disabled = true; }
   if (!vcg.mt5UpdateEA) { ['st-mt5-autolaunch', 'st-mt5-closequit'].forEach((id) => { if ($(id)) $(id).disabled = true; }); }
-  if (vcg.onMt5Auto) vcg.onMt5Auto((m) => { if (m && m.state === 'launching') toast('กำลังเปิด MT5 ให้อัตโนมัติ (ย่อหน้าต่าง) — รอสักครู่', 'info', 6000); });
   else {
     $('st-ea-update').onclick = async () => { $('st-ea-update').disabled = true; try { await vcg.mt5UpdateEA(); } finally { $('st-ea-update').disabled = false; eaInfo(); } };
     $('st-ea-editor').onclick = async () => { const r = await vcg.mt5OpenEditor(); toast(r === true ? 'กำลังเปิด MetaEditor — กด Compile (F7)' : r === 'folder' ? 'เปิดโฟลเดอร์ EA แล้ว — ดับเบิลคลิกไฟล์เพื่อเปิดใน MetaEditor' : 'ไม่พบ MT5 ในเครื่อง', r ? 'info' : 'warn', 7000); };
   }
 }
+if (vcg.onMt5Auto) vcg.onMt5Auto((m) => { if (m && m.state === 'launching') toast('กำลังเปิด MT5 ให้อัตโนมัติ (ย่อหน้าต่าง) — รอสักครู่', 'info', 6000); });
 if (vcg.onEAUpdate) vcg.onEAUpdate((d) => {
   toast(d.msg + (d.manual ? ' · การตั้งค่า → แหล่งราคา → MT5 → "เปิด MetaEditor"' : ''), d.state === 'ok' ? 'ok' : d.state === 'fail' ? 'warn' : 'info', d.state === 'start' ? 6000 : 12000);
   if (d.state !== 'start') eaInfo();

@@ -516,6 +516,8 @@ app.whenReady().then(async () => {
       if (a) a.checked = false; const save = document.getElementById('st-save'); if (save) save.click(); await new Promise((r) => setTimeout(r, 200));
       document.getElementById('modal-settings').classList.add('hidden'); return JSON.stringify(r); })()`));
     const sv = globalThis.__savedSettings && globalThis.__savedSettings.mt5;
+    const eb = JSON.parse(await js(`JSON.stringify({ upd: typeof document.getElementById('st-ea-update').onclick, ed: typeof document.getElementById('st-ea-editor').onclick })`));
+    check('settings: "อัปเดต EA ตอนนี้" and "เปิด MetaEditor" buttons are wired', eb.upd === 'function' && eb.ed === 'function', eb);
     check('settings: MT5 auto-launch toggles (on by default) are saved', al.has && al.def && sv && sv.autoLaunch === false && sv.closeOnQuit === true, { ...al, saved: sv });
     check('desktop: no console errors', A.errs.length === 0, A.errs.slice(0, 3));
     A.w.destroy();
