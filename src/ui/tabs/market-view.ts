@@ -1,4 +1,4 @@
-// ราคา tab: app-data.js owns symbols/quotes/alerts; it pushes snapshots here and Watchlist/Alerts.svelte render them.
+// ราคา tab: app-data.ts owns symbols/quotes/alerts; it pushes snapshots here and Watchlist/Alerts.svelte render them.
 import { mount, flushSync } from 'svelte';
 import { writable } from 'svelte/store';
 import Watchlist from './Watchlist.svelte';

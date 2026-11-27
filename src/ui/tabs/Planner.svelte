@@ -1,5 +1,5 @@
 <script lang="ts">
-  // "คำนวณ" tab: position size / scale-in calculator. The maths stays in planner.js (computePlan & friends);
+  // "คำนวณ" tab: position size / scale-in calculator. The maths stays in planner.ts (computePlan & friends);
   // this component renders S.plan and writes user input back into it. `tick` re-renders after outside changes
   // (symbol switch, quotes, Claude's `plan` command → renderPlanner()).
   import Icon from '../Icon.svelte';

@@ -11,7 +11,7 @@ import type { Plan } from '../core/mm';
 export interface MmLearnApi { mount(scope?: ParentNode): void; planWidget(root: El): void; quizWidget(root: El): void }
 let MM_LEARN!: MmLearnApi; // set below; exported (was window.MM_LEARN)
 // Money Management (MM) lessons, the "MM plan by account size" table and random calculation practice.
-// Loaded after lessons-guide.js (adds a lesson category) and before app.js renders the lesson book.
+// Loaded after lessons-guide.ts (adds a lesson category) and before app.ts renders the lesson book.
 (function () {
   const ic = (n: string, s = 14) => (typeof ICON !== 'undefined' && ICON.html ? ICON.html(n, s) : '');
   const $$ = (r: any, q: string) => r.querySelector(q);

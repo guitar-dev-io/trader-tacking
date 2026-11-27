@@ -1,6 +1,6 @@
 <script lang="ts">
   // One panel of the วิเคราะห์ tab, chosen by `part`: market structure, the active/last signal card, or the
-  // back-test table. Data: S.A (from runAnalysis in app-analysis.js); `analysisTick` re-renders.
+  // back-test table. Data: S.A (from runAnalysis in app-analysis.ts); `analysisTick` re-renders.
   import Icon from '../Icon.svelte';
   import { analysisTick } from './analysis-view';
   import { S, fmt, tf } from '../../app/app-core';

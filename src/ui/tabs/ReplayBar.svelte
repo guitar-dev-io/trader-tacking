@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Bar Replay controls (learn.js REPLAY owns the logic; this only renders and forwards clicks).
+  // Bar Replay controls (learn.ts REPLAY owns the logic; this only renders and forwards clicks).
   import Icon from '../Icon.svelte';
   import { rp, type ReplayActions } from './replay-view';
   let { api }: { api: ReplayActions } = $props();

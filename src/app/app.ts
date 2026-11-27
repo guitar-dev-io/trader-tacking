@@ -13,7 +13,7 @@ qsa('#tabs button[data-tab]').forEach((b) => (b.onclick = () => {
   qsa('.tab').forEach((t) => t.classList.toggle('hidden', t.id !== 'tab-' + b.dataset.tab));
   if (b.dataset.tab === 'log') logTab.opened();
 }));
-// lesson book: category chips + search over the original lessons (lessons.js) and the guide (lessons-guide.js)
+// lesson book: category chips + search over the original lessons (lessons.ts) and the guide (lessons-guide.ts)
 // the lesson book is the learning center page (src/pages/learn)
 
 logTab.init();

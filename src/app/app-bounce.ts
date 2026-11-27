@@ -3,6 +3,8 @@ import { view } from '../state';
 import { toast } from '../ui/toast';
 import { ICON } from './icons';
 import { AN, BOUNCE } from '../legacy/core';
+import type { PatternKey } from '../core/analysis';
+import type { ZoneType } from '../core/bounce';
 import { $, DOWN, S, TC, UP, esc, fibColor, fmt, store, tf } from './app-core';
 import { SETUP_TH, pct, rr, sigPayload } from './app-analysis';
 import { mount, flushSync } from 'svelte';
@@ -29,7 +31,7 @@ function drawBounce(W: number) {
       const yt = yOf(Math.max(z.lo, z.hi)), yb = yOf(Math.min(z.lo, z.hi)); if (yt == null || yb == null) return;
       const x0 = Math.max(0, xIdx(z.born) ?? 0);
       el('rect', { x: x0, y: yt, width: Math.max(0, W - x0), height: Math.max(3, yb - yt), fill: col + (k === 0 ? '30' : '1c'), stroke: col + (k === 0 ? 'cc' : '66'), 'stroke-width': k === 0 ? 1.5 : 1 });
-      ltxt(W - 8, (sd === 'buy' ? yb + 12 : yt - 4), `${sd === 'buy' ? 'จุดเด้ง Buy' : 'จุดเด้ง Sell'} ${'★'.repeat(z.stars)} ${z.types.map((t: string|number) => BOUNCE.TYPE[t].short).join('+')}`, col, 'end', 10, k === 0 ? 700 : 400);
+      ltxt(W - 8, (sd === 'buy' ? yb + 12 : yt - 4), `${sd === 'buy' ? 'จุดเด้ง Buy' : 'จุดเด้ง Sell'} ${'★'.repeat(z.stars)} ${z.types.map((t: ZoneType) => BOUNCE.TYPE[t].short).join('+')}`, col, 'end', 10, k === 0 ? 700 : 400);
       if (k === 0) {
         const ys = yOf(z.sl), ytp = yOf(z.tp1), lx = x0 + 4;
         if (ys != null) { el('line', { x1: x0, y1: ys, x2: W, y2: ys, stroke: col, 'stroke-dasharray': '2 3', opacity: 0.8 }); ltxt(lx, ys + (sd === 'buy' ? 12 : -4), `SL ${sd === 'buy' ? 'Buy' : 'Sell'} ${fmt(z.sl)}`, col, 'start', 10); }
@@ -78,7 +80,7 @@ function drawAutoFib(W: number) {
   for (const k of [0.382, 0.5, 0.618, 0.786]) line(at(k), k, `Fibo ${(k * 100).toFixed(1)}%`, k === 0.618);
   for (const k of [1.272, 1.618, 2.618]) line(ext(k), k, `เป้า ${(k * 100).toFixed(1)}%${k >= 1.618 ? ' ◎' : ''}`, k === 1.618 || k === 2.618);
 }
-let bounceTimer = 0;
+let bounceTimer: ReturnType<typeof setTimeout> | 0 = 0;
 function bounceTick() { // re-evaluate status as the live price moves (throttled)
   if (!S.A || bounceTimer) return;
   bounceTimer = setTimeout(() => { bounceTimer = 0; if (S.A) { runBounce(); view.dirty = true; } }, 1500);
@@ -109,7 +111,7 @@ function checkNewSignal() {
   const keys = Object.keys(S.notified); if (keys.length > 300) keys.slice(0, keys.length - 300).forEach((k) => delete S.notified[k]);
   store.set('notified', S.notified);
   const side = s.dir === 1 ? 'BUY' : 'SELL';
-  const text = `${s.dir === 1 ? '🟢' : '🔴'} ${side} ${S.symbol} ${tf().label}\n${SETUP_TH[s.setup]} · ${AN.PAT[s.pattern].name}\nEntry ${fmt(s.entry)} | SL ${fmt(s.sl)} | TP1 ${fmt(s.tp1)} | TP2 ${fmt(s.tp2)}\nสถิติก่อนหน้า: ${s.prior.n} ไม้, TP2 ${pct(s.prior.wr2)}, ${rr(s.prior.exp)}`;
+  const text = `${s.dir === 1 ? '🟢' : '🔴'} ${side} ${S.symbol} ${tf().label}\n${SETUP_TH[s.setup]} · ${AN.PAT[s.pattern as PatternKey].name}\nEntry ${fmt(s.entry)} | SL ${fmt(s.sl)} | TP1 ${fmt(s.tp1)} | TP2 ${fmt(s.tp2)}\nสถิติก่อนหน้า: ${s.prior.n} ไม้, TP2 ${pct(s.prior.wr2)}, ${rr(s.prior.exp)}`;
   PT.desktopNotify(`${side} ${S.symbol} ${tf().label}`, `Entry ${fmt(s.entry)} · SL ${fmt(s.sl)} · TP2 ${fmt(s.tp2)}`);
   PT.beep();
   vcg.log('info', `สัญญาณใหม่ ${side} ${S.symbol} ${tf().label} @ ${fmt(s.entry)}`, null, 'signal');

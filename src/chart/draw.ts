@@ -434,7 +434,7 @@ function renderLayers(): void {
      <span><input type="color" data-c="${i}" value="${(d.color || '#2962ff').slice(0, 7)}" style="width:22px;height:18px;padding:0;border:none;background:none"> <button data-del="${i}" aria-label="ลบ">${ICON.svg('x', 14)}</button></span></div>`).join('') || '<div class="item muted">ยังไม่มีรูปวาด</div>');
   p.querySelectorAll('[data-i]').forEach((r: HTMLElement) => (r.onclick = (e) => { if ((tgt(e) as Element).closest('button, input')) return; S.selected = +(r.dataset.i as string); view.dirty = true; renderLayers(); }));
   p.querySelectorAll('[data-del]').forEach((b: HTMLElement) => (b.onclick = () => { if (S.locked) return; pushHistory(); drawings.splice(+(b.dataset.del as string), 1); S.selected = null; saveDrawings(); view.dirty = true; renderLayers(); }));
-  p.querySelectorAll('[data-c]').forEach((c: HTMLInputElement) => (c.oninput = () => { drawings[+(c.dataset.c as string)].color = c.value; saveDrawings(); view.dirty = true; }));
+  p.querySelectorAll('[data-c]').forEach((c) => (c.oninput = () => { drawings[+(c.dataset.c as string)].color = c.value; saveDrawings(); view.dirty = true; }));
 }
 
 // ---------------------------------------------------------------- keyboard
@@ -488,7 +488,7 @@ $('cs-btn').onclick = (e: MouseEvent) => {
     <div class="item fibrow"><span>ย่อตัว</span><input id="cs-fib" value="${FIB.join(', ')}"></div>
     <label class="item"><input type="checkbox" id="cs-fibrev" ${FIB_REVERSE ? 'checked' : ''}> Fibo กลับด้าน: จุดแรก = 0, จุดที่สอง = 1 (ระดับ 1.272 / 1.618 / 2 / 2.618 ต่อเลยจุดที่สอง เป็นเป้า)</label>
     <div class="item fibrow"><span>เป้า (Extension)</span><input id="cs-fibx" value="${FIBX.join(', ')}"></div>
-    <div class="item fibpre" style="gap:6px;justify-content:flex-start;flex-wrap:wrap">${Object.keys(FIB_PRESETS).map((k) => `<button data-fp="${k}" title="${FIB_PRESETS[k].join(', ')}">${k}</button>`).join('')}<button id="cs-fib-reset">ค่าเริ่มต้น</button></div>`;
+    <div class="item fibpre" style="gap:6px;justify-content:flex-start;flex-wrap:wrap">${Object.keys(FIB_PRESETS).map((k) => `<button data-fp="${k}" title="${FIB_PRESETS[k as keyof typeof FIB_PRESETS].join(', ')}">${k}</button>`).join('')}<button id="cs-fib-reset">ค่าเริ่มต้น</button></div>`;
   m.classList.remove('hidden');
   const save = () => { store.set('chartCfg', S.chartCfg); applyChartCfg(); buildMain(); buildIndicators(); view.dirty = true; };
   $('cs-up').oninput = () => { S.chartCfg.up = $('cs-up').value; save(); };
@@ -500,8 +500,8 @@ $('cs-btn').onclick = (e: MouseEvent) => {
   $('cs-fib').onchange = () => { const a = parseLv($('cs-fib').value); if (a.length) { setFib(a); store.set('fibLevels', FIB); } $('cs-fib').value = FIB.join(', '); view.dirty = true; };
   $('cs-fibx').onchange = () => { const a = parseLv($('cs-fibx').value); if (a.length) { setFibX(a); store.set('fibExtLevels', FIBX); } $('cs-fibx').value = FIBX.join(', '); view.dirty = true; };
   const setRev = (v: boolean): void => { setFibReverse(!!v); store.set('fibReverse', FIB_REVERSE); $('cs-fibrev').checked = FIB_REVERSE; view.dirty = true; };
-  $('cs-fibrev').onchange = (e: Event) => setRev((tgt(e) as HTMLInputElement).checked);
-  $('cs-menu').querySelectorAll('[data-fp]').forEach((b: HTMLElement) => (b.onclick = () => { setFib(FIB_PRESETS[b.dataset.fp as string].slice()); store.set('fibLevels', FIB); $('cs-fib').value = FIB.join(', '); setRev(!!FIB_PRESET_REVERSE[b.dataset.fp as string]); }));
+  $('cs-fibrev').onchange = (e: Event) => setRev(tgt(e).checked);
+  $('cs-menu').querySelectorAll('[data-fp]').forEach((b: HTMLElement) => (b.onclick = () => { setFib(FIB_PRESETS[b.dataset.fp as keyof typeof FIB_PRESETS].slice()); store.set('fibLevels', FIB); $('cs-fib').value = FIB.join(', '); setRev(!!(FIB_PRESET_REVERSE as Record<string, boolean>)[b.dataset.fp as string]); }));
   $('cs-fib-reset').onclick = () => { setFib(FIB_DEF.slice()); setFibX(FIBX_DEF.slice()); store.set('fibLevels', FIB); store.set('fibExtLevels', FIBX); $('cs-fib').value = FIB.join(', '); $('cs-fibx').value = FIBX.join(', '); setRev(false); };
   $('cs-sess').onchange = () => { S.showSessions = $('cs-sess').checked; store.set('sessions', S.showSessions); view.dirty = true; };
 };

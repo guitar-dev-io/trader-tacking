@@ -1,4 +1,4 @@
-// ฝึก tab: learn.js (SIM / QUIZ / LESSON) owns the logic and pushes snapshots here; Sim/Quiz/LessonPack.svelte render them.
+// ฝึก tab: learn.ts (SIM / QUIZ / LESSON) owns the logic and pushes snapshots here; Sim/Quiz/LessonPack.svelte render them.
 import { mount, flushSync, type Component } from 'svelte';
 import { writable, type Writable } from 'svelte/store';
 import Sim from './Sim.svelte';

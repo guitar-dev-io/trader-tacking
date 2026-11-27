@@ -59,7 +59,7 @@
       swing: S.an.swingLen, rr1: P.rr1, rr2: P.rr2, slbuf: P.slBuf, minsamp: P.minSamples, maxbars: P.maxBars,
       apiOn: a.enabled, apiPort: a.port, apiToken: a.token, apiLan: a.lan,
       whUrl: w.url, whSig: w.onSignal, whAlert: w.onAlert, tgToken: t.botToken, tgChat: t.chatId, tgSig: t.onSignal, tgAlert: t.onAlert,
-      csv: !!(byId('csv') as HTMLInputElement | null)?.checked,
+      csv: !!byId('csv')?.checked,
     });
     ver.app = c.version || (window as any).APP_VERSION || ''; ver.data = c.userData || ''; ver.apiPort = a.port;
     msg = ''; resetMsg = ''; resetArmed = false;
@@ -92,9 +92,9 @@
       openAtLogin: f.login,
       mt5: { port: clampNum(f.mt5port, 1024, 65535, 7788), autoUpdateEA: f.eaAuto, autoLaunch: f.autoLaunch, closeOnQuit: f.closeQuit },
     });
-    const csvEl = byId('csv') as HTMLInputElement | null;
+    const csvEl = byId('csv');
     if (csvEl && f.csv !== csvEl.checked) vcg.toggleCsv();
-    if (f.tz !== store.get('tz', 'local')) { store.set('tz', f.tz); (byId('tz-sel') as HTMLSelectElement).value = f.tz; setTZ(zoneOffsetSec(f.tz)); loadChart(); }
+    if (f.tz !== store.get('tz', 'local')) { store.set('tz', f.tz); byId('tz-sel').value = f.tz; setTZ(zoneOffsetSec(f.tz)); loadChart(); }
     else if (before !== JSON.stringify([P, S.an])) runAnalysis();
     vcg.log('info', 'บันทึกการตั้งค่า', null, 'settings');
     msg = 'บันทึกแล้ว ✓';

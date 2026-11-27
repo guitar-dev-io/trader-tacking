@@ -11,5 +11,5 @@ function mountMore() {
   const ver = more.querySelector('.m-ver'); (ver || more.lastElementChild)!.before(host);
   mount(About, { target: host });
 }
-mountMore(); setTimeout(mountMore, 1500);           // the mobile More page is built by mobile.js
+mountMore(); setTimeout(mountMore, 1500);           // the mobile More page is built by mobile.ts
 

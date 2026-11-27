@@ -1,4 +1,4 @@
-// Snapshot that news.js pushes for NewsFeed.svelte (the headline list of the news page).
+// Snapshot that news.ts pushes for NewsFeed.svelte (the headline list of the news page).
 import { writable } from 'svelte/store';
 export interface NewsItem { title: string; link: string; src: string; t: number; kind: string; feed: string }
 export interface NewsView { list: (NewsItem & { ago: string })[]; chips: [string, string][]; filter: string; seenAt: number; loading: boolean; total: number;

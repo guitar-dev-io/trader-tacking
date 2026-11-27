@@ -4,7 +4,7 @@ import type { Lesson, LessonCat } from './lessons';
 let LESSONS_EXTRA!: Lesson[]; // set below; exported (was window.LESSONS_EXTRA)
 let LESSON_CAT_OF!: Record<number, string>; // set below: index in LESSONS → category id
 let LESSON_CATS!: LessonCat[]; // set below; exported (was window.LESSON_CATS)
-// Lesson book: categories + extra lessons (Thai). Loaded after lessons.js.
+// Lesson book: categories + extra lessons (Thai). Loaded after lessons.ts.
 // Candle illustrations are generated from OHLC numbers (0–100 scale, higher = higher price) so shapes are always correct.
 (function () {
   const UP = '#26a69a', DN = '#ef5350', WK = '#b2b5be', MU = '#8a90a0';

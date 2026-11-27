@@ -231,8 +231,8 @@ export function editIndicator(ind: Ind): void {
     `<div class="item" style="justify-content:flex-end;gap:6px"><button data-cancel>ยกเลิก</button><button data-ok class="primary">ตกลง</button></div>`;
   menu.querySelector('[data-cancel]').onclick = closeMenus;
   menu.querySelector('[data-ok]').onclick = () => {
-    menu.querySelectorAll('input[data-k]').forEach((i: HTMLInputElement) => { const v = parseFloat(i.value); if (isFinite(v)) ind.params[i.dataset.k as string] = v; });
-    const c = menu.querySelector('input[data-color]') as HTMLInputElement | null; if (c) ind.color = c.value;
+    menu.querySelectorAll('input[data-k]').forEach((i) => { const v = parseFloat(i.value); if (isFinite(v)) ind.params[i.dataset.k as string] = v; });
+    const c = menu.querySelector('input[data-color]'); if (c) ind.color = c.value;
     store.set('inds', S.inds); closeMenus(); buildIndicators();
   };
 }
@@ -279,7 +279,7 @@ export function openScriptEditor(id?: number | null): void {
 $('sc-example').innerHTML += Object.keys(CUSTOM.EXAMPLES).map((k) => `<option>${esc(k)}</option>`).join('');
 $('sc-example').onchange = () => { const k = $('sc-example').value; if (!k) return; $('sc-code').value = CUSTOM.EXAMPLES[k]; $('sc-name').value = k; $('sc-example').value = ''; };
 $('sc-code').addEventListener('keydown', (e: KeyboardEvent) => {
-  if (e.key === 'Tab') { e.preventDefault(); const t = tgt(e) as HTMLTextAreaElement, s = t.selectionStart; t.setRangeText('  ', s, t.selectionEnd, 'end'); }
+  if (e.key === 'Tab') { e.preventDefault(); const t = tgt(e), s = t.selectionStart; t.setRangeText('  ', s, t.selectionEnd, 'end'); }
 });
 function testScript(): boolean {
   if (!S.candles.length) { $('sc-msg').textContent = 'ยังไม่มีข้อมูลกราฟให้ทดสอบ'; return true; }

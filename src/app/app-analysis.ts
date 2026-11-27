@@ -1,6 +1,7 @@
 import { PT, def } from '../pt';
 import { view } from '../state';
 import { AN } from '../legacy/core';
+import type { Signal } from '../core/analysis';
 import { $, AN_VIEW_KEYS, S, TZ, digits, fmt, store, tf } from './app-core';
 import { closeMenus } from '../chart/chart';
 import { mount, flushSync } from 'svelte';
@@ -35,7 +36,7 @@ function openAnalysisMenu() {
 $('an-btn').onclick = (e) => { e.stopPropagation(); openAnalysisMenu(); };
 
 // ---------------------------------------------------------------- analysis
-const SETUP_TH = { pullback: 'ย่อตามเทรนด์', choch: 'กลับตัวหลัง CHoCH', sr: 'เด้งแนวรับ/ต้าน' };
+const SETUP_TH: Record<string, string> = { pullback: 'ย่อตามเทรนด์', choch: 'กลับตัวหลัง CHoCH', sr: 'เด้งแนวรับ/ต้าน' };
 const pct = (v: number|null) => (v == null ? '—' : (v * 100).toFixed(0) + '%');
 const rr = (v: number|null) => (v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + 'R');
 
@@ -83,12 +84,12 @@ function pushAnalysis() {
     } : null);
   }, 300);
 }
-function sigPayload(s: { dir: number; time: number; setup: any; pattern: string|number; entry: any; sl: any; tp1: any; tp2: any; tpS: any; learned: any; prior: any; reasons: any; r1: { res: any; }; r2: { res: any; }; }) {
+function sigPayload(s: Signal | null | undefined) {
   if (!s) return null;
   return { symbol: S.symbol, timeframe: tf().label, side: s.dir === 1 ? 'BUY' : 'SELL', time: new Date((s.time - TZ) * 1000).toISOString(),
     setup: s.setup, pattern: AN.PAT[s.pattern].name, entry: s.entry, sl: s.sl, tp1: s.tp1, tp2: s.tp2, structureTarget: s.tpS,
     learned: s.learned, priorStats: s.prior, reasons: s.reasons, resultTP1: s.r1.res, resultTP2: s.r2.res };
 }
 const anApi = { activeSignal: () => activeSignal(), SETUP_TH, pct, rr };
-for (const part of ['trend', 'signal', 'stats']) mount(Analysis, { target: $('an-' + part), props: { part, api: anApi } });
+for (const part of ['trend', 'signal', 'stats'] as const) mount(Analysis, { target: $('an-' + part), props: { part, api: anApi } });
 export { PERF, SETUP_TH, activeSignal, openAnalysisMenu, pct, renderAnalysis, rr, runAnalysis, sigPayload };

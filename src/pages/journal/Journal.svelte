@@ -39,7 +39,7 @@
   // ------------------------------------------------------------ KPIs
   const bal = $derived.by(() => {
     const snap = jr.raw && jr.raw.snapshots && jr.raw.snapshots[jr.raw.snapshots.length - 1];
-    const live = !jr.sampleMode && typeof POSITIONS !== 'undefined' && POSITIONS.data && POSITIONS.data() && POSITIONS.data().acct;
+    const live = !jr.sampleMode && typeof POSITIONS !== 'undefined' && POSITIONS.data && POSITIONS.data()?.acct;
     return { bal: live ? live.balance : snap && snap.balance, eq: live ? live.equity : snap && snap.equity };
   });
 

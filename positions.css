@@ -1,4 +1,4 @@
-/* My orders (MT5, read-only) — positions.js */
+/* My orders (MT5, read-only) — positions.ts */
 #positions-panel { padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 12px; }
 #positions-panel.hidden { display: none; }
 #positions-panel .pos-h { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }

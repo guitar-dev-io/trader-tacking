@@ -8,7 +8,7 @@ import { REPLAY } from './learn';
 // Show/hide panels (everything closable), mobile layout, Esc closes popups.
 (function () {
   const DEF = { side: true, tools: true, toolbar: true, bottom: true, zoom: true, legend: true, netbanner: true };
-  const mobile = vcg.platform === 'android' || window.matchMedia('(max-width: 900px)').matches;
+  const mobile = (vcg.platform as string) === 'android' || window.matchMedia('(max-width: 900px)').matches;
   if (mobile) document.body.classList.add('mobile');
   S.ui = { ...DEF, ...(mobile ? { side: false } : {}), ...store.get(mobile ? 'ui.m' : 'ui', {}) };
   function apply() {
@@ -95,12 +95,12 @@ import { REPLAY } from './learn';
     else if (S.ui.side && mobile) setUI('side', false);
     else vcg.minimize();
   });
-  // phones: layout lives in mobile.js (header, bottom nav, sheets)
+  // phones: layout lives in mobile.ts (header, bottom nav, sheets)
   apply(); syncSettings();
 
   // ---------- collapsible sections in the side panel ----------
   // <details class="fold" data-fold="key">: remember open/closed
-  const folds = store.get('folds', {});
+  const folds: Record<string, boolean> = store.get('folds', {});
   qsa('details.fold[data-fold]').forEach((d) => {
     const k = d.dataset.fold; if (k in folds) d.open = !!folds[k];
     d.addEventListener('toggle', () => { folds[k] = d.open; store.set('folds', folds); });
@@ -108,7 +108,7 @@ import { REPLAY } from './learn';
   // rendered panels (analysis, practice…): click the first header to fold the panel; state kept per panel id
   const FOLDABLE = ['an-trend', 'an-bounce', 'an-signal', 'an-stats', 'quiz', 'sim', 'lesson-pack'];
   FOLDABLE.forEach((id) => { const p = $(id); if (!p) return; p.classList.add('foldable'); if (folds[id] === false) p.classList.add('folded'); });
-  document.getElementById('side').addEventListener('click', (e) => {
+  $('side').addEventListener('click', (e) => {
     const h = tgt(e).closest('.panel-h'); if (!h || tgt(e).closest('button, input, select, a, label')) return;
     const p = h.parentElement; if (!p || !p.classList.contains('foldable') || p.querySelector('.panel-h') !== h) return;
     const f = p.classList.toggle('folded'); folds[p.id] = !f; store.set('folds', folds);

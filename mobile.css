@@ -1,4 +1,4 @@
-/* Phone shell (mobile.js). Only applies with body.m2, so the desktop layout is untouched. */
+/* Phone shell (mobile.ts). Only applies with body.m2, so the desktop layout is untouched. */
 body.m2 { --mh: 50px; --mt: 46px; --mn: 62px; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
 body.m2 button, body.m2 select, body.m2 input { min-height: 0; }
 

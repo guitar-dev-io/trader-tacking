@@ -1,6 +1,6 @@
 <script lang="ts">
   // "ออเดอร์ของฉัน (MT5)" panel in the ราคา tab — READ-ONLY view of the user's MT5 account, positions, pending
-  // orders and (optionally) deal history. positions.js owns the data and the chart lines; it pushes a snapshot
+  // orders and (optionally) deal history. positions.ts owns the data and the chart lines; it pushes a snapshot
   // into `posView`. Nothing here can place, change or close an order.
   import Icon from '../Icon.svelte';
   import { posView } from './positions-view';

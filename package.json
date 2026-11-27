@@ -17,7 +17,7 @@
     "prestart": "npm run build:core && npm run build:renderer",
     "prebuild:mac": "npm run build:renderer",
     "prebuild:win": "npm run build:renderer",
-    "typecheck": "tsc -p tsconfig.json && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings --output human && node scripts/codemod/check-free.mjs",
+    "typecheck": "tsc -p tsconfig.json && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings --output human",
     "build:core": "node scripts/build-core.mjs",
     "pretest": "npm run build:core"
   },

@@ -1,6 +1,6 @@
 <script lang="ts">
   // จุดเด้ง (bounce finder) panel of the วิเคราะห์ tab: buy/sell zone cards, the per-type stats table and the
-  // liquidity map. Data: S.B (BOUNCE.find in app-bounce.js); `bounceTick` re-renders.
+  // liquidity map. Data: S.B (BOUNCE.find in app-bounce.ts); `bounceTick` re-renders.
   import Icon from '../Icon.svelte';
   import { bounceTick } from './bounce-view';
   import { S, fmt, store, tf } from '../../app/app-core';

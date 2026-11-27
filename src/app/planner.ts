@@ -30,7 +30,7 @@ function contractSize(sym: string) {
   return 1;
 }
 // Converts a P/L amount in the symbol's quote currency to USD (account currency assumed USD)
-function quoteToUSD(sym: string|any[]) {
+function quoteToUSD(sym: string) {
   if (!/^[A-Z]{6,7}$/.test(sym)) return 1;
   const quote = sym.slice(-3), base = sym.slice(0, 3);
   if (quote === 'USD' || quote === 'UST') return 1;
@@ -51,7 +51,7 @@ const isCentAcct = () => S.plan.account === 'cent' || (S.plan.account !== 'std' 
 const CUR = () => (isCentAcct() ? 'USC' : 'USD');
 const floorStep = (x: number, step: number) => Math.floor(x / step + 1e-9) * step;
 const lotFmt = (x: number, step: number) => x.toFixed(Math.max(0, -Math.floor(Math.log10(step))));
-const money = (v: number|null) => {
+const money = (v: number | null | undefined) => {
   if (v == null || !isFinite(v)) return '—';
   const a = Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 2 });
   return (v < 0 ? '-' : '') + (isCentAcct() ? a + ' USC' : '$' + a);
@@ -131,10 +131,10 @@ function drawPlanner(W: number) {
   if (isFinite(parseFloat(S.plan.tp1))) line(parseFloat(S.plan.tp1), '#1e7d74', `TP1 ${fmt(parseFloat(S.plan.tp1))}`, '4 3');
   if (isFinite(parseFloat(S.plan.tp2))) line(parseFloat(S.plan.tp2), UP, `TP2 ${fmt(parseFloat(S.plan.tp2))}`);
   r.rows.forEach((x) => line(x.price, '#2962ff', `${x.i ? 'เติม #' + (x.i + 1) : 'Entry'} ${lotFmt(x.lot, step)} lot`, x.i ? '5 4' : ''));
-  if (r.rows.length > 1) line(r.avg, TC().fg, `เฉลี่ย ${fmt(r.avg)}`, '2 3');
+  if (r.rows.length > 1 && r.avg != null) line(r.avg, TC().fg, `เฉลี่ย ${fmt(r.avg)}`, '2 3');
 }
 
-ui.planner = { save: savePlan, render: renderPlanner, lot: (e, sl) => plannerLot(e, sl), from: (d) => plannerFrom(d), draw: (W, H) => drawPlanner(W, H) };
+ui.planner = { save: savePlan, render: renderPlanner, lot: (e, sl) => plannerLot(e, sl), from: (d) => plannerFrom(d), draw: (W) => drawPlanner(W) };
 mount(Planner, { target: $('planner'), props: { api: { computePlan, autoVpp, contractSize, isCentAcct, CUR, money, lotFmt, pointSize, toPts, savePlan, activeSignal,
   changed: () => { renderPlanner(); view.dirty = true; } } } });
 qs('#tabs [data-tab="calc"]').addEventListener('click', () => { renderPlanner(); view.dirty = true; });

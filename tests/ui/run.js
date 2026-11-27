@@ -390,7 +390,7 @@ app.whenReady().then(async () => {
     const lay = JSON.parse(await js(`JSON.stringify((() => { const r = (id) => document.getElementById(id).getBoundingClientRect(); return { shot: Math.round(r('shot').right), side: Math.round(r('side').left) }; })())`));
     check('layout: toolbar does not overlap side panel', lay.shot <= lay.side, lay);
     await A.shot('layout');
-    // MT5 read-only account panel + chart lines (positions.js)
+    // MT5 read-only account panel + chart lines (positions.ts)
     const pz = JSON.parse(await js(`(async () => { const prev = PT.S.source; PT.S.source = 'mt5'; const px = PT.S.candles.at(-1).close;
       window.__posTest = { acct: { currency: 'USD', balance: 1000, equity: 987.5, demo: true, leverage: 500 },
         positions: [{ ticket: 1, s: PT.S.symbol + 'brex.', side: 'buy', vol: 0.02, open: +(px + 5).toFixed(2), sl: +(px - 10).toFixed(2), tp: +(px + 20).toFixed(2), price: px, profit: -12.5, swap: 0, time: 1 }],
@@ -463,7 +463,7 @@ app.whenReady().then(async () => {
       await js(`PT.THEME.set('dark'); PT.DASH.close(); true`); await wait(200);
       check('dashboard: closing returns to the chart', await js(`PT.PAGES.active() === 'chart' && getComputedStyle(document.getElementById('chart-wrap')).display !== 'none'`));
     }
-    // ---- money management: lessons, plan table, practice problems, cent accounts (mm.js / mm-learn.js / planner.js)
+    // ---- money management: lessons, plan table, practice problems, cent accounts (mm.js / mm-learn.ts / planner.ts)
     const mmL = JSON.parse(await js(`(() => { const ls = PT.LEARN.lessons().filter((l) => l.cat === 'mm'); PT.LEARN.open('p:mmplan');
       return JSON.stringify({ cat: !!document.querySelector('#learn-center .lc-cat[data-cat="mm"]'), n: ls.length, plan: !!document.querySelector('#learn-center .mm-widget[data-w="plan"]') }); })()`));
     await new Promise((r) => setTimeout(r, 200));

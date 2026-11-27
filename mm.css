@@ -1,4 +1,4 @@
-/* Money management lessons, plan table and practice (mm-learn.js) */
+/* Money management lessons, plan table and practice (mm-learn.ts) */
 .lg-fig svg.mm-fig { background: var(--surface-2, var(--panel)); }
 .lg-fig:has(svg.mm-fig) { max-width: 340px; }
 .mm-formula { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; background: var(--surface-2, var(--panel)); border: 1px dashed var(--line); border-radius: 6px; padding: 6px 9px; color: var(--text); }

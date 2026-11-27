@@ -1,5 +1,5 @@
 <script lang="ts">
-  // "ข่าวและปฏิทิน" page: market headlines (news.js renders them into the legacy #newsfeed element, moved in here)
+  // "ข่าวและปฏิทิน" page: market headlines (news.ts renders them into the legacy #newsfeed element, moved in here)
   // next to the full economic calendar of the week.
   import Icon from '../../ui/Icon.svelte';
   import NewsCalendar from './NewsCalendar.svelte';

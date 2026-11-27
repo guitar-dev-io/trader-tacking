@@ -1,5 +1,5 @@
 import { onBack } from '../../ui/back';
-// Learning center page (Svelte). Desktop: a page tab (pages.js) with a titlebar button and Ctrl/⌘+L.
+// Learning center page (Svelte). Desktop: a page tab (pages.ts) with a titlebar button and Ctrl/⌘+L.
 // Phone: a full-screen page with list → reader → back.
 import { mount, flushSync } from 'svelte';
 import { PT, def } from '../../pt';

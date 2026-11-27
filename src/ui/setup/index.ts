@@ -18,7 +18,7 @@ async function act(a: string) {
   const st = connStatus || {};
   if (a === 'demo') { setSource('demo'); close(true); toast('ใช้ข้อมูล Demo แล้ว', 'ok'); }
   else if (a === 'learn') { if (S.source !== 'demo' && !st.connected) setSource('demo'); close(true); if (pages.learn) pages.learn.open(); }
-  else if (a === 'vcg-login') { if (S.source !== 'vcg') setSource('vcg'); const ok = vcg.showTrader(); vcg.log('info', 'คู่มือ: เปิดหน้า login VCG', null, 'auth'); if (ok === false) toast('เปิดหน้า login ไม่ได้ — ดูแท็บ Log', 'error'); }
+  else if (a === 'vcg-login') { if (S.source !== 'vcg') setSource('vcg'); const ok: unknown = vcg.showTrader(); vcg.log('info', 'คู่มือ: เปิดหน้า login VCG', null, 'auth'); if (ok === false) toast('เปิดหน้า login ไม่ได้ — ดูแท็บ Log', 'error'); }
   else if (a === 'vcg-retry') { vcg.reloadTrader(); toast('กำลังเชื่อมต่อใหม่…', 'info'); }
   else if (a === 'mt5-install') {
     if (!vcg.mt5InstallEA) { toast('ใช้ได้เฉพาะแอปบนคอม', 'warn'); return; }

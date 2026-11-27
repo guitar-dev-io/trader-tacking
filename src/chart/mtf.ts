@@ -70,7 +70,7 @@ export const MTF = (() => {
     if (!cfg.on) return;
     candles = []; bars = []; A = null; pending = true; err = ''; ms.setData([]); showMsg('กำลังโหลด ' + tfo().label + '…');
     $('mtf-title').textContent = `${S.symbol} · ${tfo().label}`;
-    const req = { symbol: S.symbol, candleType: activeType(), to: new Date().toISOString(), inclusive: true, limit: 600, slot: 'mtf' };
+    const req = { symbol: S.symbol, candleType: activeType()!, to: new Date().toISOString(), inclusive: true, limit: 600, slot: 'mtf' };
     if (S.source === 'demo') DEMO.requestChart(req); else vcg.requestChart(req);
     if (S.source === 'demo') DEMO.connect();
   }

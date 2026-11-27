@@ -1,4 +1,4 @@
-// ราคา tab "การเชื่อมต่อ & เครื่องมือ" section: app-data.js pushes CSV/API status; Tools.svelte renders it.
+// ราคา tab "การเชื่อมต่อ & เครื่องมือ" section: app-data.ts pushes CSV/API status; Tools.svelte renders it.
 import { mount, flushSync } from 'svelte';
 import { writable } from 'svelte/store';
 import Tools from './Tools.svelte';

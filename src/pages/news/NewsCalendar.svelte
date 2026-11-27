@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Economic calendar of the week (data: extras.js NEWS.week, from Forex Factory's public weekly file).
+  // Economic calendar of the week (data: extras.ts NEWS.week, from Forex Factory's public weekly file).
   // Clicking an event opens that day on Forex Factory (its own page; nothing is copied).
   import Icon from '../../ui/Icon.svelte';
   import { store } from '../../state';

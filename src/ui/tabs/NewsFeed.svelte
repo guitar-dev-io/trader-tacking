@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Headline list (news page): filter chips, short calendar, the list, sources. news.js fetches/merges the RSS
+  // Headline list (news page): filter chips, short calendar, the list, sources. news.ts fetches/merges the RSS
   // feeds and pushes a snapshot into `newsView`.
   import Icon from '../Icon.svelte';
   import { newsView } from './news-view';

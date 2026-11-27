@@ -12,8 +12,8 @@ import type { PositionsSnapshot } from '../main/ipc';
 // Shown in the ราคา tab and as lines/markers on the chart. Nothing here can place, change or close an order.
 const POSITIONS = (() => {
   if (!vcg.mt5Positions) return { data: () => null };
-  let data: { positions: any; orders: any; }|null = null, subscribed = false, lines: { s: any; l: any; }[] = [], linesFor: any = null, markersApi: any = null, deals: any[]|null = null, dealsSym: any = null, lastKey = '';
-  const opt: Record<string, any> = { onChart: store.get('posOnChart', true), hist: store.get('posHist', false), days: store.get('posDays', 7) };
+  let data: PositionsSnapshot | null = null, subscribed = false, lines: { s: any; l: any; }[] = [], linesFor: any = null, markersApi: any = null, deals: any[]|null = null, dealsSym: any = null, lastKey = '';
+  const opt: { onChart: boolean; hist: boolean; days: number } = { onChart: store.get('posOnChart', true), hist: store.get('posHist', false), days: store.get('posDays', 7) };
   const base = (s: any) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
   const same = (a: string, b: string) => a && b && (a === b || a.toUpperCase() === b.toUpperCase() || base(a) === base(b));
   const money = (v: number, cur?: string) => (v >= 0 ? '+' : '') + Number(v).toFixed(2) + (cur ? ' ' + cur : '');
@@ -32,8 +32,8 @@ const POSITIONS = (() => {
 
   // ------------------------------------------------------------ panel (src/ui/tabs/Positions.svelte)
   let mounted = false;
-  function setOpt(k: string|string[], v: any) {
-    opt[k] = v; store.set('pos' + k[0].toUpperCase() + k.slice(1), opt[k]);
+  function setOpt(k: 'onChart' | 'hist' | 'days', v: boolean | number) {
+    (opt as Record<string, boolean | number>)[k] = v; store.set('pos' + k[0].toUpperCase() + k.slice(1), opt[k]);
     if (k !== 'onChart') { deals = null; if (opt.hist) loadDeals(); }
     lastKey = ''; render(); drawChart();
   }
@@ -42,8 +42,8 @@ const POSITIONS = (() => {
     const show = S.source === 'mt5';
     el.classList.toggle('hidden', !show);
     if (!show) return;
-    if (!mounted) { mounted = true; el.replaceChildren(); mount(Positions, { target: el, props: { onRow: (sym: unknown) => { if (!same(sym, S.symbol)) switchSymbol(sym); }, onOpt: setOpt } }); }
-    posView.set({ data, deals, opt: { ...opt }, mt5: (connStatus || {}).mt5 || {}, same: (x) => same(x, S.symbol) }); flushSync();
+    if (!mounted) { mounted = true; el.replaceChildren(); mount(Positions, { target: el, props: { onRow: (sym: string) => { if (!same(sym, S.symbol)) switchSymbol(sym); }, onOpt: setOpt } }); }
+    posView.set({ data, deals, opt: { ...opt }, mt5: (connStatus || {}).mt5 || {}, same: (x: string) => !!same(x, S.symbol) }); flushSync();
   }
 
   // ------------------------------------------------------------ chart
@@ -91,7 +91,7 @@ const POSITIONS = (() => {
     catch (e: any) { deals = []; toast('อ่านประวัติจาก MT5 ไม่ได้: ' + e.message, 'warn', 6000); }
     lastKey = ''; render(); drawChart();
   }
-  function update(p: PositionsSnapshot) { data = p; render(); drawChart(); }
+  function update(p: PositionsSnapshot | null) { data = p; render(); drawChart(); }
 
   vcg.onPositions(update);
   setInterval(() => {

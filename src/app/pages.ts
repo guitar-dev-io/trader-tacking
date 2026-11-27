@@ -5,7 +5,7 @@ def({ PAGES: [() => PAGES] });
 // the chart, browser-style. The tab's own DOM node is moved, so everything inside keeps working; closing the page
 // puts it back into the side panel.
 const PAGES = (() => {
-  if (document.body.classList.contains('mobile')) return { open() {}, close() {}, activate() {}, register() {}, list: () => [], active: () => 'chart' };
+  if (document.body.classList.contains('mobile')) return { open(_k: string) {}, close(_k: string) {}, activate(_k: string) {}, register(_k: string, _n: string, _e: HTMLElement, _i?: string) {}, isOpen: (_k: string) => false, list: (): string[] => [], active: () => 'chart' };
   const NAMES: Record<string, any> = { market: 'ราคา', analysis: 'วิเคราะห์', practice: 'ฝึกเทรด', calc: 'คำนวณ', log: 'Log' };   // learn + news are pages of their own (src/pages/learn, src/pages/news)
   // Lucide icons (ISC license): maximize-2, x, chart-candlestick
   const svg = (d: string, s = 14) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -22,12 +22,12 @@ const PAGES = (() => {
   let busy = false;
   // pages without a side tab (e.g. the dashboard) — PAGES.register(key, name, element)
   const CUSTOM: Record<string, any> = {};
-  const saved = store.get('pageTabs', []);
-  let open = saved.filter((k) => NAMES[k]), active = store.get('pageActive', 'chart'), lastSide = 'market';
+  const saved: string[] = store.get('pageTabs', []);
+  let open: string[] = saved.filter((k) => NAMES[k]), active: string = store.get('pageActive', 'chart'), lastSide = 'market';
   const tabEl = (k: string) => CUSTOM[k] || $('tab-' + k), btn = (k: string) => qs(`#tabs button[data-tab="${k}"]`);
 
   function save() { store.set('pageTabs', open); store.set('pageActive', active); }
-  function dock(k: string|number) {                          // page → side panel
+  function dock(k: string) {                          // page → side panel
     if (CUSTOM[k]) { const w = host.querySelector(`[data-page="${k}"]`); if (w) w.remove(); return; }
     const el = tabEl(k); if (!el) return;
     el.classList.remove('page-body'); el.classList.add('tab', 'hidden');
@@ -68,12 +68,12 @@ const PAGES = (() => {
       const el = tabEl(active); if (el) el.scrollTop = 0;
     }
   }
-  function openPage(k: string|number) {
+  function openPage(k: string) {
     if (!NAMES[k]) return;
     if (!open.includes(k)) { open.push(k); undock(k); }
     activate(k);
   }
-  function register(k: string, name: any, el: any, icon: any) {
+  function register(k: string, name: string, el: HTMLElement, icon?: string) {
     NAMES[k] = name; CUSTOM[k] = el; if (icon) ICONS[k] = icon;
     if (saved.includes(k) && !open.includes(k)) { open.splice(Math.min(saved.indexOf(k), open.length), 0, k); undock(k); }
     if (store.get('pageActive', 'chart') === k && open.includes(k)) activate(k); else render();
@@ -115,6 +115,6 @@ const PAGES = (() => {
 
   open.forEach(undock); render();
   if (open.length && !open.includes(active)) active = 'chart';
-  return { open: openPage, close: closePage, activate, register, isOpen: (k: any) => open.includes(k), list: () => open.slice(), active: () => active };
+  return { open: openPage, close: closePage, activate, register, isOpen: (k: string) => open.includes(k), list: () => open.slice(), active: () => active };
 })();
 export { PAGES };

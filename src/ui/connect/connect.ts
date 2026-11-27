@@ -1,5 +1,5 @@
 // Connect screen (shown until prices flow): decides whether to show, which stage/status to show,
-// and renders Connect.svelte into #connect. app-data.js calls renderConnect(status, ctx) on every status.
+// and renders Connect.svelte into #connect. app-data.ts calls renderConnect(status, ctx) on every status.
 import { mount, flushSync } from 'svelte';
 import { writable } from 'svelte/store';
 import Connect from './Connect.svelte';

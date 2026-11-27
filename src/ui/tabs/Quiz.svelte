@@ -1,5 +1,5 @@
 <script lang="ts">
-  // "ฝึกด้วย Replay" panel: pick a start bar, random exercise, skip/exit, results. learn.js QUIZ/REPLAY own the logic.
+  // "ฝึกด้วย Replay" panel: pick a start bar, random exercise, skip/exit, results. learn.ts QUIZ/REPLAY own the logic.
   import Icon from '../Icon.svelte';
   import { quizView } from './practice-view';
   let { api }: { api: any } = $props();

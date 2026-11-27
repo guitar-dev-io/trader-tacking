@@ -1,4 +1,4 @@
-// Learning center state (Svelte runes). The lesson book (lessons.js + lessons-guide.js + mm-learn.js) in reading
+// Learning center state (Svelte runes). The lesson book (lessons.ts + lessons-guide.ts + mm-learn.ts) in reading
 // order, what the user has read, the current view and the search term. Same localStorage keys as before
 // (lc.read, lc.view, lc.cats, lc.scroll, lc.last), so saved progress carries over.
 import { SvelteSet } from 'svelte/reactivity';
@@ -16,7 +16,7 @@ const hash = (t: string) => { let h = 5381; for (let i = 0; i < t.length; i++) h
 const strip = (h: string) => h.replace(/<svg[\s\S]*?<\/svg>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
 const raw: { t: string; b: string; c: string }[] = [
   ...LESSONS.map((l: { t: string; b: string }, i: number) => ({ ...l, c: (LESSON_CAT_OF || {})[i] || cats[0].id })),
-  ...(LESSONS_EXTRA || []),
+  ...(LESSONS_EXTRA || []).map((l) => ({ ...l, c: l.c || cats[0].id })),
 ];
 // reading order = category order, then the order inside each category
 export const all: Lesson[] = cats.flatMap((c) => raw.filter((l) => l.c === c.id)).map((l) => {

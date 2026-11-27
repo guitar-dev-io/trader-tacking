@@ -58,7 +58,7 @@ export const TXT = (() => {
   }
   // text width with the real font (Thai vowels/tones included), not a per-letter guess
   const ctx = mk('canvas').getContext('2d') as CanvasRenderingContext2D, mcache = new Map<string, Measure>();
-  function measure(text?: string, size: number, weight: number): Measure {
+  function measure(text: string | undefined, size: number, weight: number): Measure {
     const key = size + '|' + weight + '|' + text; let m = mcache.get(key); if (m) return m;
     ctx.font = `${weight} ${size}px ${FONT}`;
     const lines = String(text || '').split('\n'), ws = lines.map((l) => ctx.measureText(l || ' ').width);
@@ -165,7 +165,7 @@ export const TXT = (() => {
       ${kind === 'label' ? styleBar(s, { noSize: true }) : styleBar(s)}
       <textarea rows="1" spellcheck="false" placeholder="${kind === 'callout' ? 'เช่น Entry ตรงนี้ / SL ใต้ Low' : kind === 'label' ? 'เช่น แนวต้าน H4' : 'พิมพ์ข้อความ… (Enter = ขึ้นบรรทัดใหม่)'}"></textarea>
       <div class="txe-f"><button class="txe-cancel">ยกเลิก</button><button class="txe-ok primary">บันทึก</button></div>`;
-    const ta = box.querySelector('textarea') as HTMLTextAreaElement;
+    const ta = box.querySelector('textarea') as unknown as HTMLTextAreaElement;
     ta.value = kind === 'label' ? (d && d.label) || '' : d ? d.text || '' : '';
     const host = mobile() ? document.body : $('chart-wrap');
     host.appendChild(box);

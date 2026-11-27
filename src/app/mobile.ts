@@ -9,6 +9,7 @@ import { openIndicatorMenu } from '../chart/chart';
 import { openAnalysisMenu } from './app-analysis';
 import { switchSymbol } from './app-data';
 import { GROUPS, TOOLS, onToolChange, setTool, undo } from '../chart/draw';
+import type { ToolKind } from '../chart/types';
 import { REPLAY } from './learn';
 import { SETUP } from '../ui/setup/index';
 import { pages } from '../pages/registry';
@@ -38,7 +39,7 @@ import { pages } from '../pages/registry';
     const cb = onCloseCb; onCloseCb = null; if (cb) cb();
   }
   // content: an HTML string, or an existing element (e.g. #ind-menu) that is borrowed and put back on close
-  function openSheet(title: string|null, content: string|Node, { onClose } = {}) {
+  function openSheet(title: string|null, content: string|HTMLElement, { onClose }: { onClose?: () => void } = {}) {
     closeSheet();
     sheet.querySelector('.ms-title').textContent = title;
     const body = sheet.querySelector('.ms-body'); body.innerHTML = '';
@@ -92,12 +93,12 @@ import { pages } from '../pages/registry';
   on($('m-draw'), 'click', openTools);
   on(wrap.querySelector('.mp-x'), 'click', () => setTool('cursor'));
   on(wrap.querySelector('.mp-undo'), 'click', () => { undo(); view.dirty = true; });
-  const HINT: Record<string, any> = { trend: 'แตะ 2 จุด', ray: 'แตะ 2 จุด', hline: 'แตะที่ราคา', vline: 'แตะที่เวลา', channel: 'แตะ 3 จุด', fib: 'แตะจุดเริ่ม แล้วจุดจบ', fibext: 'แตะ 3 จุด', rect: 'แตะ 2 มุม', brush: 'ลากเพื่อวาด',
+  const HINT: Record<string, string> = { trend: 'แตะ 2 จุด', ray: 'แตะ 2 จุด', hline: 'แตะที่ราคา', vline: 'แตะที่เวลา', channel: 'แตะ 3 จุด', fib: 'แตะจุดเริ่ม แล้วจุดจบ', fibext: 'แตะ 3 จุด', rect: 'แตะ 2 มุม', brush: 'ลากเพื่อวาด',
     long: 'แตะ Entry แล้ว SL', short: 'แตะ Entry แล้ว SL', text: 'แตะตำแหน่งข้อความ', arrowUp: 'แตะเพื่อวาง', arrowDown: 'แตะเพื่อวาง', measure: 'แตะ 2 จุด', alert: 'แตะที่ราคา' };
   function syncPill() {
     const t = S.tool, p = $('m-pill'), drawing = t && t !== 'cursor';
     p.classList.toggle('hidden', !drawing); $('m-draw').classList.toggle('on', drawing);
-    if (drawing) { p.querySelector('.mp-ic').innerHTML = ICON.svg(TOOLS[t].icon, 16); p.querySelector('.mp-t').textContent = `${TOOLS[t].name.split(' (')[0].split(' ·')[0]} · ${HINT[t] || ''}`; }
+    if (drawing) { p.querySelector('.mp-ic').innerHTML = ICON.svg(TOOLS[t as ToolKind].icon, 16); p.querySelector('.mp-t').textContent = `${TOOLS[t as ToolKind].name.split(' (')[0].split(' ·')[0]} · ${HINT[t] || ''}`; }
   }
   onToolChange(() => syncPill());   // every tool change, incl. draw's own switch back to cursor
 
@@ -106,7 +107,7 @@ import { pages } from '../pages/registry';
       `<button data-t="${k}" class="${S.tool === k ? 'on' : ''}">${ICON.svg(TOOLS[k].icon, 22)}<span>${esc(TOOLS[k].name.split(' (')[0].split(' ·')[0])}</span></button>`).join('')}</div>
       <div class="m-row2"><label class="m-switch"><input type="checkbox" id="m-magnet" ${S.magnet ? 'checked' : ''}> Magnet (ดูดเข้าราคา)</label>
       <button id="m-layers">รูปวาดทั้งหมด</button><button id="m-undo">${ICON.html('undo-2', 16)}ย้อน</button></div>`);
-    body.querySelectorAll('[data-t]').forEach((b) => (b.onclick = () => { setTool(b.dataset.t); closeSheet(); }));
+    body.querySelectorAll('[data-t]').forEach((b) => (b.onclick = () => { setTool(b.dataset.t as ToolKind); closeSheet(); }));
     body.querySelector('#m-magnet').onchange = (e: Event) => { S.magnet = tgt(e).checked; store.set('magnet', S.magnet); const m = $('magnet'); if (m) m.checked = S.magnet; };
     body.querySelector('#m-undo').onclick = () => { undo(); view.dirty = true; };
     body.querySelector('#m-layers').onclick = () => { closeSheet(); const b = $('t-layers'); if (b) b.click(); };
@@ -143,7 +144,7 @@ import { pages } from '../pages/registry';
   // ------------------------------------------------------------ symbol sheet
   function openSymbols() {
     const syms = [...new Set([S.symbol, ...(S.symbols || []), ...Object.keys(S.quotes)])].filter(Boolean);
-    const row = (s?: string|number|null) => { const q = S.quotes[s]; const ch = q && isFinite(q.changePct) ? q.changePct : null;
+    const row = (s: string) => { const q = S.quotes[s]; const ch = q && isFinite(q.changePct) ? q.changePct : null;
       return `<button data-s="${esc(s)}" class="${s === S.symbol ? 'on' : ''}"><b>${esc(s)}</b><span class="ms-px">${q ? fmt(q.bid, q.digits) : '—'}</span><span class="${ch > 0 ? 'up' : ch < 0 ? 'down' : 'muted'}">${ch == null ? '' : (ch > 0 ? '+' : '') + ch.toFixed(2) + '%'}</span></button>`; };
     const body = openSheet('เลือก Symbol', `<form class="m-add"><input placeholder="เพิ่ม symbol เช่น GBPUSD, BTCUSD" autocomplete="off" autocapitalize="characters"><button>เพิ่ม</button></form>
       <div class="m-syms">${syms.map(row).join('')}</div><p class="muted m-note">แตะเพื่อเปิดกราฟ · จัดการรายการ/แจ้งเตือนราคาได้ที่แท็บ "ราคา"</p>`);
@@ -170,7 +171,7 @@ import { pages } from '../pages/registry';
     <p class="muted m-ver"></p></div></div>`);
   const PAGES: Record<string, any> = { market: 'ราคา', analysis: 'วิเคราะห์', practice: 'ฝึกเทรด', calc: 'คำนวณ', log: 'Log', more: 'เพิ่มเติม' };
   const SUB: Record<string, any> = { calc: 1, log: 1 };
-  let page: string|number|null = null;
+  let page: string = '';
   function showPage(t: string) {
     page = t;
     if (t !== 'more') { const b = qs(`#tabs [data-tab="${t}"]`); if (b) b.click(); }
@@ -181,7 +182,7 @@ import { pages } from '../pages/registry';
     side.scrollTop = 0; qsa('#side .tab').forEach((x) => { x.scrollTop = 0; });
     syncNav();
   }
-  function goChart() { page = null; if (S.ui.side) ui.setUI?.('side', false); syncNav(); view.dirty = true; }
+  function goChart() { page = ''; if (S.ui.side) ui.setUI?.('side', false); syncNav(); view.dirty = true; }
   on(side.querySelector('.mph-back'), 'click', () => showPage('more'));
   side.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => showPage(b.dataset.go)));
   on(side.querySelector('[data-do=settings]'), 'click', () => $('open-settings').click());
@@ -222,7 +223,7 @@ import { pages } from '../pages/registry';
   // start on the chart
   goChart();
 
-  // Android back: sheet → tool → sub page → page → minimise (registered before ui.js's handler via capture flag)
+  // Android back: sheet → tool → sub page → page → minimise (registered before ui.ts's handler via capture flag)
   onBack(() => {
     if (MSHEET.isOpen()) { closeSheet(); return true; }
     if (S.tool && S.tool !== 'cursor') { setTool('cursor'); return true; }

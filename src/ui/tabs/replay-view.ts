@@ -1,4 +1,4 @@
-// Bar Replay control bar: learn.js (REPLAY) owns the replay logic and pushes state here; ReplayBar.svelte renders it.
+// Bar Replay control bar: learn.ts (REPLAY) owns the replay logic and pushes state here; ReplayBar.svelte renders it.
 import { mount, flushSync } from 'svelte';
 import { writable, get } from 'svelte/store';
 import ReplayBar from './ReplayBar.svelte';

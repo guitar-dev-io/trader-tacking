@@ -1,5 +1,5 @@
 <script lang="ts">
-  // A Lucide icon from the app's icon set (icons.js) — same markup as ICON.html(), so the CSS stays the same.
+  // A Lucide icon from the app's icon set (icons.ts) — same markup as ICON.html(), so the CSS stays the same.
   // bare: just the <svg> (ICON.svg), for places that never had the inline-icon wrapper.
   import { ICON } from '../app/icons';
   let { name, size = 16, cls = '', bare = false }: { name: string; size?: number; cls?: string; bare?: boolean } = $props();

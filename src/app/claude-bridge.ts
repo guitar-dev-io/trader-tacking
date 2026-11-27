@@ -13,7 +13,7 @@ import { setDrawings } from '../chart/drawings';
 import { computePlan, isCentAcct, renderPlanner, savePlan } from './planner';
 import { CACHE, NEWS } from './extras';
 import { HEADLINES } from './news';
-import type { PatternKey,Pivot } from '../core/analysis';
+import type { PatternKey, Pivot, Signal } from '../core/analysis';
 import type { Dir } from '../core/types';
 import type { BounceResult } from '../core/bounce';
 import type { Pool } from '../core/bounce';
@@ -64,7 +64,7 @@ import type { Drawing } from '../chart/types';
   }
   function analysis() {
     const A = S.A; if (!A) return { note: 'ยังไม่มีข้อมูลกราฟพอสำหรับวิเคราะห์' };
-    const sig = (s: { dir: number; time: any; setup: any; pattern: string|number; entry: any; sl: any; tp1: any; tp2: any; reasons: any; r1: { res: any; }; }) => s && { side: s.dir === 1 ? 'BUY' : 'SELL', time: utc(s.time), setup: s.setup, pattern: AN.PAT[s.pattern] && AN.PAT[s.pattern].name,
+    const sig = (s: Signal | null | undefined) => s && { side: s.dir === 1 ? 'BUY' : 'SELL', time: utc(s.time), setup: s.setup, pattern: AN.PAT[s.pattern] && AN.PAT[s.pattern].name,
       entry: s.entry, sl: s.sl, tp1: s.tp1, tp2: s.tp2, reasons: s.reasons, result: s.r1 && s.r1.res };
     return {
       symbol: S.symbol, timeframe: tf().label, bars: A.n, atr: A.atr[A.n - 1],
@@ -83,24 +83,24 @@ import type { Drawing } from '../chart/types';
       entry: x.entry, sl: x.sl, tp1: x.tp1, tp2: x.tp2, rr1: +x.rr1.toFixed(2), distanceAtr: +Math.abs(x.distAtr).toFixed(2),
       reasons: x.why.map((w: { neg: any; txt: string|number; }) => (w.neg ? '(-) ' : '') + w.txt), history: x.stat });
     return { symbol: S.symbol, timeframe: tf().label, price: B.price, atr: B.atr, buy: B.buy.map(z), sell: B.sell.map(z),
-      liquidity: { above: B.liq.highs.slice(0, 5).map((p: Pick<Pool,"side"|"count"|"pd">) => ({ price: p.price, kind: BOUNCE.poolName(p, false), strength: p.strength })),
-        below: B.liq.lows.slice(0, 5).map((p: Pick<Pool,"side"|"count"|"pd">) => ({ price: p.price, kind: BOUNCE.poolName(p, false), strength: p.strength })),
+      liquidity: { above: B.liq.highs.slice(0, 5).map((p: Pool) => ({ price: p.price, kind: BOUNCE.poolName(p, false), strength: p.strength })),
+        below: B.liq.lows.slice(0, 5).map((p: Pool) => ({ price: p.price, kind: BOUNCE.poolName(p, false), strength: p.strength })),
         recentSweeps: B.liq.sweeps.map((s: { side: any; price: any; j: number; }) => ({ side: s.side, price: s.price, barsAgo: S.A ? S.A.n - 1 - s.j : null })) },
       statsByZoneType: B.stats };
   }
   const TYPES = ['hline', 'trend', 'ray', 'rect', 'text', 'callout', 'arrowUp', 'arrowDown', 'fib', 'fibext', 'long', 'short'];
-  function draw(a: { type: any; points: string|any[]; color: any; text: any; fontSize: string|number; bg: boolean; bold: any; border: boolean; offsetX: string|number; offsetY: string|number; reverse: null; label: string; }) {
+  function draw(a: { type: any; points?: { time?: any; price: string | number }[]; color?: string; text?: string; fontSize?: string | number; bg?: boolean; bold?: boolean; border?: boolean; offsetX?: string | number; offsetY?: string | number; reverse?: boolean | null; label?: string }) {
     const type = a.type; if (!TYPES.includes(type)) throw new Error('type ต้องเป็นหนึ่งใน ' + TYPES.join(', '));
     const c = S.candles; if (!c.length) throw new Error('ยังไม่มีกราฟ');
     const last = c[c.length - 1].time, span = tf().sec;
-    const pts = (a.points || []).map((p: { time: any; price: string|number; }, i: number) => ({ time: toChart(p.time) ?? (last - (((a.points.length - 1 - i) * 30) * span)), price: +p.price }));
-    const need = { hline: 1, text: 1, callout: 1, arrowUp: 1, arrowDown: 1, fibext: 3 }[type] || 2;
+    const pts = (a.points || []).map((p, i: number) => ({ time: toChart(p.time) ?? (last - (((a.points!.length - 1 - i) * 30) * span)), price: +p.price }));
+    const need = ({ hline: 1, text: 1, callout: 1, arrowUp: 1, arrowDown: 1, fibext: 3 } as Record<string, number>)[type] || 2;
     if (pts.length < need || pts.some((p: { price: number; }) => !isFinite(p.price))) throw new Error(`${type} ต้องมี ${need} จุด {time?, price}`);
-    const d: Drawing = { id: uid(), type, pts: pts.slice(0, need === 1 ? 1 : need), color: a.color || ({ rect: '#2962ff', hline: '#f6c343' }[type] || '#ab47bc'), by: 'claude' };
+    const d: Drawing = { id: uid(), type, pts: pts.slice(0, need === 1 ? 1 : need), color: a.color || (({ rect: '#2962ff', hline: '#f6c343' } as Record<string, string>)[type] || '#ab47bc'), by: 'claude' };
     if (a.text) d.text = String(a.text).slice(0, 500);
     if (type === 'text' || type === 'callout') {   // optional style: fontSize 12-24, bg (bool), bold, border
-      d.size = Math.max(10, Math.min(28, +a.fontSize || 14)); d.bg = a.bg !== false; d.bold = !!a.bold; d.border = a.border ?? (type === 'callout');
-      if (type === 'callout') d.off = { dx: +a.offsetX || 24, dy: +a.offsetY || -56 };
+      d.size = Math.max(10, Math.min(28, +(a.fontSize ?? 0) || 14)); d.bg = a.bg !== false; d.bold = !!a.bold; d.border = a.border ?? (type === 'callout');
+      if (type === 'callout') d.off = { dx: +(a.offsetX ?? 0) || 24, dy: +(a.offsetY ?? 0) || -56 };
     }
     if (type === 'fib' && a.reverse != null) d.reverse = !!a.reverse;
     if ((type === 'text' || type === 'callout') && !d.text) throw new Error(type + ' ต้องมีข้อความ');
@@ -137,7 +137,7 @@ import type { Drawing } from '../chart/types';
   async function perf() {
     const n = S.candles.length, closed = S.candles.slice(0, -1);
     const time = (f: (...a: any[]) => unknown, k = 3) => { const t = []; for (let i = 0; i < k; i++) { const a = performance.now(); f(); t.push(performance.now() - a); } return Math.round(Math.min(...t)); };
-    const out = { symbol: S.symbol, timeframe: tf().label, bars: n, lastRun: { ...PERF } };
+    const out: Record<string, unknown> = { symbol: S.symbol, timeframe: tf().label, bars: n, lastRun: { ...PERF } };
     if (closed.length >= 60) {
       let A: { atr: (number|null)[]; patterns: PatternKey[][]; pivots: Pivot[]; trendAt: (Dir|0)[]; }|null|undefined = null;
       out.analyzeMs = time(() => { A = AN.analyze(closed, { swingLen: S.an.swingLen, digits: 2 }); });
@@ -147,7 +147,8 @@ import type { Drawing } from '../chart/types';
     if (typeof CACHE !== 'undefined') { const a = performance.now(); await CACHE.peek(); out.cacheReadMs = Math.round(performance.now() - a); }
     const fr = await new Promise((res) => { let k = 0; const a = performance.now(); const f = () => (++k < 30 ? requestAnimationFrame(f) : res(Math.round((performance.now() - a) / 30 * 10) / 10)); requestAnimationFrame(f); });
     out.frameMs = fr;
-    out.memoryMB = performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1e6) : null;
+    const mem = (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory;
+    out.memoryMB = mem ? Math.round(mem.usedJSHeapSize / 1e6) : null;
     out.cpuCores = navigator.hardwareConcurrency;
     return out;
   }
@@ -155,7 +156,7 @@ import type { Drawing } from '../chart/types';
     perf,
     news: (a: any) => (typeof HEADLINES !== 'undefined' ? { symbol: S.symbol, headlines: HEADLINES.list(a || {}), calendar: typeof NEWS !== 'undefined' && NEWS.upcoming ? NEWS.upcoming(10) : [] } : { headlines: [] }),
     view: viewInfo, open_chart: openChart, candles, analysis, bounce, draw, clear_drawings: clearDrawings, plan,
-    chart_rect: () => { const r = document.getElementById('chart-wrap').getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; },
+    chart_rect: () => { const r = document.getElementById('chart-wrap')!.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; },
   };
   vcg.onApiCmd(async ({ id, name, args }) => {
     try {

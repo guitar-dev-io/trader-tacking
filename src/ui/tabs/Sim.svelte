@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Paper-trading panel (simulated orders on live or replay data). learn.js SIM owns the account; this only renders
+  // Paper-trading panel (simulated orders on live or replay data). learn.ts SIM owns the account; this only renders
   // the snapshot and calls back. Same ids/data-attributes as the old HTML (tests + muscle memory).
   import { simView } from './practice-view';
   let { api }: { api: any } = $props();

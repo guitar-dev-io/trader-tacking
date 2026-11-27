@@ -64,7 +64,7 @@ export const qsa = (sel: string, root: ParentNode = document): NodeListOf<El> =>
 export const mk = (tag: string): El => document.createElement(tag) as El;
 /** event target as an app element */
 export const tgt = (e: Event): El => e.target as El;
-const esc = (s?: string|null) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const esc = (s?: string|null) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' } as Record<string, string>)[c]);
 
 // icons
 qsa('[data-icon]').forEach((i) => (i.innerHTML = ICON.svg(i.dataset.icon, 16)));

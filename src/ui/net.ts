@@ -1,10 +1,11 @@
 // Network status (titlebar pill, the "slow network" banner, toasts) — was the top of settings.js.
 // The settings window reads the last value through the netState store.
 import { writable } from 'svelte/store';
+import type { NetReport } from '../main/types';
 import { toast } from './toast';
 import { $ } from '../app/app-core';
 
-export interface NetInfo { level: 'ok' | 'slow' | 'stale' | 'down' | 'offline'; detail?: string; rtt?: number | null; feedDelay?: number | null; lastTickAgo?: number | null; reconnects?: number; cpu?: Record<string, number | null> }
+export type NetInfo = NetReport;
 export const NET_TH: Record<string, string> = { ok: 'ปกติ', slow: 'เน็ตช้า', stale: 'ราคาค้าง', down: 'หลุด', offline: 'ออฟไลน์' };
 export const netState = writable<NetInfo | null>(null);
 
@@ -18,7 +19,7 @@ vcg.onNet((n: NetInfo) => {
   const el = $('net')!;
   el.className = n.level;
   $('net-text')!.textContent = n.rtt != null ? `${n.rtt} ms` : NET_TH[n.level]!;
-  const c = n.cpu || {};
+  const c: Partial<NonNullable<NetReport['cpu']>> = n.cpu || {};
   el.title = `CPU: หน้าจอ ${c.ui ?? '—'}% · WebTrader ${c.webtrader ?? '—'}% · ตัวแอป ${c.app ?? '—'}% · GPU ${c.gpu ?? '—'}%\nสถานะ: ${NET_TH[n.level]}\nPing: ${n.rtt ?? '—'} ms\nราคาหน่วงเพิ่ม (เทียบตอนปกติ): ${n.feedDelay ?? '—'} ms\nราคาล่าสุด: ${n.lastTickAgo != null ? Math.round(n.lastTickAgo) + ' วินาทีที่แล้ว' : '—'}\nหลุดไปแล้ว: ${n.reconnects} ครั้ง`;
   const b = $('netbanner')!;
   if (n.level === 'ok') { b.classList.add('hidden'); bannerDismissed = null; }

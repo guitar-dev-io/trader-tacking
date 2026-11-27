@@ -1,5 +1,5 @@
 import { PT, def } from '../pt';
-import { showWatchlist, quoteWatchlist, showAlerts, type Quote } from '../ui/tabs/market-view';
+import { showWatchlist, quoteWatchlist, showAlerts } from '../ui/tabs/market-view';
 import { ui } from '../ui/registry';
 import { connStatus, setConnStatus } from '../state';
 import { view } from '../state';
@@ -25,7 +25,7 @@ function loadChart() {
   if (main) main.setData([]);
   updateIndicators(); renderAnalysis();
   $('loading').textContent = 'กำลังโหลดกราฟ…'; $('loading').classList.remove('hidden');
-  (S.source === 'demo' ? ui.demo.requestChart : vcg.requestChart)({ symbol: S.symbol, candleType: tf().type, to: new Date().toISOString(), inclusive: true, limit: Math.max(200, Math.min(5000, +S.prefs.historyBars || 1500)) });
+  (S.source === 'demo' ? ui.demo!.requestChart : vcg.requestChart)({ symbol: S.symbol, candleType: tf().type, to: new Date().toISOString(), inclusive: true, limit: Math.max(200, Math.min(5000, +S.prefs.historyBars || 1500)) });
   if (ui.cache) ui.cache.restore();
   clearTimeout(loadTimeout);
   loadTimeout = setTimeout(() => { if (S.pendingHistory) { $('loading').textContent = 'ยังไม่ได้ข้อมูลกราฟ — ตรวจสอบว่า login แล้ว (เปิด WebTrader) หรือกด "เชื่อมต่อใหม่" · ดูรายละเอียดในแท็บ Log'; vcg.log('warn', `ยังไม่ได้แท่งเทียน ${S.symbol} ${tf().label} หลัง 12 วินาที`, null, 'chart'); } }, 12000);
@@ -36,12 +36,12 @@ function loadMore() {
   if (S.loadingMore || S.noMore || S.pendingHistory || !S.candles.length) return;
   S.loadingMore = true;
   const to = new Date((S.candles[0].time - TZ) * 1000 - 1000).toISOString();
-  (S.source === 'demo' ? ui.demo.requestChart : vcg.requestChart)({ symbol: S.symbol, candleType: tf().type, to, inclusive: false, limit: 1000 });
+  (S.source === 'demo' ? ui.demo!.requestChart : vcg.requestChart)({ symbol: S.symbol, candleType: tf().type, to, inclusive: false, limit: 1000 });
   setTimeout(() => { S.loadingMore = false; }, 8000);
 }
 const num = (v: { value: any; scale: any; }|null) => (v == null ? null : typeof v === 'object' ? ('value' in v ? Number(v.value) / 10 ** (v.scale || 0) : null) : Number(v));
-const toCandle = (c: { timeSeconds: any; time: any; open: any; high: any; low: any; close: any; }) => ({ time: Number(c.timeSeconds ?? c.time) + TZ, open: num(c.open), high: num(c.high), low: num(c.low), close: num(c.close) });
-const valid = (c: { time: number; open: number; high: number; low: number; close: number; }) => isFinite(c.time) && c.open > 0 && c.high > 0 && c.low > 0 && c.close > 0;
+const toCandle = (c: { timeSeconds?: any; time?: any; open: any; high: any; low: any; close: any; }): Candle => ({ time: Number(c.timeSeconds ?? c.time) + TZ, open: num(c.open)!, high: num(c.high)!, low: num(c.low)!, close: num(c.close)! });
+const valid = (c: Candle) => isFinite(c.time) && c.open > 0 && c.high > 0 && c.low > 0 && c.close > 0;
 function dedupe(arr: Candle[]) { const out = []; for (const c of arr) { if (out.length && out[out.length - 1].time === c.time) out[out.length - 1] = c; else out.push(c); } return out; }
 
 function setAllData() {
@@ -62,13 +62,13 @@ function pushChartData() {
 function onChartMsg(m: ChartMsg) {
   if (m.type === 'chartAuthRenew') { if (S.pendingHistory) $('loading').textContent = 'token หมดอายุ — กำลังขอ token ใหม่และโหลดซ้ำ…'; else toast('ต่อ token ใหม่ให้กราฟแล้ว (token ของ VCG มีอายุ 15 นาที)', 'info'); return; }
   if (m.type === 'chartError') {
-    const msg = (m.data && m.data.message) || JSON.stringify(m.data).slice(0, 200);
+    const msg = (m.data && (m.data as { message?: string }).message) || JSON.stringify(m.data).slice(0, 200);
     if (S.candles.length && !S.pendingHistory) toast('กราฟ: ' + msg, 'warn');
     else { $('loading').textContent = 'โหลดกราฟไม่สำเร็จ: ' + msg + ' — กำลังลองใหม่'; $('loading').classList.remove('hidden'); }
     return;
   }
   if (m.type !== 'chart' || !m.data) return;
-  const d = m.data;
+  const d = m.data as { symbol?: string; history?: { symbol?: string; candles?: any[] }; updates?: { candles?: any[] } };
   const sym = d.symbol || (d.history && d.history.symbol);
   if (sym && sym !== S.symbol) return;
   if (d.history && d.history.candles) {
@@ -139,13 +139,12 @@ function onQuotes(fn: (...a: any[]) => unknown) { quoteHooks.push(fn); }
 function onQuotesMsg(list: Quote[]|{ symbol: any; time: string; bid: number; ask: number; digits: number; spread: number; change: number; changePct: number; }[]) {
   let cur = null;
   for (const q of list) {
-    const prev = S.quotes[q.symbol];
     S.quotes[q.symbol] = q;
     if (S.digits[q.symbol] !== q.digits) {
       S.digits[q.symbol] = q.digits;
       if (q.symbol === S.symbol && main) { main.applyOptions({ priceFormat: priceFormat() }); buildIndicators(); }
     }
-    updateRow(q, prev);
+    updateRow(q);
     checkAlerts(q);
     if (q.symbol === S.symbol) cur = q;
   }
@@ -196,7 +195,7 @@ function switchSymbol(s: unknown) {
 let lastConnected: boolean|null = null;
 // ---------------------------------------------------------------- connect screen (shown until prices flow) → src/ui/connect
 function connectAction(k: string|any[]) {
-  if (k === 'login') { const ok = vcg.showTrader(); vcg.log('info', 'ผู้ใช้กดเข้าสู่ระบบ VCG จากหน้าเชื่อมต่อ', null, 'auth'); if (ok === false) toast('เปิดหน้า login ไม่ได้ — ดูแท็บ Log', 'error'); }
+  if (k === 'login') { const ok: unknown = vcg.showTrader(); vcg.log('info', 'ผู้ใช้กดเข้าสู่ระบบ VCG จากหน้าเชื่อมต่อ', null, 'auth'); if (ok === false) toast('เปิดหน้า login ไม่ได้ — ดูแท็บ Log', 'error'); }
   else if (k === 'demo') ui.setSource?.('demo');
   else if (k === 'retry') { vcg.reloadTrader(); toast('กำลังเชื่อมต่อใหม่…', 'info'); setTimeout(loadChart, 8000); }
   else if (k === 'guide') ui.setup?.open();
