@@ -1,10 +1,10 @@
 // Analysis overlay: swings, structure (BOS/CHoCH), zones, patterns, TD counts, signal history and the
 // long/short position box, drawn on the SVG overlay each frame (called from the drawing loop in draw.js).
 import { AN } from '../legacy/core';
-import { DOWN, S, TC, UP, fmt } from '../../app-core.js';
+import { DOWN, S, TC, UP, fmt } from '../app/app-core';
 import { chart, customOut } from './chart';
-import { activeSignal } from '../../app-analysis.js';
-import { drawAutoFib, drawBounce, drawLiquidity } from '../../app-bounce.js';
+import { activeSignal } from '../app/app-analysis';
+import { drawAutoFib, drawBounce, drawLiquidity } from '../app/app-bounce';
 import { el, label, txt, xIdx, yOf } from '../ui/overlay';
 import type { CustomResult } from './custom';
 

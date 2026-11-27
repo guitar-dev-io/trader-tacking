@@ -1,12 +1,11 @@
 // Source pill in the watchlist header (VCG / MT5 / Demo + state) with its switch menu; ⌘ → Ctrl in titles on Windows.
 import { S } from '../../state';
-import { connStatus } from '../../../app-data.js';
+import { connStatus } from '../../app/app-data';
 import { ui } from '../registry';
-import { ICON } from '../../../icons.js';
-import { setSource } from '../../../extras.js';
+import { ICON } from '../../app/icons';
+import { setSource } from '../../app/extras';
 import { isWin, osKeys } from '../os';
 
-declare const vcg: any;
 export const SRC_UI = (() => {
   const st = (): Record<string, any> => connStatus || {};
   function info() {

@@ -1,37 +1,42 @@
-import { PT, def } from './src/pt.ts';
-import { view } from './src/state.ts';
-import { toast } from './src/ui/toast.ts';
-import { AN, BOUNCE } from './src/legacy/core.ts';
-import { S, TFS, TZ, drawings, fmt, saveDrawings, store, tf } from './app-core.js';
-import { chart } from './src/chart/chart.ts';
-import { PERF } from './app-analysis.js';
-import { runBounce } from './app-bounce.js';
-import { loadChart, switchSymbol } from './app-data.js';
-import { renderTfs } from './app.js';
-import { redraw, uid } from './src/chart/draw.ts';
-import { setDrawings } from './src/chart/drawings.ts';
-import { computePlan, isCentAcct, renderPlanner, savePlan } from './planner.js';
-import { CACHE, NEWS } from './extras.js';
-import { HEADLINES } from './news.js';
+import { PT, def } from '../pt';
+import { view } from '../state';
+import { toast } from '../ui/toast';
+import { AN, BOUNCE } from '../legacy/core';
+import { S, TFS, TZ, drawings, fmt, saveDrawings, store, tf } from './app-core';
+import { chart } from '../chart/chart';
+import { PERF } from './app-analysis';
+import { runBounce } from './app-bounce';
+import { loadChart, switchSymbol } from './app-data';
+import { renderTfs } from './app';
+import { redraw, uid } from '../chart/draw';
+import { setDrawings } from '../chart/drawings';
+import { computePlan, isCentAcct, renderPlanner, savePlan } from './planner';
+import { CACHE, NEWS } from './extras';
+import { HEADLINES } from './news';
+import type { PatternKey,Pivot } from '../core/analysis';
+import type { Dir } from '../core/types';
+import type { BounceResult } from '../core/bounce';
+import type { Pool } from '../core/bounce';
+import type { Drawing } from '../chart/types';
 // Commands the local API (and the Claude MCP server on top of it) can run inside the app window.
 // Read: view, candles, analysis, bounce · Act on the chart: open_chart, draw, clear_drawings · Calculator: plan.
 // Times in and out are UTC unix seconds (the chart itself is shifted by the display timezone TZ).
 (function () {
   if (!vcg.onApiCmd) return;   // desktop only
-  const tfOf = (x) => TFS.find((t) => t.label.toLowerCase() === String(x).toLowerCase() || t.type === +x);
-  const utc = (t) => t - TZ;
-  const toChart = (t) => {
+  const tfOf = (x: string|number) => TFS.find((t) => t.label.toLowerCase() === String(x).toLowerCase() || t.type === +x);
+  const utc = (t: number) => t - TZ;
+  const toChart = (t: string|number|null) => {
     if (t == null || t === '') return null;
     const s = typeof t === 'number' ? (t > 1e12 ? t / 1000 : t) : Date.parse(t) / 1000;
     return isFinite(s) ? Math.round(s) + TZ : null;
   };
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  const bar = (c) => c && { time: utc(c.time), iso: new Date(utc(c.time) * 1000).toISOString(), open: c.open, high: c.high, low: c.low, close: c.close };
+  const sleep = (ms?: number) => new Promise((r) => setTimeout(r, ms));
+  const bar = (c: { time: any; open: any; high: any; low: any; close: any; }) => c && { time: utc(c.time), iso: new Date(utc(c.time) * 1000).toISOString(), open: c.open, high: c.high, low: c.low, close: c.close };
 
-  function view() {
+  function viewInfo() {
     const c = S.candles, q = S.quotes[S.symbol];
     let range = null;
-    try { const r = chart.timeScale().getVisibleRange(); if (r) range = { from: utc(r.from), to: utc(r.to) }; } catch (_) {}
+    try { const r = chart.timeScale().getVisibleRange(); if (r) range = { from: utc(r.from), to: utc(r.to) }; } catch (_: any) {}
     return {
       symbol: S.symbol, timeframe: tf().label, source: S.source, bars: c.length, lastBar: bar(c[c.length - 1]),
       quote: q ? { bid: q.bid, ask: q.ask, time: q.time, changePct: q.changePct } : null,
@@ -40,7 +45,7 @@ import { HEADLINES } from './news.js';
       overlays: Object.keys(S.an).filter((k) => S.an[k] === true),
     };
   }
-  async function openChart({ symbol, timeframe }) {
+  async function openChart({ symbol, timeframe }: { symbol?: string; timeframe?: string | number }) {
     const want = symbol ? String(symbol).toUpperCase() : S.symbol, t = timeframe != null ? tfOf(timeframe) : null;
     if (timeframe != null && !t) throw new Error('timeframe ต้องเป็นหนึ่งใน ' + TFS.map((x) => x.label).join(', '));
     const before = S.candles.length && S.candles[S.candles.length - 1].time;
@@ -51,7 +56,7 @@ import { HEADLINES } from './news.js';
       const last = S.candles.length && S.candles[S.candles.length - 1].time;
       if (S.symbol === want && S.candles.length > 20 && (!t || S.tf === t.type) && (last !== before || i > 8)) break;
     }
-    return view();
+    return viewInfo();
   }
   function candles({ limit = 200 } = {}) {
     const n = Math.max(1, Math.min(2000, +limit || 200));
@@ -59,14 +64,14 @@ import { HEADLINES } from './news.js';
   }
   function analysis() {
     const A = S.A; if (!A) return { note: 'ยังไม่มีข้อมูลกราฟพอสำหรับวิเคราะห์' };
-    const sig = (s) => s && { side: s.dir === 1 ? 'BUY' : 'SELL', time: utc(s.time), setup: s.setup, pattern: AN.PAT[s.pattern] && AN.PAT[s.pattern].name,
+    const sig = (s: { dir: number; time: any; setup: any; pattern: string|number; entry: any; sl: any; tp1: any; tp2: any; reasons: any; r1: { res: any; }; }) => s && { side: s.dir === 1 ? 'BUY' : 'SELL', time: utc(s.time), setup: s.setup, pattern: AN.PAT[s.pattern] && AN.PAT[s.pattern].name,
       entry: s.entry, sl: s.sl, tp1: s.tp1, tp2: s.tp2, reasons: s.reasons, result: s.r1 && s.r1.res };
     return {
       symbol: S.symbol, timeframe: tf().label, bars: A.n, atr: A.atr[A.n - 1],
       trend: A.lastTrend === 1 ? 'up' : A.lastTrend === -1 ? 'down' : 'sideways',
       lastStructureEvent: A.lastEvent && { type: A.lastEvent.type, dir: A.lastEvent.dir, price: A.lastEvent.price, time: S.candles[A.lastEvent.idx] && utc(S.candles[A.lastEvent.idx].time) },
-      swings: A.swings.slice(-12).map((s) => ({ label: s.label, price: s.price, time: utc(s.time) })),
-      zones: A.zones.slice(0, 10).map((z) => ({ kind: z.kind, top: z.top, bottom: z.bottom, touches: z.touches })),
+      swings: A.swings.slice(-12).map((s: { label: any; price: any; time: any; }) => ({ label: s.label, price: s.price, time: utc(s.time) })),
+      zones: A.zones.slice(0, 10).map((z: { kind: any; top: any; bottom: any; touches: any; }) => ({ kind: z.kind, top: z.top, bottom: z.bottom, touches: z.touches })),
       lastSignals: A.signals.slice(-5).map(sig),
       stats: A.stats && { all: A.stats.all, bySetup: A.stats.bySetup },
     };
@@ -74,24 +79,24 @@ import { HEADLINES } from './news.js';
   function bounce() {
     if (typeof runBounce === 'function' && !S.B) runBounce();
     const B = S.B; if (!B) return { note: 'ยังไม่มีข้อมูลพอ (ต้องการอย่างน้อย 60 แท่ง)' };
-    const z = (x) => ({ zone: [Math.min(x.lo, x.hi), Math.max(x.lo, x.hi)], stars: x.stars, status: x.status, types: x.types,
+    const z = (x: { lo: number; hi: number; stars: any; status: any; types: any; entry: any; sl: any; tp1: any; tp2: any; rr1: number; distAtr: number; why: any[]; stat: any; }) => ({ zone: [Math.min(x.lo, x.hi), Math.max(x.lo, x.hi)], stars: x.stars, status: x.status, types: x.types,
       entry: x.entry, sl: x.sl, tp1: x.tp1, tp2: x.tp2, rr1: +x.rr1.toFixed(2), distanceAtr: +Math.abs(x.distAtr).toFixed(2),
-      reasons: x.why.map((w) => (w.neg ? '(-) ' : '') + w.txt), history: x.stat });
+      reasons: x.why.map((w: { neg: any; txt: string|number; }) => (w.neg ? '(-) ' : '') + w.txt), history: x.stat });
     return { symbol: S.symbol, timeframe: tf().label, price: B.price, atr: B.atr, buy: B.buy.map(z), sell: B.sell.map(z),
-      liquidity: { above: B.liq.highs.slice(0, 5).map((p) => ({ price: p.price, kind: BOUNCE.poolName(p, false), strength: p.strength })),
-        below: B.liq.lows.slice(0, 5).map((p) => ({ price: p.price, kind: BOUNCE.poolName(p, false), strength: p.strength })),
-        recentSweeps: B.liq.sweeps.map((s) => ({ side: s.side, price: s.price, barsAgo: S.A ? S.A.n - 1 - s.j : null })) },
+      liquidity: { above: B.liq.highs.slice(0, 5).map((p: Pick<Pool,"side"|"count"|"pd">) => ({ price: p.price, kind: BOUNCE.poolName(p, false), strength: p.strength })),
+        below: B.liq.lows.slice(0, 5).map((p: Pick<Pool,"side"|"count"|"pd">) => ({ price: p.price, kind: BOUNCE.poolName(p, false), strength: p.strength })),
+        recentSweeps: B.liq.sweeps.map((s: { side: any; price: any; j: number; }) => ({ side: s.side, price: s.price, barsAgo: S.A ? S.A.n - 1 - s.j : null })) },
       statsByZoneType: B.stats };
   }
   const TYPES = ['hline', 'trend', 'ray', 'rect', 'text', 'callout', 'arrowUp', 'arrowDown', 'fib', 'fibext', 'long', 'short'];
-  function draw(a) {
+  function draw(a: { type: any; points: string|any[]; color: any; text: any; fontSize: string|number; bg: boolean; bold: any; border: boolean; offsetX: string|number; offsetY: string|number; reverse: null; label: string; }) {
     const type = a.type; if (!TYPES.includes(type)) throw new Error('type ต้องเป็นหนึ่งใน ' + TYPES.join(', '));
     const c = S.candles; if (!c.length) throw new Error('ยังไม่มีกราฟ');
     const last = c[c.length - 1].time, span = tf().sec;
-    const pts = (a.points || []).map((p, i) => ({ time: toChart(p.time) ?? (last - (((a.points.length - 1 - i) * 30) * span)), price: +p.price }));
+    const pts = (a.points || []).map((p: { time: any; price: string|number; }, i: number) => ({ time: toChart(p.time) ?? (last - (((a.points.length - 1 - i) * 30) * span)), price: +p.price }));
     const need = { hline: 1, text: 1, callout: 1, arrowUp: 1, arrowDown: 1, fibext: 3 }[type] || 2;
-    if (pts.length < need || pts.some((p) => !isFinite(p.price))) throw new Error(`${type} ต้องมี ${need} จุด {time?, price}`);
-    const d = { id: uid(), type, pts: pts.slice(0, need === 1 ? 1 : need), color: a.color || ({ rect: '#2962ff', hline: '#f6c343' }[type] || '#ab47bc'), by: 'claude' };
+    if (pts.length < need || pts.some((p: { price: number; }) => !isFinite(p.price))) throw new Error(`${type} ต้องมี ${need} จุด {time?, price}`);
+    const d: Drawing = { id: uid(), type, pts: pts.slice(0, need === 1 ? 1 : need), color: a.color || ({ rect: '#2962ff', hline: '#f6c343' }[type] || '#ab47bc'), by: 'claude' };
     if (a.text) d.text = String(a.text).slice(0, 500);
     if (type === 'text' || type === 'callout') {   // optional style: fontSize 12-24, bg (bool), bold, border
       d.size = Math.max(10, Math.min(28, +a.fontSize || 14)); d.bg = a.bg !== false; d.bold = !!a.bold; d.border = a.border ?? (type === 'callout');
@@ -104,15 +109,15 @@ import { HEADLINES } from './news.js';
     toast('Claude วาด ' + type + (a.label ? ': ' + a.label : ''), 'info', 2500);
     return { ok: true, id: d.id, claudeDrawings: drawings.filter((x) => x.by === 'claude').length };
   }
-  function clearDrawings({ all } = {}) {
+  function clearDrawings({ all }: { all?: boolean } = {}) {
     const before = drawings.length;
     setDrawings(all ? [] : drawings.filter((d) => d.by !== 'claude'));
     saveDrawings(); view.dirty = true;
     return { removed: before - drawings.length };
   }
-  function plan(a) {
+  function plan(a: { side: any; entry: any; sl: any; tp1: number|null; tp2: number|null; balance: null; riskPct: null; adds: any; spacing: number|null; mode: string; account: string; }) {
     const p = S.plan;
-    const set = (k, v) => { if (v != null && v !== '') p[k] = typeof v === 'number' ? fmt(v) : String(v); };
+    const set = (k: string, v: string|number|null) => { if (v != null && v !== '') p[k] = typeof v === 'number' ? fmt(v) : String(v); };
     if (a.side) p.side = String(a.side).toLowerCase() === 'sell' ? 'sell' : 'buy';
     set('entry', a.entry); set('sl', a.sl); p.tp1 = a.tp1 != null ? fmt(a.tp1) : ''; p.tp2 = a.tp2 != null ? fmt(a.tp2) : '';
     if (a.balance != null) p.balance = String(a.balance);
@@ -131,10 +136,10 @@ import { HEADLINES } from './news.js';
   }
   async function perf() {
     const n = S.candles.length, closed = S.candles.slice(0, -1);
-    const time = (f, k = 3) => { const t = []; for (let i = 0; i < k; i++) { const a = performance.now(); f(); t.push(performance.now() - a); } return Math.round(Math.min(...t)); };
+    const time = (f: (...a: any[]) => unknown, k = 3) => { const t = []; for (let i = 0; i < k; i++) { const a = performance.now(); f(); t.push(performance.now() - a); } return Math.round(Math.min(...t)); };
     const out = { symbol: S.symbol, timeframe: tf().label, bars: n, lastRun: { ...PERF } };
     if (closed.length >= 60) {
-      let A = null;
+      let A: { atr: (number|null)[]; patterns: PatternKey[][]; pivots: Pivot[]; trendAt: (Dir|0)[]; }|null|undefined = null;
       out.analyzeMs = time(() => { A = AN.analyze(closed, { swingLen: S.an.swingLen, digits: 2 }); });
       out.bounceMs = time(() => BOUNCE.find(closed, A, {}));
       out.redrawMs = time(() => { view.dirty = true; redraw(); }, 5);
@@ -146,16 +151,16 @@ import { HEADLINES } from './news.js';
     out.cpuCores = navigator.hardwareConcurrency;
     return out;
   }
-  const CMDS = {
+  const CMDS: Record<string, any> = {
     perf,
-    news: (a) => (typeof HEADLINES !== 'undefined' ? { symbol: S.symbol, headlines: HEADLINES.list(a || {}), calendar: typeof NEWS !== 'undefined' && NEWS.upcoming ? NEWS.upcoming(10) : [] } : { headlines: [] }),
-    view, open_chart: openChart, candles, analysis, bounce, draw, clear_drawings: clearDrawings, plan,
+    news: (a: any) => (typeof HEADLINES !== 'undefined' ? { symbol: S.symbol, headlines: HEADLINES.list(a || {}), calendar: typeof NEWS !== 'undefined' && NEWS.upcoming ? NEWS.upcoming(10) : [] } : { headlines: [] }),
+    view: viewInfo, open_chart: openChart, candles, analysis, bounce, draw, clear_drawings: clearDrawings, plan,
     chart_rect: () => { const r = document.getElementById('chart-wrap').getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; },
   };
   vcg.onApiCmd(async ({ id, name, args }) => {
     try {
       const f = CMDS[name]; if (!f) throw new Error('ไม่รู้จักคำสั่ง ' + name + ' (มี: ' + Object.keys(CMDS).join(', ') + ')');
       vcg.apiResult({ id, data: await f(args || {}) });
-    } catch (e) { vcg.apiResult({ id, error: e.message || String(e) }); }
+    } catch (e: any) { vcg.apiResult({ id, error: e.message || String(e) }); }
   });
 })();

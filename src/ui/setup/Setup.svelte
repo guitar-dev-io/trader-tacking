@@ -3,7 +3,7 @@
   import { flushSync } from 'svelte';
   import Icon from '../Icon.svelte';
   import { S } from '../../state';
-  import { connStatus } from '../../../app-data.js';
+  import { connStatus } from '../../app/app-data';
   import { makePaths, type PathKey, type SetupCtx } from './content';
   import { isWin } from '../os';
 

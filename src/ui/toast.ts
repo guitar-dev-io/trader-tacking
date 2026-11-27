@@ -1,7 +1,7 @@
 // Toast messages (bottom-right). Its own module so any file — even ones loaded before the app state —
 // can import it; it reads the "show toasts" preference lazily from PT.S at call time.
 import { PT, def } from '../pt';
-import { ICON } from '../../icons.js';
+import { ICON } from '../app/icons';
 
 export type ToastKind = 'info' | 'ok' | 'warn' | 'error';
 
@@ -17,4 +17,4 @@ export function toast(msg: unknown, kind: ToastKind | string = 'info', ms = 5000
   while (box.children.length > 4) box.firstChild!.remove();
   setTimeout(() => t.remove(), ms);
 }
-def({ toast: [() => toast] });
+

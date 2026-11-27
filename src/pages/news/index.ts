@@ -4,10 +4,10 @@ import { onBack } from '../../ui/back';
 import { mount } from 'svelte';
 import { PT, def } from '../../pt';
 import { pages, lazyMount, type PageApi } from '../registry';
-import { ICON } from '../../../icons.js';
-import { $ } from '../../../app-core.js';
-import { HEADLINES } from '../../../news.js';
-import { PAGES } from '../../../pages.js';
+import { ICON } from '../../app/icons';
+import { $ } from '../../app/app-core';
+import { HEADLINES } from '../../app/news';
+import { PAGES } from '../../app/pages';
 import NewsPage from './NewsPage.svelte';
 import NewsTeaser from './NewsTeaser.svelte';
 

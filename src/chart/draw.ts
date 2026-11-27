@@ -5,19 +5,18 @@
 import { def } from '../pt';
 import { ui } from '../ui/registry';
 import { view } from '../state';
-import { ICON } from '../../icons.js';
-import { $, DOWN, FIB, FIBX, FIBX_DEF, FIB_DEF, FIB_PRESETS, FIB_PRESET_REVERSE, FIB_REVERSE, S, TC, THEME, TZ, UP, digits, esc, fibColor, fmt, store, tf, zoneOffsetSec, setFib, setFibX, setFibReverse, setCandleColors, setTZ } from '../../app-core.js';
+import { ICON } from '../app/icons';
+import { $, DOWN, FIB, FIBX, FIBX_DEF, FIB_DEF, FIB_PRESETS, FIB_PRESET_REVERSE, FIB_REVERSE, S, TC, THEME, TZ, UP, digits, esc, fibColor, fmt, store, tf, zoneOffsetSec, setFib, setFibX, setFibReverse, setCandleColors, setTZ, qs, qsa, tgt, mk } from '../app/app-core';
 import { buildIndicators, buildMain, chart, main } from './chart';
-import { addAlert, loadChart } from '../../app-data.js';
+import { addAlert, loadChart } from '../app/app-data';
 import { el, label, logicalToTime, lToX, resetLabels, svg, timeToLogical, txt, yOf } from '../ui/overlay';
 import { drawAnalysis } from './analysis-overlay';
-import { renderTfs } from '../../app.js';
+import { renderTfs } from '../app/app';
 import { TXT } from './text-tools';
 import { chartHooks, onChartEvent } from './hooks';
 import { drawings, drawingsKey, saveDrawings, setDrawings } from './drawings';
 import type { DPoint, Drawing, DrawingKind, LegacyDrawing, ToolDef, ToolKind } from './types';
 
-declare const vcg: { log(level: string, msg: string, data?: unknown, src?: string): void };
 
 type N = number | null;
 /** a chart point under the mouse: time/price + pixels + logical bar index */
@@ -76,7 +75,7 @@ function pushHistory(): void { hist.push(JSON.stringify(drawings)); if (hist.len
 function undo(): void { if (!hist.length) return; redoStack.push(JSON.stringify(drawings)); setDrawings(JSON.parse(hist.pop() as string)); S.selected = null; saveDrawings(); view.dirty = true; }
 function redo(): void { if (!redoStack.length) return; hist.push(JSON.stringify(drawings)); setDrawings(JSON.parse(redoStack.pop() as string)); S.selected = null; saveDrawings(); view.dirty = true; }
 // white/near-white user colors are drawn in the theme's ink color on the light theme
-const inkColor = (c: string | undefined): string => { c = c || '#ffffff'; return /^#f{3}(f{3})?$/i.test(c) && THEME.get() === 'light' ? TC().fg : c; };
+const inkColor = (c?: string): string => { c = c || '#ffffff'; return /^#f{3}(f{3})?$/i.test(c) && THEME.get() === 'light' ? TC().fg : c; };
 const DEFAULT_COLOR: Partial<Record<ToolKind, string>> = { hline: '#f5a623', vline: '#9aa0ad', text: '#ffffff', arrowUp: '#26a69a', arrowDown: '#ef5350', brush: '#f5a623' };
 
 // ---------------------------------------------------------------- toolbar
@@ -103,7 +102,7 @@ function buildToolbar(): void {
       if (group.length === 1) return setTool(group[0]);
       if (g.querySelector('.fly')) { closeFly(); return; }
       closeFly();
-      const fly = document.createElement('div'); fly.className = 'fly';
+      const fly = mk('div'); fly.className = 'fly';
       fly.innerHTML = group.map((t) => `<button data-t="${t}">${ICON.svg(TOOLS[t].icon, 18)} ${TOOLS[t].name}<small>${TOOLS[t].key || ''}</small></button>`).join('');
       fly.querySelectorAll('button').forEach((b) => (b.onclick = (ev) => { ev.stopPropagation(); groupSel[gi] = b.dataset.t as ToolKind; store.set('groupSel', groupSel); closeFly(); setTool(b.dataset.t as ToolKind); }));
       g.appendChild(fly);
@@ -115,8 +114,8 @@ function buildToolbar(): void {
   $('t-layers').onclick = (e: MouseEvent) => { e.stopPropagation(); toggleLayers(); };
   $('t-clear').onclick = () => { if (!drawings.length || S.locked) return; pushHistory(); setDrawings([]); S.selected = null; saveDrawings(); view.dirty = true; renderLayers(); };
 }
-function closeFly(): void { document.querySelectorAll('#tools .fly').forEach((f) => f.remove()); }
-document.addEventListener('click', (e) => { const t = e.target as Element; if (!t.closest('#tools')) closeFly(); if (!t.closest('#layers-pop') && !t.closest('#t-layers')) $('layers-pop').classList.add('hidden'); });
+function closeFly(): void { qsa('#tools .fly').forEach((f) => f.remove()); }
+document.addEventListener('click', (e) => { const t = tgt(e) as Element; if (!t.closest('#tools')) closeFly(); if (!t.closest('#layers-pop') && !t.closest('#t-layers')) $('layers-pop').classList.add('hidden'); });
 
 const toolListeners: ((t: ToolKind) => void)[] = [];
 /** called after every tool change (toolbar, keys, back to cursor after a drawing) — e.g. the mobile tool pill */
@@ -137,7 +136,7 @@ function setTool(t: ToolKind): void {
     cursor: S.locked ? 'รูปวาดถูกล็อกอยู่' : 'คลิกรูปวาดเพื่อเลือก · ลากเพื่อย้าย · ลากจุดปลายเพื่อปรับ · Delete = ลบ' };
   $('hint').textContent = hints[t] || '';
   view.dirty = true;
-  for (const cb of toolListeners) { try { cb(t); } catch (e) { console.error('tool listener', e); } }
+  for (const cb of toolListeners) { try { cb(t); } catch (e: any) { console.error('tool listener', e); } }
 }
 
 // ---------------------------------------------------------------- geometry helpers
@@ -338,7 +337,7 @@ function hitTest(x: number, y: number): number | null {
 // ---------------------------------------------------------------- mouse: select / drag / create
 let drag: Drag | null = null;
 $('chart-wrap').addEventListener('pointerdown', (ev: PointerEvent) => {
-  if (ev.button !== 0 || (ev.target as Element).closest('#legend, #zoombar, #layers-pop, .txe, .txt-bar, #notes-pop')) return;
+  if (ev.button !== 0 || (tgt(ev) as Element).closest('#legend, #zoombar, #layers-pop, .txe, .txt-bar, #notes-pop')) return;
   const { x, y } = mousePos(ev);
   if (S.tool === 'brush') {
     const p = pointAt(x, y, false); if (!p) return;
@@ -384,7 +383,7 @@ window.addEventListener('pointermove', (ev: PointerEvent) => {
     }
     view.dirty = true; return;
   }
-  if (S.tool !== 'cursor' && $('chart').contains(ev.target as Node)) { S.mouse = pointAt(x, y, true); if (S.pts.length) view.dirty = true; }
+  if (S.tool !== 'cursor' && $('chart').contains(tgt(ev) as Node)) { S.mouse = pointAt(x, y, true); if (S.pts.length) view.dirty = true; }
 });
 window.addEventListener('pointerup', () => {
   if (drag || S.brush) chart.applyOptions({ handleScroll: S.tool === 'cursor', handleScale: S.tool === 'cursor' });
@@ -392,7 +391,7 @@ window.addEventListener('pointerup', () => {
   if (drag) { if (drag.moved) saveDrawings(); drag = null; }
 });
 $('chart-wrap').addEventListener('click', (ev: MouseEvent) => {
-  if (S.tool === 'cursor' || S.tool === 'brush' || (ev.target as Element).closest('#legend, #zoombar, #layers-pop, .txe, .txt-bar, #notes-pop')) return;
+  if (S.tool === 'cursor' || S.tool === 'brush' || (tgt(ev) as Element).closest('#legend, #zoombar, #layers-pop, .txe, .txt-bar, #notes-pop')) return;
   const { x, y } = mousePos(ev);
   const p = pointAt(x, y, true); if (!p) return;
   const pt = { time: p.time, price: p.price };
@@ -433,15 +432,15 @@ function renderLayers(): void {
   p.innerHTML = `<div class="group">รูปวาดบน ${S.symbol} (${drawings.length})</div>` + (drawings.map((d: Drawing, i: number) =>
     `<div class="item ${S.selected === i ? 'sel' : ''}" data-i="${i}"><span>${ICON.svg(TOOLS[d.type as ToolKind]?.icon || 'trend', 16)} ${TOOLS[d.type as ToolKind]?.name.split(' (')[0] || d.type} <small>${desc(d)}</small></span>
      <span><input type="color" data-c="${i}" value="${(d.color || '#2962ff').slice(0, 7)}" style="width:22px;height:18px;padding:0;border:none;background:none"> <button data-del="${i}" aria-label="ลบ">${ICON.svg('x', 14)}</button></span></div>`).join('') || '<div class="item muted">ยังไม่มีรูปวาด</div>');
-  p.querySelectorAll('[data-i]').forEach((r: HTMLElement) => (r.onclick = (e) => { if ((e.target as Element).closest('button, input')) return; S.selected = +(r.dataset.i as string); view.dirty = true; renderLayers(); }));
+  p.querySelectorAll('[data-i]').forEach((r: HTMLElement) => (r.onclick = (e) => { if ((tgt(e) as Element).closest('button, input')) return; S.selected = +(r.dataset.i as string); view.dirty = true; renderLayers(); }));
   p.querySelectorAll('[data-del]').forEach((b: HTMLElement) => (b.onclick = () => { if (S.locked) return; pushHistory(); drawings.splice(+(b.dataset.del as string), 1); S.selected = null; saveDrawings(); view.dirty = true; renderLayers(); }));
   p.querySelectorAll('[data-c]').forEach((c: HTMLInputElement) => (c.oninput = () => { drawings[+(c.dataset.c as string)].color = c.value; saveDrawings(); view.dirty = true; }));
 }
 
 // ---------------------------------------------------------------- keyboard
 document.addEventListener('keydown', (e: KeyboardEvent) => {
-  if (['INPUT', 'SELECT', 'TEXTAREA'].includes((e.target as Element).tagName)) return;
-  if ([...document.querySelectorAll('.modal')].some((m) => !m.classList.contains('hidden'))) { if (e.key === 'Escape') document.querySelectorAll('.modal').forEach((m) => m.classList.add('hidden')); return; }
+  if (['INPUT', 'SELECT', 'TEXTAREA'].includes((tgt(e) as Element).tagName)) return;
+  if ([...qsa('.modal')].some((m) => !m.classList.contains('hidden'))) { if (e.key === 'Escape') qsa('.modal').forEach((m) => m.classList.add('hidden')); return; }
   const k = e.key.toLowerCase();
   if ((e.metaKey || e.ctrlKey) && k === 'z') { e.preventDefault(); return e.shiftKey ? redo() : undo(); }
   if ((e.metaKey || e.ctrlKey) && k === 'y') { e.preventDefault(); return redo(); }
@@ -463,8 +462,8 @@ $('shot').onclick = async () => {
   const img = new Image(); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(svg));
   await new Promise<void>((r) => { img.onload = () => r(); img.onerror = () => r(); });
   const ratio = c.width / $('chart').clientWidth;
-  try { ctx.drawImage(img, 0, 0, img.width * ratio, img.height * ratio); } catch (_) {}
-  const a = document.createElement('a'); a.href = c.toDataURL('image/png');
+  try { ctx.drawImage(img, 0, 0, img.width * ratio, img.height * ratio); } catch (_: any) {}
+  const a = mk('a'); a.href = c.toDataURL('image/png');
   a.download = `${S.symbol}_${tf().label}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`; a.click();
 };
 
@@ -501,12 +500,12 @@ $('cs-btn').onclick = (e: MouseEvent) => {
   $('cs-fib').onchange = () => { const a = parseLv($('cs-fib').value); if (a.length) { setFib(a); store.set('fibLevels', FIB); } $('cs-fib').value = FIB.join(', '); view.dirty = true; };
   $('cs-fibx').onchange = () => { const a = parseLv($('cs-fibx').value); if (a.length) { setFibX(a); store.set('fibExtLevels', FIBX); } $('cs-fibx').value = FIBX.join(', '); view.dirty = true; };
   const setRev = (v: boolean): void => { setFibReverse(!!v); store.set('fibReverse', FIB_REVERSE); $('cs-fibrev').checked = FIB_REVERSE; view.dirty = true; };
-  $('cs-fibrev').onchange = (e: Event) => setRev((e.target as HTMLInputElement).checked);
+  $('cs-fibrev').onchange = (e: Event) => setRev((tgt(e) as HTMLInputElement).checked);
   $('cs-menu').querySelectorAll('[data-fp]').forEach((b: HTMLElement) => (b.onclick = () => { setFib(FIB_PRESETS[b.dataset.fp as string].slice()); store.set('fibLevels', FIB); $('cs-fib').value = FIB.join(', '); setRev(!!FIB_PRESET_REVERSE[b.dataset.fp as string]); }));
   $('cs-fib-reset').onclick = () => { setFib(FIB_DEF.slice()); setFibX(FIBX_DEF.slice()); store.set('fibLevels', FIB); store.set('fibExtLevels', FIBX); $('cs-fib').value = FIB.join(', '); $('cs-fibx').value = FIBX.join(', '); setRev(false); };
   $('cs-sess').onchange = () => { S.showSessions = $('cs-sess').checked; store.set('sessions', S.showSessions); view.dirty = true; };
 };
-document.addEventListener('click', (e) => { const t = e.target as Element; if (!t.closest('#cs-menu') && !t.closest('#cs-btn')) $('cs-menu').classList.add('hidden'); });
+document.addEventListener('click', (e) => { const t = tgt(e) as Element; if (!t.closest('#cs-menu') && !t.closest('#cs-btn')) $('cs-menu').classList.add('hidden'); });
 
 // ---------------------------------------------------------------- zoom bar
 const ZI: Record<string, string> = { out: 'minus', in: 'plus', left: 'left', right: 'right', reset: 'reset' };
@@ -530,22 +529,22 @@ $('ranges').querySelectorAll('button').forEach((b: HTMLElement) => (b.onclick = 
 function applySpan(): void {
   if (!pendingSpan || !S.candles.length) return;
   const last = S.candles[S.candles.length - 1].time;
-  try { chart.timeScale().setVisibleRange({ from: Math.max(S.candles[0].time, last - pendingSpan), to: last }); } catch (_) {}
+  try { chart.timeScale().setVisibleRange({ from: Math.max(S.candles[0].time, last - pendingSpan), to: last }); } catch (_: any) {}
   pendingSpan = null;
 }
 onChartEvent('loaded', () => { setTimeout(applySpan, 50); });
 
 function setScale(which: string): void {
   const ps = chart.priceScale('right');
-  document.querySelectorAll('#bottombar [data-scale]').forEach((b) => b.classList.remove('active'));
+  qsa('#bottombar [data-scale]').forEach((b) => b.classList.remove('active'));
   if (which === 'auto') { ps.applyOptions({ autoScale: true }); }
   else {
     const mode = which === 'log' ? 1 : 2;
     const cur = ps.options().mode;
     ps.applyOptions({ mode: cur === mode ? 0 : mode, autoScale: true });
-    if (cur !== mode) document.querySelector(`#bottombar [data-scale="${which}"]`)?.classList.add('active');
+    if (cur !== mode) qs(`#bottombar [data-scale="${which}"]`)?.classList.add('active');
   }
-  if (ps.options().autoScale) document.querySelector('#bottombar [data-scale="auto"]')?.classList.add('active');
+  if (ps.options().autoScale) qs('#bottombar [data-scale="auto"]')?.classList.add('active');
   view.dirty = true;
 }
 document.querySelectorAll<HTMLElement>('#bottombar [data-scale]').forEach((b) => (b.onclick = () => setScale(b.dataset.scale as string)));
@@ -660,4 +659,4 @@ Object.assign(chartHooks, {
 export { onToolChange, DEFAULT_COLOR, DEFAULT_SESSIONS, GROUPS, SESSIONS_ALL, TOOLS, ZONES, _sessionWindow, applyChartCfg, handles, hitTest, inkColor, normalize, pointAt, posLevels, pushHistory, redo, redraw, renderLayers, setSessions, setTool, uid, undo, xOfT };
 
 // tests / devtools (window.PT): only the names the UI suite uses
-def({ redraw: [() => redraw], undo: [() => undo], redo: [() => redo], setTool: [() => setTool], xOfT: [() => xOfT], hitTest: [() => hitTest], loadDrawings: [() => loadDrawings], normalize: [() => normalize] });
+def({ redraw: [() => redraw], undo: [() => undo], redo: [() => redo], setTool: [() => setTool], xOfT: [() => xOfT], hitTest: [() => hitTest] });

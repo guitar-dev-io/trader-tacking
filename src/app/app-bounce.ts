@@ -1,15 +1,15 @@
-import { PT, def } from './src/pt.ts';
-import { view } from './src/state.ts';
-import { toast } from './src/ui/toast.ts';
-import { ICON } from './icons.js';
-import { AN, BOUNCE } from './src/legacy/core.ts';
-import { $, DOWN, S, TC, UP, esc, fibColor, fmt, store, tf } from './app-core.js';
-import { SETUP_TH, pct, rr, sigPayload } from './app-analysis.js';
+import { PT, def } from '../pt';
+import { view } from '../state';
+import { toast } from '../ui/toast';
+import { ICON } from './icons';
+import { AN, BOUNCE } from '../legacy/core';
+import { $, DOWN, S, TC, UP, esc, fibColor, fmt, store, tf } from './app-core';
+import { SETUP_TH, pct, rr, sigPayload } from './app-analysis';
 import { mount, flushSync } from 'svelte';
-import Bounce from './src/ui/tabs/Bounce.svelte';
-import { bounceTick as bounceTickStore } from './src/ui/tabs/bounce-view.ts';
-import { el, ltxt, xIdx, yOf } from './src/ui/overlay.ts';
-def({ runBounce: [() => runBounce, (v) => { runBounce = v; }], renderBounce: [() => renderBounce, (v) => { renderBounce = v; }], drawBounce: [() => drawBounce, (v) => { drawBounce = v; }], drawLiquidity: [() => drawLiquidity, (v) => { drawLiquidity = v; }], autoFibLeg: [() => autoFibLeg, (v) => { autoFibLeg = v; }], drawAutoFib: [() => drawAutoFib, (v) => { drawAutoFib = v; }], bounceTimer: [() => bounceTimer, (v) => { bounceTimer = v; }], bounceTick: [() => bounceTick, (v) => { bounceTick = v; }], checkBounce: [() => checkBounce, (v) => { checkBounce = v; }], checkNewSignal: [() => checkNewSignal, (v) => { checkNewSignal = v; }] });
+import Bounce from '../ui/tabs/Bounce.svelte';
+import { bounceTick as bounceTickStore } from '../ui/tabs/bounce-view';
+import { el, ltxt, xIdx, yOf } from '../ui/overlay';
+def({ runBounce: [() => runBounce], checkNewSignal: [() => checkNewSignal] });
 // Price Tracker renderer · bounce finder (จุดเด้ง), liquidity map, auto-Fibo
 // ---------------------------------------------------------------- bounce finder (จุดเด้ง)
 function runBounce() {
@@ -21,15 +21,15 @@ function runBounce() {
 const bnSides = () => (S.an.bounceSide === 'buy' ? ['buy'] : S.an.bounceSide === 'sell' ? ['sell'] : ['buy', 'sell']);
 // the panel is src/ui/tabs/Bounce.svelte (mounted below); renderBounce() re-renders it
 function renderBounce() { bounceTickStore.update((n) => n + 1); flushSync(); }
-function drawBounce(W) {
+function drawBounce(W: number) {
   const both = bnSides().length === 2;
   for (const sd of bnSides()) {
     const zs = both ? S.B[sd].slice(0, 2) : S.B[sd], col = sd === 'buy' ? UP : DOWN;
-    zs.forEach((z, k) => {
+    zs.forEach((z: { lo: number; hi: number; born: number; stars: number; types: any[]; sl: number; tp1: number; rr1: number; }, k: number) => {
       const yt = yOf(Math.max(z.lo, z.hi)), yb = yOf(Math.min(z.lo, z.hi)); if (yt == null || yb == null) return;
       const x0 = Math.max(0, xIdx(z.born) ?? 0);
       el('rect', { x: x0, y: yt, width: Math.max(0, W - x0), height: Math.max(3, yb - yt), fill: col + (k === 0 ? '30' : '1c'), stroke: col + (k === 0 ? 'cc' : '66'), 'stroke-width': k === 0 ? 1.5 : 1 });
-      ltxt(W - 8, (sd === 'buy' ? yb + 12 : yt - 4), `${sd === 'buy' ? 'จุดเด้ง Buy' : 'จุดเด้ง Sell'} ${'★'.repeat(z.stars)} ${z.types.map((t) => BOUNCE.TYPE[t].short).join('+')}`, col, 'end', 10, k === 0 ? 700 : 400);
+      ltxt(W - 8, (sd === 'buy' ? yb + 12 : yt - 4), `${sd === 'buy' ? 'จุดเด้ง Buy' : 'จุดเด้ง Sell'} ${'★'.repeat(z.stars)} ${z.types.map((t: string|number) => BOUNCE.TYPE[t].short).join('+')}`, col, 'end', 10, k === 0 ? 700 : 400);
       if (k === 0) {
         const ys = yOf(z.sl), ytp = yOf(z.tp1), lx = x0 + 4;
         if (ys != null) { el('line', { x1: x0, y1: ys, x2: W, y2: ys, stroke: col, 'stroke-dasharray': '2 3', opacity: 0.8 }); ltxt(lx, ys + (sd === 'buy' ? 12 : -4), `SL ${sd === 'buy' ? 'Buy' : 'Sell'} ${fmt(z.sl)}`, col, 'start', 10); }
@@ -38,7 +38,7 @@ function drawBounce(W) {
     });
   }
 }
-function drawLiquidity(W) {
+function drawLiquidity(W: number) {
   const L = S.B.liq, AMB = '#f6c343';
   for (const p of [...L.highs.slice(0, 4), ...L.lows.slice(0, 4)]) {
     const y = yOf(p.price); if (y == null) continue;
@@ -65,12 +65,12 @@ function autoFibLeg() {
   const a = sw[sw.length - 2], b = sw[sw.length - 1];
   return { a, b, dir: b.price > a.price ? 1 : -1 };
 }
-function drawAutoFib(W) {
+function drawAutoFib(W: number) {
   const L = autoFibLeg(); if (!L) return;
-  const { a, b } = L, x0 = Math.max(0, xIdx(a.i) ?? 0), at = (k) => b.price - (b.price - a.price) * k, ext = (k) => a.price + (b.price - a.price) * k;
+  const { a, b } = L, x0 = Math.max(0, xIdx(a.i) ?? 0), at = (k: number) => b.price - (b.price - a.price) * k, ext = (k: number) => a.price + (b.price - a.price) * k;
   const xa = xIdx(a.i), xb = xIdx(b.i), ya = yOf(a.price), yb = yOf(b.price);
   if (xa != null && xb != null && ya != null && yb != null) el('line', { x1: xa, y1: ya, x2: xb, y2: yb, stroke: TC().muted, 'stroke-dasharray': '4 4' });
-  const line = (price, k, text, strong) => { const y = yOf(price); if (y == null) return; const c = fibColor(k);
+  const line = (price: number, k: number, text: string, strong: boolean) => { const y = yOf(price); if (y == null) return; const c = fibColor(k);
     el('line', { x1: x0, y1: y, x2: W, y2: y, stroke: c, 'stroke-width': strong ? 1.5 : 1, opacity: strong ? 1 : 0.75, 'stroke-dasharray': strong ? '' : '5 4' });
     ltxt(x0 + 4, y - 3, `${text} ${fmt(price)}`, c, 'start', 10, strong ? 700 : 400); };
   const g1 = yOf(at(0.618)), g2 = yOf(at(0.786));

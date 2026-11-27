@@ -9,13 +9,13 @@ import { S, store, view } from '../../state';
 import { pages, lazyMount, type PageApi } from '../registry';
 import type { Trade } from '../../core/journal';
 import { JOURNAL } from '../../legacy/core';
-import { ICON } from '../../../icons.js';
-import { $, TFS } from '../../../app-core.js';
+import { ICON } from '../../app/icons';
+import { $, TFS } from '../../app/app-core';
 import { drawings, setDrawings } from '../../chart/drawings';
 import { chart } from '../../chart/chart';
-import { switchSymbol } from '../../../app-data.js';
+import { switchSymbol } from '../../app/app-data';
 import { SETUP } from '../../ui/setup/index';
-import { PAGES } from '../../../pages.js';
+import { PAGES } from '../../app/pages';
 import Journal from './Journal.svelte';
 import { jr, load, compute, setRange, money, tz } from './model.svelte';
 

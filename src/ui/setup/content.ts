@@ -1,8 +1,8 @@
 // Setup guide content (Phase 4): the steps' bodies are static HTML snippets (with a few live bits from ctx).
 // Setup.svelte renders the chrome (cards, dots, nav, live status) and drops these in with {@html}.
 // Buttons inside a body use data-act; the component handles them with one delegated click listener.
-import { ICON } from '../../../icons.js';
-import { esc } from '../../../app-core.js';
+import { ICON } from '../../app/icons';
+import { esc } from '../../app/app-core';
 
 export interface SetupCtx { mobile: boolean; win: boolean; busy: boolean; lastRun: { ok: boolean; steps: { ok: boolean; t: string }[] } | null }
 export interface SetupStep { h: string; body: () => string; check?: 'vcg' | 'mt5' }

@@ -1,45 +1,46 @@
-import { PT, def } from './src/pt.ts';
-import { ui } from './src/ui/registry.ts';
-import { view } from './src/state.ts';
-import { toast } from './src/ui/toast.ts';
-import { ICON } from './icons.js';
-import { $, S, TZ, esc, store, tf } from './app-core.js';
-import { chart } from './src/chart/chart.ts';
-import { beep, desktopNotify, loadChart, onChartMsg, onQuotesMsg, renderConnect, renderWatchlist, setAllData } from './app-data.js';
-import { el, lToX, timeToLogical, txt } from './src/ui/overlay.ts';
-import { pages } from './src/pages/registry.ts';
+import { PT, def } from '../pt';
+import { ui } from '../ui/registry';
+import { view } from '../state';
+import { toast } from '../ui/toast';
+import { ICON } from './icons';
+import { $, S, TZ, esc, store, tf, mk } from './app-core';
+import { chart } from '../chart/chart';
+import { beep, desktopNotify, loadChart, onChartMsg, onQuotesMsg, renderConnect, renderWatchlist, setAllData } from './app-data';
+import { el, lToX, timeToLogical, txt } from '../ui/overlay';
+import { pages } from '../pages/registry';
+import type { ChartMsg } from '../main/types';
 
-def({ NEWS: [() => NEWS], UPDATE: [() => UPDATE] });   // NEWS: draw.js (chart, Phase 4e) · UPDATE: settings
+def({ UPDATE: [() => UPDATE] });   // NEWS: draw.js (chart, Phase 4e) · UPDATE: settings
 // Extras: Demo data source (Binance public market data), local candle cache, economic calendar, update checker.
 
 // ---------------------------------------------------------------- helpers
-const fetchJSON = (url) => (vcg.fetchJSON ? vcg.fetchJSON(url) : fetch(url).then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }));
+const fetchJSON = (url: string): Promise<any> => (vcg.fetchJSON ? vcg.fetchJSON(url) : fetch(url).then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }));
 if (!vcg.capabilities?.vcg && S.source !== 'demo') { S.source = 'demo'; store.set('source', 'demo'); }
 
 // ---------------------------------------------------------------- Demo data source (for practice without a VCG login)
 const DEMO = (() => {
-  const MAP = { XAUUSD: 'PAXGUSDT', BTCUSD: 'BTCUSDT', ETHUSD: 'ETHUSDT', EURUSD: 'EURUSDT', GBPUSD: 'GBPUSDT', SOLUSD: 'SOLUSDT', XRPUSD: 'XRPUSDT', BNBUSD: 'BNBUSDT' };
-  const IV = { 0: '1m', 1: '5m', 2: '15m', 3: '1h', 4: '4h', 5: '1d', 6: '1w' };
+  const MAP: Record<string, any> = { XAUUSD: 'PAXGUSDT', BTCUSD: 'BTCUSDT', ETHUSD: 'ETHUSDT', EURUSD: 'EURUSDT', GBPUSD: 'GBPUSDT', SOLUSD: 'SOLUSDT', XRPUSD: 'XRPUSDT', BNBUSD: 'BNBUSDT' };
+  const IV: Record<string, any> = { 0: '1m', 1: '5m', 2: '15m', 3: '1h', 4: '4h', 5: '1d', 6: '1w' };
   const REST = 'https://data-api.binance.vision/api/v3/klines';
   const WSS = 'wss://data-stream.binance.vision/stream?streams=';
-  const map = (s) => MAP[s] || (/USD$/.test(s) ? s.replace(/USD$/, 'USDT') : s);
-  const digitsOf = (s) => (/JPY/.test(s) ? 3 : /^[A-Z]{6}$/.test(s) && !/^(XAU|XAG|BTC|ETH|SOL|XRP|BNB)/.test(s) ? 5 : 2);
-  let ws = null, wsKey = '', cur = null, retry = null;
+  const map = (s: string) => MAP[s] || (/USD$/.test(s) ? s.replace(/USD$/, 'USDT') : s);
+  const digitsOf = (s: string) => (/JPY/.test(s) ? 3 : /^[A-Z]{6}$/.test(s) && !/^(XAU|XAG|BTC|ETH|SOL|XRP|BNB)/.test(s) ? 5 : 2);
+  let ws: WebSocket|null = null, wsKey = '', cur: any = null, retry: ReturnType<typeof setTimeout> | undefined = undefined;
 
-  async function requestChart(o, handler) {
-    if (o.slot === 'mtf') handler = (m) => PT.MTF.onMsg({ ...m, slot: 'mtf' });
+  async function requestChart(o: { slot?: string; symbol: string; candleType: string | number; limit?: number; to?: string; inclusive?: boolean }, handler?: (m: any) => void) {
+    if (o.slot === 'mtf') handler = (m: any) => PT.MTF.onMsg({ ...m, slot: 'mtf' });
     const extra = o.slot && o.slot !== 'main';          // MTF / dashboard widgets: never replace the main request
-    if (extra && !handler && pages.dash) handler = (m) => pages.dash.onMsg({ ...m, slot: o.slot });
+    const dash = pages.dash; if (extra && !handler && dash) handler = (m: any) => dash.onMsg({ ...m, slot: o.slot });
     handler = handler || onChartMsg;
     if (!extra) cur = o;
     try {
-      const url = `${REST}?symbol=${map(o.symbol)}&interval=${IV[o.candleType]}&limit=${Math.min(1000, o.limit || 1000)}&endTime=${Date.parse(o.to)}`;
+      const url = `${REST}?symbol=${map(o.symbol)}&interval=${IV[o.candleType]}&limit=${Math.min(1000, o.limit || 1000)}&endTime=${Date.parse(o.to ?? "")}`;
       const rows = await fetchJSON(url);
       if (!extra && cur !== o && o.inclusive) return;
-      const candles = rows.map((r) => ({ timeSeconds: r[0] / 1000, open: +r[1], high: +r[2], low: +r[3], close: +r[4] }));
+      const candles = rows.map((r: any[]) => ({ timeSeconds: r[0] / 1000, open: +r[1], high: +r[2], low: +r[3], close: +r[4] }));
       handler({ type: 'chart', data: { symbol: o.symbol, history: { candles } } });
       vcg.log('info', `Demo: ได้ ${candles.length} แท่ง ${o.symbol} (${map(o.symbol)})`, null, 'demo');
-    } catch (e) {
+    } catch (e: any) {
       handler({ type: 'chartError', data: { message: 'Demo (Binance): ' + e.message } });
       vcg.log('error', 'Demo โหลดกราฟไม่สำเร็จ: ' + e.message, null, 'demo');
     }
@@ -60,7 +61,7 @@ const DEMO = (() => {
     ws.onclose = () => { setConn(false); if (S.source === 'demo') { clearTimeout(retry); retry = setTimeout(connect, 3000); } };
     ws.onerror = () => vcg.log('warn', 'Demo: stream error', null, 'demo');
     ws.onmessage = (e) => {
-      let m; try { m = JSON.parse(e.data); } catch (_) { return; }
+      let m; try { m = JSON.parse(e.data); } catch (_: any) { return; }
       const d = m.data; if (!d) return;
       if (d.e === '24hrTicker') {
         const sym = syms.find((s) => map(s) === d.s); if (!sym) return;
@@ -73,12 +74,12 @@ const DEMO = (() => {
       }
     };
   }
-  function stop() { if (ws) { ws.onclose = null; try { ws.close(); } catch (_) {} ws = null; } clearTimeout(retry); }
-  function setConn(ok) { if (S.source !== 'demo') return; $('conn').classList.toggle('ok', ok); $('conn-text').textContent = ok ? 'Demo (Binance)' : 'Demo: กำลังเชื่อมต่อ…'; }
+  function stop() { if (ws) { ws.onclose = null; try { ws.close(); } catch (_: any) {} ws = null; } clearTimeout(retry); }
+  function setConn(ok?: boolean) { if (S.source !== 'demo') return; $('conn').classList.toggle('ok', ok); $('conn-text').textContent = ok ? 'Demo (Binance)' : 'Demo: กำลังเชื่อมต่อ…'; }
   return { requestChart, connect, stop, map };
 })();
 
-function setSource(src) {
+function setSource(src: string) {
   if (src === S.source) return;
   S.source = src; store.set('source', src); S.quotes = {};
   if (src !== 'demo' && vcg.setSource) vcg.setSource(src);
@@ -111,47 +112,49 @@ vcg.onStatus(() => { if (S.source === 'demo') DEMO.connect(); });
 
 // ---------------------------------------------------------------- candle cache (IndexedDB)
 const CACHE = (() => {
-  let dbp = null;
-  const db = () => dbp || (dbp = new Promise((res, rej) => { const r = indexedDB.open('price-tracker', 1); r.onupgradeneeded = () => r.result.createObjectStore('candles'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }));
+  let dbp: Promise<IDBDatabase> | null = null;
+  const db = () => dbp || (dbp = new Promise<IDBDatabase>((res, rej) => { const r = indexedDB.open('price-tracker', 1); r.onupgradeneeded = () => r.result.createObjectStore('candles'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }));
   const key = () => `${S.source}|${S.symbol}|${S.tf}`;
-  async function get(k) { const d = await db(); return new Promise((res) => { const q = d.transaction('candles').objectStore('candles').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(null); }); }
-  async function put(k, v) { const d = await db(); return new Promise((res) => { const t = d.transaction('candles', 'readwrite'); t.objectStore('candles').put(v, k); t.oncomplete = res; t.onerror = res; }); }
+  async function get(k: string): Promise<{ saved: number; candles: any[] } | null> { const d = await db(); return new Promise((res) => { const q = d.transaction('candles').objectStore('candles').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(null); }); }
+  async function put(k: string, v: { saved: number; candles: any[] }) { const d = await db(); return new Promise((res) => { const t = d.transaction('candles', 'readwrite'); t.objectStore('candles').put(v, k); t.oncomplete = res; t.onerror = res; }); }
   return {
     async restore() {
       try {
         const k = key(), c = await get(k);
         if (!c || !S.pendingHistory || k !== key()) return;
-        S.candles = c.candles.map((x) => ({ ...x, time: x.time + TZ }));
+        S.candles = c.candles.map((x: { time: number; }) => ({ ...x, time: x.time + TZ }));
         setAllData(); $('loading').classList.add('hidden');
         chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, S.candles.length - 150), to: S.candles.length + 10 });
         vcg.log('info', `แสดงกราฟจากแคช (${S.candles.length} แท่ง) ระหว่างรอข้อมูลใหม่`, null, 'cache');
-      } catch (_) {}
+      } catch (_: any) {}
     },
     async peek() { return get(key()); },
     save() {
       if (S.replay || S.pendingHistory || !S.candles.length) return;
-      put(key(), { saved: Date.now(), candles: S.candles.slice(-3000).map((x) => ({ time: x.time - TZ, open: x.open, high: x.high, low: x.low, close: x.close })) }).catch(() => {});
+      put(key(), { saved: Date.now(), candles: S.candles.slice(-3000).map((x: { time: number; open: any; high: any; low: any; close: any; }) => ({ time: x.time - TZ, open: x.open, high: x.high, low: x.low, close: x.close })) }).catch(() => {});
     },
   };
 })();
 
 // ---------------------------------------------------------------- economic calendar
+/** one economic-calendar event (Forex Factory weekly feed), as cached in the store (news.cache) */
+export interface CalEvent { title: string; ccy: string; t: number; impact: string; forecast?: string; previous?: string }
 const NEWS = (() => {
-  const URL = 'https://nfs.faireconomy.media/ff_calendar_thisweek.json';
-  let events = store.get('news.cache', { at: 0, list: [] });
-  const warned = new Set(store.get('news.warned', []));
-  const ccyOf = (sym) => (/^XAU|^XAG/.test(sym) ? ['USD'] : /^[A-Z]{6}$/.test(sym) ? [sym.slice(0, 3), sym.slice(3)] : ['USD']);
-  async function refresh(force) {
+  const CAL_URL = 'https://nfs.faireconomy.media/ff_calendar_thisweek.json';
+  let events: { at: number; list: CalEvent[] } = store.get('news.cache', { at: 0, list: [] });
+  const warned = new Set<string>(store.get('news.warned', []));
+  const ccyOf = (sym: string) => (/^XAU|^XAG/.test(sym) ? ['USD'] : /^[A-Z]{6}$/.test(sym) ? [sym.slice(0, 3), sym.slice(3)] : ['USD']);
+  async function refresh(force?: boolean) {
     if (!force && Date.now() - events.at < 3600e3 && events.list.length) return render();
     try {
-      const list = await fetchJSON(URL);
-      events = { at: Date.now(), list: list.map((e) => ({ title: e.title, ccy: e.country, t: Math.floor(Date.parse(e.date) / 1000), impact: e.impact, forecast: e.forecast, previous: e.previous })) };
+      const list = await fetchJSON(CAL_URL);
+      events = { at: Date.now(), list: list.map((e: { title: any; country: any; date: string; impact: any; forecast: any; previous: any; }) => ({ title: e.title, ccy: e.country, t: Math.floor(Date.parse(e.date) / 1000), impact: e.impact, forecast: e.forecast, previous: e.previous })) };
       store.set('news.cache', events); vcg.log('info', `โหลดปฏิทินข่าว ${events.list.length} รายการ`, null, 'news');
-    } catch (e) { vcg.log('warn', 'โหลดปฏิทินข่าวไม่สำเร็จ: ' + e.message, null, 'news'); }
+    } catch (e: any) { vcg.log('warn', 'โหลดปฏิทินข่าวไม่สำเร็จ: ' + e.message, null, 'news'); }
     render();
   }
   const relevant = () => events.list.filter((e) => ccyOf(S.symbol).includes(e.ccy) && (e.impact === 'High' || e.impact === 'Medium'));
-  const hhmm = (t) => { const d = new Date((t + TZ) * 1000); return `${['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'][d.getUTCDay()]} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`; };
+  const hhmm = (t: number) => { const d = new Date((t + TZ) * 1000); return `${['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'][d.getUTCDay()]} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`; };
   function render() {
     let box = $('an-news');
     if (!box) { $('an-trend').insertAdjacentHTML('beforebegin', '<div class="panel" id="an-news"></div>'); box = $('an-news'); }
@@ -174,7 +177,7 @@ const NEWS = (() => {
     }
   }
   // vertical markers on the chart (toggle in chart settings)
-  function draw(W, H) {
+  function draw(W: number, H: any) {
     if (!S.chartCfg.news || !S.candles.length) return;
     const first = S.candles[0].time - TZ, last = S.candles[S.candles.length - 1].time - TZ + tf().sec * 30;
     for (const e of relevant()) {
@@ -193,29 +196,29 @@ const NEWS = (() => {
     return relevant().filter((e) => e.t > now - 600).slice(0, n).map((e) => ({ ...e, when: hhmm(e.t) }));
   }
   // whole week for the news page: all events, or only those for the open symbol's currencies
-  const week = (onlyRelevant) => (onlyRelevant ? relevant() : events.list).map((e) => ({ ...e, when: hhmm(e.t) }));
+  const week = (onlyRelevant?: boolean) => (onlyRelevant ? relevant() : events.list).map((e) => ({ ...e, when: hhmm(e.t) }));
   return { refresh, render, draw, upcoming, week, ccys: () => ccyOf(S.symbol), loadedAt: () => events.at };
 })();
 
 // ---------------------------------------------------------------- update checker (GitHub Releases)
 const UPDATE = (() => {
   const REPO = 'guitar-dev-io/trader-tacking';
-  const cmp = (a, b) => { const pa = a.replace(/^v/, '').split('.').map(Number), pb = b.replace(/^v/, '').split('.').map(Number); for (let i = 0; i < 3; i++) { if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) - (pb[i] || 0); } return 0; };
-  async function check(manual) {
+  const cmp = (a: string, b: string) => { const pa = a.replace(/^v/, '').split('.').map(Number), pb = b.replace(/^v/, '').split('.').map(Number); for (let i = 0; i < 3; i++) { if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) - (pb[i] || 0); } return 0; };
+  async function check(manual: boolean) {
     try {
       const cur = (await vcg.getSettings()).version || window.APP_VERSION;
       const r = await fetchJSON(`https://api.github.com/repos/${REPO}/releases/latest`);
       if (cur && r.tag_name && cmp(r.tag_name, cur) > 0) {
-        const t = document.createElement('div'); t.className = 'toast ok'; t.style.pointerEvents = 'auto';
+        const t = mk('div'); t.className = 'toast ok'; t.style.pointerEvents = 'auto';
         t.innerHTML = `${ICON.html('sparkles', 16, 'toast-ic')}มีเวอร์ชันใหม่ ${esc(r.tag_name)} (ตอนนี้ ${esc(cur)}) <a href="${esc(r.html_url)}" target="_blank" style="color:var(--link, #82aaff)">ดาวน์โหลด</a> <button style="margin-left:6px" aria-label="ปิด">${ICON.svg('x', 14)}</button>`;
         t.querySelector('button').onclick = () => t.remove();
         $('toasts').appendChild(t);
         vcg.log('info', `มีเวอร์ชันใหม่ ${r.tag_name}`, null, 'update');
       } else if (manual) toast(`ใช้เวอร์ชันล่าสุดแล้ว (${cur})`, 'ok');
-    } catch (e) { if (manual) toast('ตรวจสอบอัปเดตไม่ได้: ' + e.message, 'warn'); }
+    } catch (e: any) { if (manual) toast('ตรวจสอบอัปเดตไม่ได้: ' + e.message, 'warn'); }
   }
   if (store.get('autoUpdateCheck', true)) { setTimeout(() => check(false), 8000); setInterval(() => check(false), 6 * 3600e3); }
   return { check };
 })();
-ui.demo = DEMO; ui.cache = CACHE; ui.news = NEWS; ui.setSource = (src) => setSource(src);
+ui.demo = DEMO; ui.cache = CACHE; ui.news = NEWS; ui.setSource = (src: string) => setSource(src);
 export { CACHE, DEMO, NEWS, setSource };

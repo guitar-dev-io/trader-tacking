@@ -7,11 +7,11 @@ import { ui } from '../../ui/registry';
 import { toast } from '../../ui/toast';
 import { S, store } from '../../state';
 import { pages, lazyMount, type PageApi } from '../registry';
-import { ICON } from '../../../icons.js';
-import { $ } from '../../../app-core.js';
-import { MM_LEARN } from '../../../mm-learn.js';
-import { QUIZ, REPLAY } from '../../../learn.js';
-import { PAGES } from '../../../pages.js';
+import { ICON } from '../../app/icons';
+import { $ } from '../../app/app-core';
+import { MM_LEARN } from '../../app/mm-learn';
+import { QUIZ, REPLAY } from '../../app/learn';
+import { PAGES } from '../../app/pages';
 import LearnCenter from './LearnCenter.svelte';
 import { lc, all, byId, cats, read, openCats, progress, mark, setView, saveCats } from './model.svelte';
 

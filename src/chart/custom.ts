@@ -105,10 +105,10 @@ export function run(code: string, candles: Candle[], params: Record<string, unkn
     // eslint-disable-next-line no-new-func
     const fn = new Function('candles', 'open', 'high', 'low', 'close', 'input', 'ta', 'plot', 'hline', 'marker', '"use strict";\n' + code);
     fn(candles, candles.map((c) => c.open), candles.map((c) => c.high), candles.map((c) => c.low), candles.map((c) => c.close), input, TA, plot, hline, marker);
-  } catch (e) { out.error = (e as Error).message; }
+  } catch (e: any) { out.error = (e as Error).message; }
   return out;
 }
 
 
 export const CUSTOM = { run, TA, EXAMPLES, TEMPLATE };
-def({ CUSTOM: [() => CUSTOM] });
+

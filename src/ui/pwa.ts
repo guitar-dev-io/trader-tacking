@@ -1,5 +1,5 @@
 import { toast } from './toast';
-import { ICON } from '../../icons.js';
+import { ICON } from '../app/icons';
 
 interface InstallPrompt extends Event { prompt(): void; userChoice: Promise<{ outcome: string }> }
 // Web app (PWA): offline cache + "install as app" button. Only in a normal browser over http(s) —

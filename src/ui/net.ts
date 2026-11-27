@@ -2,9 +2,8 @@
 // The settings window reads the last value through the netState store.
 import { writable } from 'svelte/store';
 import { toast } from './toast';
-import { $ } from '../../app-core.js';
+import { $ } from '../app/app-core';
 
-declare const vcg: any;
 export interface NetInfo { level: 'ok' | 'slow' | 'stale' | 'down' | 'offline'; detail?: string; rtt?: number | null; feedDelay?: number | null; lastTickAgo?: number | null; reconnects?: number; cpu?: Record<string, number | null> }
 export const NET_TH: Record<string, string> = { ok: 'ปกติ', slow: 'เน็ตช้า', stale: 'ราคาค้าง', down: 'หลุด', offline: 'ออฟไลน์' };
 export const netState = writable<NetInfo | null>(null);

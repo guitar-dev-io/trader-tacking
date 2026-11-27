@@ -4,7 +4,7 @@
   // (symbol switch, quotes, Claude's `plan` command → renderPlanner()).
   import Icon from '../Icon.svelte';
   import { plannerTick } from './planner-view';
-  import { S, fmt } from '../../../app-core.js';
+  import { S, fmt } from '../../app/app-core';
 
   interface Api {
     computePlan: () => any; autoVpp: (s: string) => number | null; contractSize: (s: string) => number; isCentAcct: () => boolean; CUR: () => string;

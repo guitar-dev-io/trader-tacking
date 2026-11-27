@@ -1,6 +1,10 @@
-import { PT, def } from './src/pt.ts';
-def({ LESSONS: [() => LESSONS] });
-let LESSONS; // set below; exported (was window.LESSONS)
+import { PT, def } from '../pt';
+
+/** a lesson: t = title, b = body HTML; c = category id (extra lessons); demo/try fields drive "ลองบนกราฟ" */
+export interface Lesson { t: string; b: string; c?: string; [k: string]: any }
+/** a lesson category of the learning center */
+export interface LessonCat { id: string; name: string; icon: string }
+let LESSONS!: Lesson[]; // set below; exported (was window.LESSONS)
 // Short Thai lessons shown in the "บทเรียน" tab.
 LESSONS = [
   { t: '1. Swing High / Swing Low (การตีสวิง)', b: `<p><b>Swing High</b> คือจุดยอดที่สูงกว่าแท่งข้างๆ ทั้งซ้ายและขวา <b>Swing Low</b> คือจุดต่ำที่ต่ำกว่าแท่งข้างๆ</p>

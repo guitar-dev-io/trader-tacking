@@ -1,17 +1,17 @@
-import { PT, def } from './src/pt.ts';
-import { onBack } from './src/ui/back.ts';
-import { ui } from './src/ui/registry.ts';
-import { view } from './src/state.ts';
-import { toast } from './src/ui/toast.ts';
-import { ICON } from './icons.js';
-import { $, S, esc, fmt, store } from './app-core.js';
-import { openIndicatorMenu } from './src/chart/chart.ts';
-import { openAnalysisMenu } from './app-analysis.js';
-import { switchSymbol } from './app-data.js';
-import { GROUPS, TOOLS, onToolChange, setTool, undo } from './src/chart/draw.ts';
-import { REPLAY } from './learn.js';
-import { SETUP } from './src/ui/setup/index.ts';
-import { pages } from './src/pages/registry.ts';
+import { PT, def } from '../pt';
+import { onBack } from '../ui/back';
+import { ui } from '../ui/registry';
+import { view } from '../state';
+import { toast } from '../ui/toast';
+import { ICON } from './icons';
+import { $, S, esc, fmt, store, qs, qsa, tgt, mk } from './app-core';
+import { openIndicatorMenu } from '../chart/chart';
+import { openAnalysisMenu } from './app-analysis';
+import { switchSymbol } from './app-data';
+import { GROUPS, TOOLS, onToolChange, setTool, undo } from '../chart/draw';
+import { REPLAY } from './learn';
+import { SETUP } from '../ui/setup/index';
+import { pages } from '../pages/registry';
 // Phone layout (Android app / narrow windows). The desktop UI is a TradingView-style workstation; on a phone we
 // re-arrange the same parts into a mobile shell instead of shrinking the desktop:
 //   header: symbol (tap → symbol sheet) · price · change · status dot
@@ -22,14 +22,14 @@ import { pages } from './src/pages/registry.ts';
 (function () {
   if (!document.body.classList.contains('mobile')) return;
   document.body.classList.add('m2');
-  const on = (el, ev, f) => el && el.addEventListener(ev, f);
+  const on = (el: Element | null, ev: string, f: (e: any) => unknown, o?: AddEventListenerOptions) => el && el.addEventListener(ev, f);
 
   // ------------------------------------------------------------ bottom sheet
-  const sheet = document.createElement('div');
+  const sheet = mk('div');
   sheet.id = 'msheet'; sheet.className = 'hidden';
   sheet.innerHTML = '<div class="ms-back"></div><div class="ms-panel"><div class="ms-grab"></div><div class="ms-head"><b class="ms-title"></b><button class="ms-x" aria-label="ปิด">' + ICON.svg('x', 20) + '</button></div><div class="ms-body"></div></div>';
   document.body.appendChild(sheet);
-  let borrowed = null, borrowedHome = null, watch = null, onCloseCb = null;
+  let borrowed: any = null, borrowedHome: any = null, watch: MutationObserver|null = null, onCloseCb: any = null;
   function closeSheet() {
     if (sheet.classList.contains('hidden')) return;
     sheet.classList.add('hidden');
@@ -38,7 +38,7 @@ import { pages } from './src/pages/registry.ts';
     const cb = onCloseCb; onCloseCb = null; if (cb) cb();
   }
   // content: an HTML string, or an existing element (e.g. #ind-menu) that is borrowed and put back on close
-  function openSheet(title, content, { onClose } = {}) {
+  function openSheet(title: string|null, content: string|Node, { onClose } = {}) {
     closeSheet();
     sheet.querySelector('.ms-title').textContent = title;
     const body = sheet.querySelector('.ms-body'); body.innerHTML = '';
@@ -58,9 +58,9 @@ import { pages } from './src/pages/registry.ts';
   on(sheet.querySelector('.ms-back'), 'click', closeSheet);
   on(sheet.querySelector('.ms-x'), 'click', closeSheet);
   // swipe the grab bar down to close
-  (() => { let y0 = null; const g = sheet.querySelector('.ms-head');
-    on(g, 'touchstart', (e) => { y0 = e.touches[0].clientY; }, { passive: true });
-    on(g, 'touchend', (e) => { if (y0 != null && e.changedTouches[0].clientY - y0 > 60) closeSheet(); y0 = null; }); })();
+  (() => { let y0: number|null = null; const g = sheet.querySelector('.ms-head');
+    on(g, 'touchstart', (e: { touches: { clientY: any; }[]; }) => { y0 = e.touches[0].clientY; }, { passive: true });
+    on(g, 'touchend', (e: { changedTouches: { clientY: number; }[]; }) => { if (y0 != null && e.changedTouches[0].clientY - y0 > 60) closeSheet(); y0 = null; }); })();
   const MSHEET = { open: openSheet, close: closeSheet, isOpen: () => !sheet.classList.contains('hidden') };
   ui.msheet = MSHEET; PT.MSHEET = MSHEET;   // PT: tests
 
@@ -69,7 +69,7 @@ import { pages } from './src/pages/registry.ts';
   $('sym-title').insertAdjacentHTML('afterbegin', '');
   $('cur-sym').insertAdjacentHTML('afterend', '<span class="m-caret">▾</span>');
   on($('sym-title'), 'click', () => openSymbols());
-  const row = document.createElement('div'); row.id = 'mtfrow';
+  const row = mk('div'); row.id = 'mtfrow';
   row.innerHTML = `<div class="m-tfs"></div><div class="m-acts">
     <button data-m="ind" aria-label="อินดิเคเตอร์">${ICON.svg('fx', 20)}</button>
     <button data-m="an" aria-label="วิเคราะห์บนกราฟ">${ICON.svg('brain', 20)}</button>
@@ -78,9 +78,9 @@ import { pages } from './src/pages/registry.ts';
   // network warning: a thin strip under the timeframe row instead of squeezing the price header
   if ($('netbanner')) document.body.appendChild($('netbanner'));
   row.querySelector('.m-tfs').appendChild($('tfs'));
-  on(row.querySelector('[data-m=ind]'), 'click', (e) => { e.stopPropagation(); openIndicatorMenu(); openSheet('อินดิเคเตอร์', $('ind-menu')); });
-  on(row.querySelector('[data-m=an]'), 'click', (e) => { e.stopPropagation(); openAnalysisMenu(); openSheet('แสดงบนกราฟ', $('an-menu')); });
-  on(row.querySelector('[data-m=opts]'), 'click', (e) => { e.stopPropagation(); openOptions(); });
+  on(row.querySelector('[data-m=ind]'), 'click', (e: { stopPropagation: () => void; }) => { e.stopPropagation(); openIndicatorMenu(); openSheet('อินดิเคเตอร์', $('ind-menu')); });
+  on(row.querySelector('[data-m=an]'), 'click', (e: { stopPropagation: () => void; }) => { e.stopPropagation(); openAnalysisMenu(); openSheet('แสดงบนกราฟ', $('an-menu')); });
+  on(row.querySelector('[data-m=opts]'), 'click', (e: { stopPropagation: () => void; }) => { e.stopPropagation(); openOptions(); });
   // keep the selected timeframe chip in view
   const centerTf = () => { const a = $('tfs').querySelector('.active'); if (a) a.scrollIntoView({ inline: 'center', block: 'nearest' }); };
   setTimeout(centerTf, 300); on($('tfs'), 'click', () => setTimeout(centerTf, 50));
@@ -92,7 +92,7 @@ import { pages } from './src/pages/registry.ts';
   on($('m-draw'), 'click', openTools);
   on(wrap.querySelector('.mp-x'), 'click', () => setTool('cursor'));
   on(wrap.querySelector('.mp-undo'), 'click', () => { undo(); view.dirty = true; });
-  const HINT = { trend: 'แตะ 2 จุด', ray: 'แตะ 2 จุด', hline: 'แตะที่ราคา', vline: 'แตะที่เวลา', channel: 'แตะ 3 จุด', fib: 'แตะจุดเริ่ม แล้วจุดจบ', fibext: 'แตะ 3 จุด', rect: 'แตะ 2 มุม', brush: 'ลากเพื่อวาด',
+  const HINT: Record<string, any> = { trend: 'แตะ 2 จุด', ray: 'แตะ 2 จุด', hline: 'แตะที่ราคา', vline: 'แตะที่เวลา', channel: 'แตะ 3 จุด', fib: 'แตะจุดเริ่ม แล้วจุดจบ', fibext: 'แตะ 3 จุด', rect: 'แตะ 2 มุม', brush: 'ลากเพื่อวาด',
     long: 'แตะ Entry แล้ว SL', short: 'แตะ Entry แล้ว SL', text: 'แตะตำแหน่งข้อความ', arrowUp: 'แตะเพื่อวาง', arrowDown: 'แตะเพื่อวาง', measure: 'แตะ 2 จุด', alert: 'แตะที่ราคา' };
   function syncPill() {
     const t = S.tool, p = $('m-pill'), drawing = t && t !== 'cursor';
@@ -107,7 +107,7 @@ import { pages } from './src/pages/registry.ts';
       <div class="m-row2"><label class="m-switch"><input type="checkbox" id="m-magnet" ${S.magnet ? 'checked' : ''}> Magnet (ดูดเข้าราคา)</label>
       <button id="m-layers">รูปวาดทั้งหมด</button><button id="m-undo">${ICON.html('undo-2', 16)}ย้อน</button></div>`);
     body.querySelectorAll('[data-t]').forEach((b) => (b.onclick = () => { setTool(b.dataset.t); closeSheet(); }));
-    body.querySelector('#m-magnet').onchange = (e) => { S.magnet = e.target.checked; store.set('magnet', S.magnet); const m = $('magnet'); if (m) m.checked = S.magnet; };
+    body.querySelector('#m-magnet').onchange = (e: Event) => { S.magnet = tgt(e).checked; store.set('magnet', S.magnet); const m = $('magnet'); if (m) m.checked = S.magnet; };
     body.querySelector('#m-undo').onclick = () => { undo(); view.dirty = true; };
     body.querySelector('#m-layers').onclick = () => { closeSheet(); const b = $('t-layers'); if (b) b.click(); };
   }
@@ -130,25 +130,25 @@ import { pages } from './src/pages/registry.ts';
       </div>`);
     // ranges: reuse the desktop buttons' click handlers
     const rs = body.querySelector('.m-ranges');
-    document.querySelectorAll('#ranges button').forEach((b) => { const c = document.createElement('button'); c.textContent = b.textContent; c.onclick = () => { b.click(); closeSheet(); }; rs.appendChild(c); });
-    document.querySelectorAll('#bottombar [data-scale]').forEach((b) => { const m = body.querySelector(`[data-sc="${b.dataset.scale}"]`); if (m) { m.classList.toggle('on', b.classList.contains('active')); m.onclick = () => { b.click(); body.querySelectorAll('[data-sc]').forEach((x) => x.classList.toggle('on', x === m)); }; } });
+    qsa('#ranges button').forEach((b) => { const c = mk('button'); c.textContent = b.textContent; c.onclick = () => { b.click(); closeSheet(); }; rs.appendChild(c); });
+    qsa('#bottombar [data-scale]').forEach((b) => { const m = body.querySelector(`[data-sc="${b.dataset.scale}"]`); if (m) { m.classList.toggle('on', b.classList.contains('active')); m.onclick = () => { b.click(); body.querySelectorAll('[data-sc]').forEach((x) => x.classList.toggle('on', x === m)); }; } });
     body.querySelectorAll('[data-ct]').forEach((b) => (b.onclick = () => { $('ctype').value = b.dataset.ct; $('ctype').dispatchEvent(new Event('change')); body.querySelectorAll('[data-ct]').forEach((x) => x.classList.toggle('on', x === b)); }));
-    body.querySelector('[data-chk=show-ask]').onchange = (e) => { $('show-ask').checked = e.target.checked; $('show-ask').dispatchEvent(new Event('change')); };
-    body.querySelector('[data-a=replay]').onclick = (e) => { e.stopPropagation(); closeSheet(); goChart(); const b = document.querySelector('[data-sim="replay"], #rp-btn, [data-r="pick"]'); if (b) b.click(); else if (typeof REPLAY !== 'undefined') REPLAY.pick(); };
-    body.querySelector('[data-a=settings]').onclick = (e) => { e.stopPropagation(); closeSheet(); $('cs-btn').click(); openSheet('ตั้งค่ากราฟ', $('cs-menu')); };
+    body.querySelector('[data-chk=show-ask]').onchange = (e: Event) => { $('show-ask').checked = tgt(e).checked; $('show-ask').dispatchEvent(new Event('change')); };
+    body.querySelector('[data-a=replay]').onclick = (e: { stopPropagation: () => void; }) => { e.stopPropagation(); closeSheet(); goChart(); const b = qs('[data-sim="replay"], #rp-btn, [data-r="pick"]'); if (b) b.click(); else if (typeof REPLAY !== 'undefined') REPLAY.pick(); };
+    body.querySelector('[data-a=settings]').onclick = (e: { stopPropagation: () => void; }) => { e.stopPropagation(); closeSheet(); $('cs-btn').click(); openSheet('ตั้งค่ากราฟ', $('cs-menu')); };
     body.querySelector('[data-a=shot]').onclick = () => { closeSheet(); $('shot').click(); };
-    body.querySelector('[data-a=reset]').onclick = () => { closeSheet(); const b = document.querySelector('#zoombar [data-z=reset]'); if (b) b.click(); };
+    body.querySelector('[data-a=reset]').onclick = () => { closeSheet(); const b = qs('#zoombar [data-z=reset]'); if (b) b.click(); };
   }
 
   // ------------------------------------------------------------ symbol sheet
   function openSymbols() {
     const syms = [...new Set([S.symbol, ...(S.symbols || []), ...Object.keys(S.quotes)])].filter(Boolean);
-    const row = (s) => { const q = S.quotes[s]; const ch = q && isFinite(q.changePct) ? q.changePct : null;
+    const row = (s?: string|number|null) => { const q = S.quotes[s]; const ch = q && isFinite(q.changePct) ? q.changePct : null;
       return `<button data-s="${esc(s)}" class="${s === S.symbol ? 'on' : ''}"><b>${esc(s)}</b><span class="ms-px">${q ? fmt(q.bid, q.digits) : '—'}</span><span class="${ch > 0 ? 'up' : ch < 0 ? 'down' : 'muted'}">${ch == null ? '' : (ch > 0 ? '+' : '') + ch.toFixed(2) + '%'}</span></button>`; };
     const body = openSheet('เลือก Symbol', `<form class="m-add"><input placeholder="เพิ่ม symbol เช่น GBPUSD, BTCUSD" autocomplete="off" autocapitalize="characters"><button>เพิ่ม</button></form>
       <div class="m-syms">${syms.map(row).join('')}</div><p class="muted m-note">แตะเพื่อเปิดกราฟ · จัดการรายการ/แจ้งเตือนราคาได้ที่แท็บ "ราคา"</p>`);
     body.querySelectorAll('[data-s]').forEach((b) => (b.onclick = () => { switchSymbol(b.dataset.s); closeSheet(); goChart(); }));
-    body.querySelector('.m-add').onsubmit = (e) => { e.preventDefault(); const v = e.target.querySelector('input').value.trim().toUpperCase(); if (!v) return; vcg.addSymbol(v); switchSymbol(v); closeSheet(); goChart(); };
+    body.querySelector('.m-add').onsubmit = (e: any) => { e.preventDefault(); const v = tgt(e).querySelector('input').value.trim().toUpperCase(); if (!v) return; vcg.addSymbol(v); switchSymbol(v); closeSheet(); goChart(); };
   }
 
   // ------------------------------------------------------------ pages + bottom nav
@@ -168,17 +168,17 @@ import { pages } from './src/pages/registry.ts';
     <button data-do="login">${ICON.svg('log-in', 22)}<span><b>เข้าสู่ระบบ VCG</b><small>เปิดหน้า login ของ VCG WebTrader</small></span></button>
     <button data-do="reconnect">${ICON.svg('refresh-cw', 22)}<span><b>เชื่อมต่อใหม่</b><small>โหลดหน้า VCG ใหม่</small></span></button>
     <p class="muted m-ver"></p></div></div>`);
-  const PAGES = { market: 'ราคา', analysis: 'วิเคราะห์', practice: 'ฝึกเทรด', calc: 'คำนวณ', log: 'Log', more: 'เพิ่มเติม' };
-  const SUB = { calc: 1, log: 1 };
-  let page = null;
-  function showPage(t) {
+  const PAGES: Record<string, any> = { market: 'ราคา', analysis: 'วิเคราะห์', practice: 'ฝึกเทรด', calc: 'คำนวณ', log: 'Log', more: 'เพิ่มเติม' };
+  const SUB: Record<string, any> = { calc: 1, log: 1 };
+  let page: string|number|null = null;
+  function showPage(t: string) {
     page = t;
-    if (t !== 'more') { const b = document.querySelector(`#tabs [data-tab="${t}"]`); if (b) b.click(); }
-    else document.querySelectorAll('#side .tab').forEach((x) => x.classList.toggle('hidden', x.id !== 'tab-more'));
+    if (t !== 'more') { const b = qs(`#tabs [data-tab="${t}"]`); if (b) b.click(); }
+    else qsa('#side .tab').forEach((x) => x.classList.toggle('hidden', x.id !== 'tab-more'));
     side.querySelector('.mph-t').textContent = PAGES[t] || '';
     side.querySelector('.mph-back').classList.toggle('hidden', !SUB[t]);
     if (!S.ui.side) ui.setUI?.('side', true);
-    side.scrollTop = 0; document.querySelectorAll('#side .tab').forEach((x) => { x.scrollTop = 0; });
+    side.scrollTop = 0; qsa('#side .tab').forEach((x) => { x.scrollTop = 0; });
     syncNav();
   }
   function goChart() { page = null; if (S.ui.side) ui.setUI?.('side', false); syncNav(); view.dirty = true; }
@@ -198,7 +198,7 @@ import { pages } from './src/pages/registry.ts';
   // data source selector lives in the "more" page on phones
   const srcRow = $('src-sel') && $('src-sel').closest('.row'); if (srcRow) side.querySelector('.m-src').appendChild(srcRow);
 
-  const nav = document.createElement('nav'); nav.id = 'mnav2';
+  const nav = mk('nav'); nav.id = 'mnav2';
   const NAV = [['chart', 'candles', 'กราฟ'], ['market', 'list', 'ราคา'], ['analysis', 'brain', 'วิเคราะห์'], ['learn', 'graduation-cap', 'เรียนรู้'], ['practice', 'play', 'ฝึก'], ['more', 'menu', 'เพิ่มเติม']];
   nav.innerHTML = NAV.map(([k, i, n]) => `<button data-nav="${k}">${ICON.svg(i, 22) || ''}<span>${n}</span>${k === 'more' ? '<i class="nb"></i>' : ''}</button>`).join('');
   document.body.appendChild(nav);
@@ -216,7 +216,7 @@ import { pages } from './src/pages/registry.ts';
   }
   setInterval(syncNav, 1500);
   // other code (bounce card → calculator, SIM.prefill …) switches tabs by clicking #tabs buttons: follow along
-  document.querySelectorAll('#tabs button[data-tab]').forEach((b) => b.addEventListener('click', () => {
+  qsa('#tabs button[data-tab]').forEach((b) => b.addEventListener('click', () => {
     if (page !== b.dataset.tab) { page = b.dataset.tab; side.querySelector('.mph-t').textContent = PAGES[page] || ''; side.querySelector('.mph-back').classList.toggle('hidden', !SUB[page]); if (!S.ui.side) ui.setUI?.('side', true); syncNav(); }
   }));
   // start on the chart

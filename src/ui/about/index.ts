@@ -12,4 +12,4 @@ function mountMore() {
   mount(About, { target: host });
 }
 mountMore(); setTimeout(mountMore, 1500);           // the mobile More page is built by mobile.js
-def({ SUPPORT: [() => SUPPORT] });
+

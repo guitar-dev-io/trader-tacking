@@ -3,15 +3,14 @@
 import { mount } from 'svelte';
 import { def } from '../../pt';
 import { S, store } from '../../state';
-import { connStatus } from '../../../app-data.js';
+import { connStatus } from '../../app/app-data';
 import { toast } from '../toast';
 import { ui, type SetupApi } from '../registry';
-import { setSource } from '../../../extras.js';
+import { setSource } from '../../app/extras';
 import { pages } from '../../pages/registry';
 import Setup from './Setup.svelte';
 import './source-pill';
 
-declare const vcg: any;
 type View = { go: (p: string, s?: number) => void; setRun: (busy: boolean, lastRun?: any) => void; refresh: () => void };
 let box: HTMLDivElement | null = null, view: View | null = null, timer: ReturnType<typeof setInterval> | undefined;
 

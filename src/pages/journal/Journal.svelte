@@ -4,7 +4,7 @@
   import { S, connStatus, theme, store } from '../../state';
   import type { Trade } from '../../core/journal';
   import { JOURNAL } from '../../legacy/core';
-  import { POSITIONS } from '../../../positions.js';
+  import { POSITIONS } from '../../app/positions';
   import { jr, TH_MON, TH_WD, SESS, RANGES, money, pct, cls, dur, tz, compute, cur, setRange, type Computed } from './model.svelte';
   import { drawCharts } from './charts';
 

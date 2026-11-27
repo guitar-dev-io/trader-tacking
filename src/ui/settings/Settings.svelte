@@ -8,10 +8,10 @@
   import { toast } from '../toast';
   import { PT } from '../../pt';
   import { ui } from '../registry';
-  import { ICON } from '../../../icons.js';
-  import { $ as byId, zoneOffsetSec, setTZ } from '../../../app-core.js';
-  import { runAnalysis } from '../../../app-analysis.js';
-  import { loadChart } from '../../../app-data.js';
+  import { ICON } from '../../app/icons';
+  import { $ as byId, zoneOffsetSec, setTZ } from '../../app/app-core';
+  import { runAnalysis } from '../../app/app-analysis';
+  import { loadChart } from '../../app/app-data';
   import { DEFAULT_SESSIONS, SESSIONS_ALL, ZONES, _sessionWindow, setSessions } from '../../chart/draw';
   import { netState, NET_TH } from '../net';
   import { osKeys } from '../os';
