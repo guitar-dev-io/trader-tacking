@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { ui } from './src/ui/registry.ts';
 import { $, S, TFS, esc, store } from './app-core.js';
 import { buildIndicators, buildMain, refreshPriceLines } from './app-chart.js';
 import { renderAnalysis } from './app-analysis.js';
@@ -20,7 +21,7 @@ logTab.init();
 // ---------------------------------------------------------------- toolbar
 function renderTfs() {
   $('tfs').innerHTML = TFS.map((t) => `<button data-t="${t.type}" class="${t.type === S.tf ? 'active' : ''}">${t.label}</button>`).join('');
-  $('tfs').querySelectorAll('button').forEach((b) => (b.onclick = () => { if (S.replay && typeof PT.REPLAY !== 'undefined') PT.REPLAY.exit(); S.tf = +b.dataset.t; store.set('tf', S.tf); renderTfs(); loadChart(); }));
+  $('tfs').querySelectorAll('button').forEach((b) => (b.onclick = () => { if (S.replay && ui.replay) ui.replay.exit(); S.tf = +b.dataset.t; store.set('tf', S.tf); renderTfs(); loadChart(); }));
 }
 $('ctype').value = S.ctype;
 $('ctype').onchange = () => { S.ctype = $('ctype').value; store.set('ctype', S.ctype); buildMain(); buildIndicators(); };

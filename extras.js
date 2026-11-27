@@ -9,7 +9,7 @@ import { beep, desktopNotify, loadChart, onChartMsg, onQuotesMsg, renderConnect,
 import { el, lToX, timeToLogical, txt } from './app-overlay.js';
 import { pages } from './src/pages/registry.ts';
 
-def({ fetchJSON: [() => fetchJSON], DEMO: [() => DEMO], setSource: [() => setSource, (v) => { setSource = v; }], renderSourceSel: [() => renderSourceSel, (v) => { renderSourceSel = v; }], CACHE: [() => CACHE], NEWS: [() => NEWS], UPDATE: [() => UPDATE] });
+def({ NEWS: [() => NEWS], UPDATE: [() => UPDATE] });   // NEWS: draw.js (chart, Phase 4e) · UPDATE: settings
 // Extras: Demo data source (Binance public market data), local candle cache, economic calendar, update checker.
 
 // ---------------------------------------------------------------- helpers
@@ -217,4 +217,5 @@ const UPDATE = (() => {
   if (store.get('autoUpdateCheck', true)) { setTimeout(() => check(false), 8000); setInterval(() => check(false), 6 * 3600e3); }
   return { check };
 })();
+ui.demo = DEMO; ui.cache = CACHE; ui.news = NEWS; ui.setSource = (src) => setSource(src);
 export { CACHE, DEMO, NEWS, setSource };

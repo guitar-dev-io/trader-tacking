@@ -4,7 +4,7 @@ import { toast } from './src/ui/toast.ts';
 import { ICON } from './icons.js';
 import { $, DOWN, S, TZ, UP, drawings, esc, fmt, saveDrawings, store, tf } from './app-core.js';
 import { chart } from './app-chart.js';
-import { beep, loadChart, onQuotesMsg, pushLast, setAllData, switchSymbol } from './app-data.js';
+import { beep, loadChart, onQuotes, pushLast, setAllData, switchSymbol } from './app-data.js';
 import { el, label, yOf } from './app-overlay.js';
 import { renderTfs } from './app.js';
 import { normalize } from './draw.js';
@@ -12,7 +12,7 @@ import { autoVpp, plannerLot, vpp } from './planner.js';
 import { ui } from './src/ui/registry.ts';
 import { showSim, tickSim, showQuiz, showLesson } from './src/ui/tabs/practice-view.ts';
 
-def({ REPLAY: [() => REPLAY], SIM: [() => SIM], _onQuotesMsg: [() => _onQuotesMsg], QUIZ: [() => QUIZ], downloadText: [() => downloadText, (v) => { downloadText = v; }], LESSON: [() => LESSON] });
+def({ REPLAY: [() => REPLAY], SIM: [() => SIM], QUIZ: [() => QUIZ], downloadText: [() => downloadText, (v) => { downloadText = v; }], LESSON: [() => LESSON] });
 // Learning tools: Bar Replay, paper trading (simulated orders on live or replay data), practice exercises, journal & stats, lesson packs.
 
 // ================================================================ Bar Replay
@@ -269,8 +269,7 @@ const SIM = (() => {
 })();
 
 // hook live quotes into the simulator
-const _onQuotesMsg = onQuotesMsg;
-PT.onQuotesMsg = function (list) { _onQuotesMsg(list); if (!S.replay) { for (const q of list) SIM.onQuote(q); SIM.tickUpdate(); } };
+onQuotes((list) => { if (!S.replay) { for (const q of list) SIM.onQuote(q); SIM.tickUpdate(); } });
 
 // ================================================================ Practice exercises (random replay quiz)
 const QUIZ = (() => {
@@ -340,4 +339,5 @@ const LESSON = (() => {
 document.querySelector('#tabs [data-tab="practice"]').addEventListener('click', () => { QUIZ.render(); SIM.render(); LESSON.render(); });
 QUIZ.render(); LESSON.render();
 ui.sim = SIM;
+ui.replay = REPLAY;
 export { QUIZ, REPLAY };

@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { ui } from './src/ui/registry.ts';
 import { toast } from './src/ui/toast.ts';
 import { $, S, store } from './app-core.js';
 import { NEWS } from './extras.js';
@@ -112,4 +113,5 @@ const HEADLINES = (() => {
     list: (opts = {}) => { const words = symbolWords(opts.symbol || S.symbol); return items.list.filter((x) => !opts.relevant || relevantTo(x, words) || x.kind === 'official').slice(0, Math.min(100, opts.limit || 30)).map((x) => ({ title: x.title, source: x.src, official: x.kind === 'official', time: new Date(x.t).toISOString(), link: x.link })); },
   };
 })();
+ui.headlines = HEADLINES;
 export { HEADLINES };

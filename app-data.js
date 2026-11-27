@@ -19,8 +19,8 @@ function loadChart() {
   if (main) main.setData([]);
   updateIndicators(); renderAnalysis();
   $('loading').textContent = 'กำลังโหลดกราฟ…'; $('loading').classList.remove('hidden');
-  (S.source === 'demo' ? PT.DEMO.requestChart : vcg.requestChart)({ symbol: S.symbol, candleType: tf().type, to: new Date().toISOString(), inclusive: true, limit: Math.max(200, Math.min(5000, +S.prefs.historyBars || 1500)) });
-  if (typeof PT.CACHE !== 'undefined') PT.CACHE.restore();
+  (S.source === 'demo' ? ui.demo.requestChart : vcg.requestChart)({ symbol: S.symbol, candleType: tf().type, to: new Date().toISOString(), inclusive: true, limit: Math.max(200, Math.min(5000, +S.prefs.historyBars || 1500)) });
+  if (ui.cache) ui.cache.restore();
   clearTimeout(loadTimeout);
   loadTimeout = setTimeout(() => { if (S.pendingHistory) { $('loading').textContent = 'ยังไม่ได้ข้อมูลกราฟ — ตรวจสอบว่า login แล้ว (เปิด WebTrader) หรือกด "เชื่อมต่อใหม่" · ดูรายละเอียดในแท็บ Log'; vcg.log('warn', `ยังไม่ได้แท่งเทียน ${S.symbol} ${tf().label} หลัง 12 วินาที`, null, 'chart'); } }, 12000);
 }
@@ -29,7 +29,7 @@ function loadMore() {
   if (S.loadingMore || S.noMore || S.pendingHistory || !S.candles.length) return;
   S.loadingMore = true;
   const to = new Date((S.candles[0].time - TZ) * 1000 - 1000).toISOString();
-  (S.source === 'demo' ? PT.DEMO.requestChart : vcg.requestChart)({ symbol: S.symbol, candleType: tf().type, to, inclusive: false, limit: 1000 });
+  (S.source === 'demo' ? ui.demo.requestChart : vcg.requestChart)({ symbol: S.symbol, candleType: tf().type, to, inclusive: false, limit: 1000 });
   setTimeout(() => { S.loadingMore = false; }, 8000);
 }
 const num = (v) => (v == null ? null : typeof v === 'object' ? ('value' in v ? Number(v.value) / 10 ** (v.scale || 0) : null) : Number(v));
@@ -48,7 +48,7 @@ function setAllData() {
 let pushChartTimer = null;
 function pushChartData() {
   clearTimeout(pushChartTimer);
-  pushChartTimer = setTimeout(() => (typeof PT.CACHE !== 'undefined' && PT.CACHE.save(), vcg.pushChart({ symbol: S.symbol, timeframe: tf().label,
+  pushChartTimer = setTimeout(() => (ui.cache && ui.cache.save(), vcg.pushChart({ symbol: S.symbol, timeframe: tf().label,
     candles: S.candles.map((c) => ({ time: c.time - TZ, open: c.open, high: c.high, low: c.low, close: c.close })) })), 500);
 }
 
@@ -126,6 +126,9 @@ function tickToCandle(q) {
 chart.timeScale().subscribeVisibleLogicalRangeChange((r) => { view.dirty = true; if (r && r.from < 15) loadMore(); });
 
 // ---------------------------------------------------------------- quotes / watchlist
+// other modules (paper trading, …) add a hook instead of wrapping onQuotesMsg
+const quoteHooks = [];
+function onQuotes(fn) { quoteHooks.push(fn); }
 function onQuotesMsg(list) {
   let cur = null;
   for (const q of list) {
@@ -146,6 +149,7 @@ function onQuotesMsg(list) {
     updateHeader();
     bounceTick();
   }
+  for (const h of quoteHooks) h(list);
 }
 vcg.onQuotes((list) => { if (S.source !== 'demo') onQuotesMsg(list); });
 function updateHeader() {
@@ -170,14 +174,14 @@ $('add-form').onsubmit = (e) => {
 };
 function switchSymbol(s) {
   if (s === S.symbol) return;
-  if (S.replay && typeof PT.REPLAY !== 'undefined') PT.REPLAY.exit();
+  if (S.replay && ui.replay) ui.replay.exit();
   S.symbol = s; store.set('symbol', s);
   PT.drawings = PT.loadDrawings(); S.selected = null; S.pending = null; S.measure = null;
   if (main) main.applyOptions({ priceFormat: priceFormat() });
   refreshPriceLines(); buildIndicators(); renderWatchlist(); renderAlerts(); updateHeader();
-  if (typeof PT.NEWS !== 'undefined') PT.NEWS.render();
-  if (typeof PT.HEADLINES !== 'undefined') PT.HEADLINES.render();
-  if (S.source === 'demo' && typeof PT.DEMO !== 'undefined') PT.DEMO.connect();
+  if (ui.news) ui.news.render();
+  if (ui.headlines) ui.headlines.render();
+  if (S.source === 'demo' && ui.demo) ui.demo.connect();
   loadChart();
 }
 
@@ -244,12 +248,12 @@ function renderConnect(st = connStatus) {
     box.querySelectorAll('[data-cn],[data-src]').forEach((b) => (b.onclick = () => {
       const k = b.dataset.cn, src = b.dataset.src;
       if (k === 'login') { const ok = vcg.showTrader(); vcg.log('info', 'ผู้ใช้กดเข้าสู่ระบบ VCG จากหน้าเชื่อมต่อ', null, 'auth'); if (ok === false) toast('เปิดหน้า login ไม่ได้ — ดูแท็บ Log', 'error'); }
-      else if (k === 'demo') PT.setSource('demo');
+      else if (k === 'demo') ui.setSource?.('demo');
       else if (k === 'retry') { vcg.reloadTrader(); toast('กำลังเชื่อมต่อใหม่…', 'info'); setTimeout(loadChart, 8000); }
       else if (k === 'guide') ui.setup?.open();
       else if (k === 'mt5guide') ui.setup?.open('mt5', 0);
       else if (k === 'log') { box.classList.add('hidden'); document.querySelector('#tabs [data-tab="log"]').click(); }
-      else if (src === 'vcg' || src === 'mt5') { if (S.source !== src) PT.setSource(src); if (src === 'mt5') ui.setup?.open('mt5', 0); }
+      else if (src === 'vcg' || src === 'mt5') { if (S.source !== src) ui.setSource?.(src); if (src === 'mt5') ui.setup?.open('mt5', 0); }
     }));
   }
 }
@@ -326,4 +330,4 @@ function checkAlerts(q) {
   }
   if (changed) { store.set('alerts', S.alerts); renderAlerts(); refreshPriceLines(); }
 }
-export { addAlert, beep, connStatus, dedupe, desktopNotify, loadChart, onChartMsg, onQuotesMsg, pushLast, renderAlerts, renderConnect, renderWatchlist, setAllData, switchSymbol, toCandle, updateHeader, valid };
+export { onQuotes, addAlert, beep, connStatus, dedupe, desktopNotify, loadChart, onChartMsg, onQuotesMsg, pushLast, renderAlerts, renderConnect, renderWatchlist, setAllData, switchSymbol, toCandle, updateHeader, valid };

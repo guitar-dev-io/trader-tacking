@@ -13,4 +13,13 @@ export const ui: {
   planner?: { save: () => void; render: () => void };
   /** practice tab: trade simulator (learn.js) */
   sim?: { prefill: (t: any) => void; [k: string]: any };
+  /** bar replay (learn.js) */
+  replay?: { exit: () => void; [k: string]: any };
+  /** news/calendar (extras.js NEWS) and headlines (news.js) */
+  news?: { render: () => void; [k: string]: any };
+  headlines?: { render: () => void; [k: string]: any };
+  /** demo data source + chart cache + source switch (extras.js) */
+  demo?: { requestChart: (req: any) => void; connect: () => void; [k: string]: any };
+  cache?: { restore: () => void; save: () => void; [k: string]: any };
+  setSource?: (src: string) => void;
 } = {};

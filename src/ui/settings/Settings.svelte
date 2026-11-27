@@ -107,7 +107,7 @@
   let src = $state(S.source);
   $effect(() => { void status; src = S.source; });
   function useSrc(k: string) {
-    PT.setSource(k); src = S.source;
+    ui.setSource?.(k); src = S.source;
     if (k === 'mt5' && !(status.mt5 && status.mt5.connected)) { close(); ui.setup?.open('mt5', 0); }
   }
   const SRC_NAME: Record<string, string> = { vcg: 'VCG', mt5: 'MT5', demo: 'Demo' };
