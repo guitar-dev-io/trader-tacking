@@ -33,33 +33,34 @@
 VCG WebTrader สตรีมราคาผ่าน Socket.IO (`wss://prod-ws-server.anttix.app`, namespace `/symbol`, `/chart-history`) โดยใช้ token จากการ login ที่มีอายุ 15 นาที
 แอปจึงเปิด WebTrader จริงในหน้าต่างที่ซ่อนไว้ (ให้เว็บจัดการ login และต่ออายุ token เอง) แล้ว:
 
-- อ่าน WebSocket frame ของราคาผ่าน Chrome DevTools Protocol (`main.js`)
+- อ่าน WebSocket frame ของราคาผ่าน Chrome DevTools Protocol (`src/main/main.ts`)
 - เปิด connection `/chart-history` เพิ่มภายในหน้าเว็บเดียวกัน โดยขอ token ใหม่จากตัวขอ token ของเว็บเมื่อเจอ `PERMISSION_DENIED`
 
 | ไฟล์ | หน้าที่ |
 |---|---|
-| `main.js` | process หลัก: หน้าต่าง, feed ราคา, token, network monitor, IPC |
-| `api.js` / `notify.js` / `logger.js` | Local API + SSE, Webhook/Telegram, log |
-| `app-core.js` | ค่าคงที่, storage, state กลาง (S), ตัวช่วยจัดรูปแบบ |
-| `app-chart.js` | กราฟหลัก, อินดิเคเตอร์, legend, ตัวแก้ไขสคริปต์ |
-| `app-analysis.js` | เมนู/แผงวิเคราะห์โครงสร้าง, แจ้งเตือนสัญญาณ |
-| `app-bounce.js` | แผงจุดเด้ง, จุด SL เม่า, Fibo อัตโนมัติ (วาดบนกราฟ) |
-| `app-data.js` | โหลดกราฟ, ราคาสด/watchlist, สถานะ, alert ราคา |
-| `app-overlay.js` | ตัวช่วยวาด SVG + แปลงพิกัด, ป้ายไม่ซ้อนกัน |
-| `app.js` | แท็บ, หนังสือบทเรียน, log, เริ่มต้นแอป (โหลดท้ายสุด) |
-| `draw.js` | เครื่องมือวาด, แถบซูม, แถบล่าง (ช่วงเวลา/session/scale), ตั้งค่ากราฟ |
-| `analysis.js` | engine วิเคราะห์ (swing, structure, patterns, signals, backtest) |
-| `bounce.js` | engine จุดเด้ง / liquidity / สถิติ walk-forward |
-| `indicators.js` / `custom.js` | อินดิเคเตอร์ในตัว / runtime สคริปต์ผู้ใช้ |
-| `planner.js` | เครื่องคำนวณ lot และจุดเติม |
-| `settings.js` | หน้าต่างตั้งค่า, สถานะเครือข่าย, toast, backup/restore |
-| `lessons.js`, `lessons-guide.js` | บทเรียน + หนังสือบทเรียน (หมวด, ภาพแท่งเทียน, คู่มือ D&S) |
+| `src/main/main.ts` | process หลัก: หน้าต่าง, feed ราคา, token, network monitor, IPC |
+| `src/main/api.ts` / `notify.ts` / `logger.ts` | Local API + SSE, Webhook/Telegram, log |
+| `src/app/app-core.ts`, `src/state.ts` | ค่าคงที่, storage, state กลาง (S), ตัวช่วยจัดรูปแบบ |
+| `src/chart/chart.ts` | กราฟหลัก (lightweight-charts), อินดิเคเตอร์, legend, ตัวแก้ไขสคริปต์ |
+| `src/app/app-analysis.ts` | เมนู/แผงวิเคราะห์โครงสร้าง, แจ้งเตือนสัญญาณ |
+| `src/app/app-bounce.ts` | แผงจุดเด้ง, จุด SL เม่า, Fibo อัตโนมัติ (วาดบนกราฟ) |
+| `src/app/app-data.ts` | โหลดกราฟ, ราคาสด/watchlist, สถานะ, alert ราคา |
+| `src/ui/overlay.ts` | ตัวช่วยวาด SVG + แปลงพิกัด, ป้ายไม่ซ้อนกัน |
+| `src/app/app.ts` | แท็บ, หนังสือบทเรียน, log, เริ่มต้นแอป |
+| `src/chart/draw.ts` | เครื่องมือวาด, แถบซูม, แถบล่าง (ช่วงเวลา/session/scale), ตั้งค่ากราฟ |
+| `src/core/analysis.ts` | engine วิเคราะห์ (swing, structure, patterns, signals, backtest) |
+| `src/core/bounce.ts` | engine จุดเด้ง / liquidity / สถิติ walk-forward |
+| `src/chart/indicators.ts` / `custom.ts` | อินดิเคเตอร์ในตัว / runtime สคริปต์ผู้ใช้ |
+| `src/app/planner.ts` | เครื่องคำนวณ lot และจุดเติม |
+| `src/ui/settings/` | หน้าต่างตั้งค่า (Svelte), สถานะเครือข่าย, backup/restore |
+| `src/app/lessons.ts`, `lessons-guide.ts` | บทเรียน + หนังสือบทเรียน (หมวด, ภาพแท่งเทียน, คู่มือ D&S) |
+| `src/ui/`, `src/pages/` | คอมโพเนนต์ Svelte 5 (แท็บ, หน้า dashboard/journal/learn/news) — โครงสร้างทั้งหมดดู `docs/MIGRATION.md` |
 | `tests/` | unit (node --test) + UI (Electron) |
 | `tools/vcg_price_feed.py` | ตัวดึงราคาแบบ Python + Playwright (เวอร์ชันแรก) |
 
 ## Android
 
-`android/` เป็นโปรเจกต์ Capacitor: UI เดียวกับ desktop (`www/` สร้างด้วย `npm run build:www`) + plugin native `VcgWebPlugin` ที่เปิด VCG WebTrader ใน WebView ที่ซ่อนไว้ (login ครั้งแรกในแอป) แล้วรับราคาผ่าน `bridge.js`
+`android/` เป็นโปรเจกต์ Capacitor: UI เดียวกับ desktop (`www/` สร้างด้วย `npm run build:www`) + plugin native `VcgWebPlugin` ที่เปิด VCG WebTrader ใน WebView ที่ซ่อนไว้ (login ครั้งแรกในแอป) แล้วรับราคาผ่าน `src/platform/bridge.ts`
 
 ```bash
 npm run android:sync          # build www + cap sync
@@ -84,7 +85,7 @@ cd android && ./gradlew assembleRelease
 
 ## ให้ Claude เข้าถึงแอป (Mac · MCP)
 
-แอป Mac มี MCP server ในตัว (`claude/price-tracker-mcp.js`) ให้ Claude Desktop / Claude Code ใช้แอปนี้ได้:
+แอป Mac มี MCP server ในตัว (`src/mcp/price-tracker-mcp.ts`) ให้ Claude Desktop / Claude Code ใช้แอปนี้ได้:
 
 | Tool | ทำอะไร |
 |---|---|

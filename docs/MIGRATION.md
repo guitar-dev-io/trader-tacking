@@ -1,7 +1,26 @@
 # Framework migration (Svelte 5 + Vite + TypeScript)
 
-Branch: `feat/framework-migration`. The plan has 5 phases: 0 Vite, 1 TypeScript core, 2 no globals, 3 Svelte pages,
-4 the rest + main process. Every phase must keep the UI identical and all tests green.
+Branch: `feat/framework-migration`. **Status: complete** (Phases 0–6). The plan: 0 Vite, 1 TypeScript core, 2 no
+globals, 3 Svelte pages, 4 the rest + main process, 5 chart/drawing + remaining UI, 6 close-out (every renderer module
+strict TypeScript, no classic scripts, no in-app `PT`). Every phase kept the UI identical and all tests green.
+
+## Architecture (final)
+| Where | What |
+|---|---|
+| `index.html` → `src/main.ts` → `src/app.ts` | the only entry: `app.ts` imports the app modules in evaluation order |
+| `src/app/*.ts` | the former root renderer scripts (app-core, app-data, app-analysis, app-bounce, app, ui, mobile, pages, planner, positions, learn, news, extras, icons, lessons, lessons-guide, mm-learn, claude-bridge) — strict TS, imperative DOM |
+| `src/chart/*.ts` | chart core (lightweight-charts from npm), indicators, custom scripts, drawing tools, text tools, MTF, hooks, drawings store |
+| `src/ui/**` | Svelte 5 components + their `*-view.ts` stores: side tabs, settings, setup guide, connect screen, about, overlay helpers, toast, net, `registry.ts` |
+| `src/pages/**` | full pages (dashboard, journal, learn, news) + `pages/registry.ts` |
+| `src/state.ts` | shared state `S`, `store`, theme |
+| `src/core/*.ts` | pure computation (analysis, bounce, mm, journal, …) → `gen/` for main + Node tests; `src/legacy/core.ts` re-exports them to the renderer |
+| `src/main/*.ts`, `src/mcp/*.ts` | Electron main, preloads, API, MT5, MCP server → `gen/main/*.js` (esbuild, CJS) |
+| `src/pt.ts` | `window.PT`: tests/devtools bridge **only** |
+| `vite/app-plugin.mjs` | web-only classic scripts (capacitor.js, version.js), web head, PWA manifest + service worker, static copy, `buildCore` |
+
+**Cross-module rule:** a module imports only modules earlier in `src/app.ts`. To call a module evaluated later, use a
+leaf registry (`src/ui/registry.ts` → `ui.mtf`, `ui.bounce`, `ui.notify`, `ui.update`, `ui.planner`, `ui.demo`, …;
+`src/pages/registry.ts`) or `src/chart/hooks.ts` (`emitChart('load' | 'loaded')`, quote hooks). Never `PT` in app code.
 
 ## Done
 
@@ -89,7 +108,7 @@ Branch: `feat/framework-migration`. The plan has 5 phases: 0 Vite, 1 TypeScript 
   - Packaging: `src/`, `claude/` and the root `preload.js` copy are excluded (mac ignore regex + electron-builder `files`); `gen/` is included.
 - **Verified:** `npm run typecheck` clean, unit 41/41, UI 106/106, headless `electron .` boots and `/api/status` answers on 127.0.0.1:8787, MCP `tools/list` over stdio lists 17 tools.
 
-### Phase 4a: renderer UI → Svelte (checklist items 1–3, 5, 6) — in progress
+### Phase 4a: renderer UI → Svelte (checklist items 1–3, 5, 6) — finished in Phase 5–6
 - **Done:**
   - **Settings window** → `src/ui/settings/Settings.svelte` (+ `index.ts`: titlebar gear/theme buttons, ⌘, , MT5/EA toasts). Same ids/classes and the same `set-settings` payload. Network pill/banner/toasts → `src/ui/net.ts` (`netState` store).
   - **Setup guide** → `src/ui/setup/Setup.svelte`; step bodies are HTML snippets in `src/ui/setup/content.ts` (rendered with `{@html}`, buttons via `data-act`). Source pill + menu → `src/ui/setup/source-pill.ts`. `isWin`/`osKeys` → `src/ui/os.ts`.
@@ -108,7 +127,7 @@ Branch: `feat/framework-migration`. The plan has 5 phases: 0 Vite, 1 TypeScript 
   - Item 5: ~165 `PT.x` uses left in app code (top: `MTF` 17, `yOf` 11, `__mobileBack` 9, `el` 8, `drawings` 8, `xIdx`/`pushHistory`/`ltxt` 6) — mostly chart/drawing (item 4) plus `SIM/REPLAY/NEWS/DEMO/CACHE/setSource`.
   - Item 6: the remaining root `.js` app modules are not type-checked yet.
 
-### Phase 4b: side tabs → Svelte (checklist items 1, 3, 5) — in progress
+### Phase 4b: side tabs → Svelte (checklist items 1, 3, 5) — finished in Phase 5–6
 - **Done (each a Svelte component in `src/ui/tabs/`, mounted into the existing tab container so the page pop-out in `pages.js` still moves it):**
   - **Log tab** → `LogTab.svelte` + `log.ts` (log buffer, error badge). `app.js` only calls `logTab.init()` / `logTab.opened()`.
   - **คำนวณ** → `Planner.svelte` (+ `planner-view.ts` tick). `planner.js` keeps the maths (`computePlan`, `plannerLot`, …) and the chart plan; `renderPlanner()` now just re-renders.
@@ -125,7 +144,7 @@ Branch: `feat/framework-migration`. The plan has 5 phases: 0 Vite, 1 TypeScript 
   - Mobile shell (`mobile.js`: bottom nav, sheets, More page; replace `window.__mobileBack` with a module), `ui.js` (panel toggles, rail, Esc, folds).
   - PT uses in app `.js`: 143 left (was ~165). Chart/drawing names (`MTF` 17, `yOf` 11, `el` 8, `drawings` 7, `xIdx`/`pushHistory`/`ltxt` 6, `setTool`, `inkColor`, `xOfT`, `renderLayers`, `FIB`) belong to item 4; the rest are `REPLAY`/`NEWS`/`DEMO`/`CACHE`/`setSource`/`onChartLoaded`/`__mobileBack`/`plannerLot`/`plannerFrom`/`onQuotesMsg`.
 
-### Phase 4d: practice tab, market tab, back handling, non-chart PT names — partly done
+### Phase 4d: practice tab, market tab, back handling, non-chart PT names — finished in Phase 5–6
 - **Done:**
   - **ฝึก tab** → `Sim.svelte` (paper trading), `Quiz.svelte` (replay exercises), `LessonPack.svelte` (+ `practice-view.ts`). `learn.js` keeps the simulator, replay and quiz logic and pushes snapshots (`showSim/showQuiz/showLesson`); per tick `tickSim()` only patches numbers (UI test "panel not rebuilt per tick" still passes). Position/order rows are unkeyed on purpose: ids are `Date.now()` and two orders in one ms collide.
   - **ราคา tab** → `Watchlist.svelte` (rows mounted into `#wl tbody`, bid cell flashes via an action) and `Alerts.svelte` (into `#alerts`), + `market-view.ts`. `app-data.js` keeps symbols/quotes/alerts; `updateRow(q)` is now `quoteWatchlist(q)`.
@@ -139,7 +158,7 @@ Branch: `feat/framework-migration`. The plan has 5 phases: 0 Vite, 1 TypeScript 
   - PT names still used by chart code (Phase 4e): `onQuotesMsg` setter (mtf), `onChartLoaded`, `plannerLot`, `plannerFrom`, `NEWS` in draw.js.
   - Gotcha for shared worktrees: `git commit` takes everything already staged — 4d once swept 4e's staged `git rm mtf.js` into its commit (fixed in ec73eb8). Commit with `git commit <paths>` or check `git diff --cached --stat` first.
 
-### Phase 4e: chart core + drawing tools → TypeScript (checklist item 4 + chart part of 5) — partly done
+### Phase 4e: chart core + drawing tools → TypeScript (checklist item 4 + chart part of 5) — finished in Phase 5–6
 - **Done (strict `.ts` under `src/chart/`, `src/ui/overlay.ts`):**
   - `indicators.ts` (`IndicatorDef`, `Point`, `IND`) and `custom.ts` (`CustomResult`, `TA`, `run`) — root `indicators.js` / `custom.js` removed.
   - `src/ui/overlay.ts` — SVG overlay + coordinate helpers (`svg`, `yOf`, `xIdx`, `xOf`, `lToX`, `timeToLogical`, `logicalToTime`, `el`, `txt`, `ltxt`, `label`, `resetLabels`). `app-bounce.js` imports them (no more `PT.yOf/xIdx/el/ltxt`).
@@ -156,20 +175,26 @@ Branch: `feat/framework-migration`. The plan has 5 phases: 0 Vite, 1 TypeScript 
   - The `def()` entries in `draw.js` that tests use: `drawings`, `redraw`, `undo`, `redo`, `setTool`, `xOfT`, `hitTest`, `saveDrawings`, `FIB` — keep those (tests/devtools), drop the rest.
 - **Verified each step:** typecheck clean, unit 41/41, UI 107/107 (run in a separate clean worktree while 4d had uncommitted edits), pixel-diff against 66e254e: only live clock/price, the random demo price path and random paper-trade toasts differ; drawings, labels, callouts, panels identical.
 
-## Interim items from Phase 2 (partly resolved in Phase 3 — see the Phase 4 checklist)
-- **Late-bound names through PT inside the app:** about 55 names, used about 280 times; run `grep -o "PT\.[A-Za-z_$]*" *.js`. The most used are `setUI`, `MTF`, `LEARN`, `DASH`, `yOf`, `NEWSPAGE`, `__mobileBack` and `drawings`. They exist because files call "forward" into modules loaded later.
-  - In Phase 3/4, untangle them by moving each shared piece into a small module that both sides import: app state from `app-core.js` → `src/state.ts`; overlay helpers (`yOf`, `xIdx`, `el`, `ltxt`) → `src/ui/overlay.ts`; page objects registered in `src/pages.ts`.
-  - When a name no longer needs PT, `def()` can stay; it is only for tests and devtools.
-- **App modules are still `.js`:** the root `*.js` modules are not type-checked yet; only `src/**/*.ts` is. Convert them as you rewrite pages (Phase 3) or move them (Phase 4).
-- **`app-core.js` is the state module for now:** it holds `S`, `store`, `TC`/`THEME`, `settings cache` and friends. Splitting it into `src/state.ts` and `src/ui/theme.ts` is part of untangling the late-bound names.
-- **`def()` lines are long and generated.** They are fine to delete per module once nothing outside uses that name.
+### Phase 5: chart + drawing tools typed, remaining UI → Svelte
+- `draw.js` → `src/chart/draw.ts` (strict); the `app-chart.js` / `app-overlay.js` / `draw.js` re-export shims are gone, importers use `src/chart/*` and `src/ui/overlay.ts`.
+- Svelte: connect screen (`src/ui/connect`), Bar Replay bar (`ReplayBar.svelte`), ราคา tab tools section (`Tools.svelte`).
+- Fix: `emitChart('load')` had ended up outside `loadChart`.
+
+### Phase 6: close-out (checklist items 5, 6 and 9)
+- The 18 root renderer `.js` files moved to `src/app/*.ts` and are strict TypeScript (no `@ts-nocheck`, ~1570 errors fixed). Globals `vcg` / `APP_VERSION` are declared once in `src/globals.d.ts`; typed DOM helpers `qs`/`qsa`/`mk`/`tgt` and the `El` type live in `app-core.ts`.
+- **Bug fixed on the way:** in `claude-bridge` a local `function view()` shadowed the imported `view` redraw flag, so the Claude/API `draw`, `clear` and `plan` commands never marked the chart dirty (it only redrew on the next unrelated repaint). Renamed to `viewInfo`.
+- lightweight-charts 5.3.0 (same version as the old vendored build) comes from npm and is bundled; `lib/` keeps only its licence. `src/legacy-order.mjs`, `src/legacy/modules.d.ts` and `scripts/codemod/` (one-shot codemods + `check-free.mjs`) are deleted; `vite/legacy-plugin.mjs` became `vite/app-plugin.mjs`.
+- App code no longer reads `window.PT`; the last late-bound calls go through `src/ui/registry.ts`. `def()` stays only for names the UI suite/devtools use.
+- `npm run typecheck` = `tsc` (src, strict) + `tsc -p tsconfig.tools.json` (scripts/, vite/, configs: strict `checkJs`) + `svelte-check --fail-on-warnings`. `build-core` writes `gen/**/*.d.ts` stubs typed as their TS sources.
+- Packaging: `gen/**/*.d.ts` excluded from electron-builder; the mac ignore regex already covers `src`, `vite`, `scripts`, `tsconfig*.json`.
 
 ## Rebasing app-branch changes onto this branch (important)
 - Every renderer file on `feat/price-tracker-app` is a classic script; here it is a module. A change there can no longer be cherry-picked as is.
 - To port a change:
   1. Apply the edit by hand to the same function here.
-  2. For any NEW cross-file name, `import` it if its owner is earlier in `src/app.ts`; otherwise use `PT.name`.
-  3. A NEW file gets `import { PT, def } from './src/pt.ts'` and a line in `src/app.ts` (plus `scripts/codemod/order.mjs`).
+  2. Root files moved: `foo.js` on the app branch is `src/app/foo.ts` here (chart/draw code is in `src/chart/`, many UI parts are Svelte components in `src/ui/tabs/`).
+  3. For any NEW cross-file name, `import` it if its owner is earlier in `src/app.ts`; otherwise register it in `src/ui/registry.ts`. Never `PT` in app code.
+  4. A NEW file goes into `src/` and gets a line in `src/app.ts`. It must pass strict `tsc`.
 - `npm run typecheck` tells you if you missed a name.
 - Better: freeze renderer feature work on the app branch, or merge this branch soon.
 
@@ -180,7 +205,7 @@ Branch: `feat/framework-migration`. The plan has 5 phases: 0 Vite, 1 TypeScript 
 | `npm start` | build the renderer, then Electron |
 | `npm run build:renderer` / `npm run build:www` | desktop / web+Android renderer |
 | `npm run build:core` | TypeScript core → `gen/` |
-| `npm run typecheck` | `tsc` (strict) over `src/**/*.ts` |
+| `npm run typecheck` | `tsc` strict (src + tooling via `tsconfig.tools.json`) + `svelte-check` |
 | `npm test` | unit tests (builds `gen/` first) |
 | `npm run test:ui` | builds both renderers, then the Electron UI suite |
 | `npm run build:mac` / `npm run build:win` | packages (build the renderer first automatically) |
@@ -190,17 +215,16 @@ Branch: `feat/framework-migration`. The plan has 5 phases: 0 Vite, 1 TypeScript 
 - Screens look the same before and after. Every UI-suite screenshot was pixel-diffed; the only differences are the live clock, a random quiz question and a 14 px scroll offset.
 - Startup is the same: about 480–510 ms to a drawn chart, both before and after (Electron, same machine).
 - The Windows zip packages with `dist-renderer/` and `gen/`. The mac ignore regex was checked path by path.
+- **Final (Phase 6, HEAD vs 9ee5475):** typecheck 0 errors/0 warnings; unit 41/41; UI 110/110 (base 107/107).
+  - Pixel-diff of all 47 UI-suite screenshots: 22 identical; the rest differ only in the live session clock/countdown ("เปิดใน 1ชม 37น"), the dashboard's clock and one randomly chosen quiz question.
+  - Startup (9 loads, median, xvfb): window load 235 → 232 ms, chart drawn 255–261 → 242–253 ms — not worse.
+  - Headless `electron .` boots with no renderer errors; `/api/status` answers; MCP server `initialize` + `tools/list` (17 tools) work.
+  - `npm run build:www` builds; `dist-renderer` and `www` load one module bundle (+ capacitor.js/version.js on web).
 
-## Left
-- **Phases 0–3:** done.
-- **Phase 4 checklist** (the rest + main process):
-  1. **Side tabs → Svelte:** ราคา (watchlist, source pill, alerts, tools, positions panel: `app-data.js` UI parts, `positions.js`), วิเคราะห์ (`app-analysis.js`, `app-bounce.js` UI), ฝึก (`learn.js` SIM/REPLAY/QUIZ UI), คำนวณ (`planner.js`), Log; keep `pages.js` page-tab behaviour.
-  2. **Settings modal → Svelte** (`settings.js` + the `#modal-settings` markup in `index.html`), same `set-settings` payload.
-  3. **Setup guide → Svelte** (`setup.js`, `setup.css`), plus `about.js`, `mobile.js` shell (More page, bottom nav, sheets), `ui.js`, `notify.js`, `news.js` list logic, `pwa.js`.
-  4. **Chart core + drawing tools:** `app-chart.js`, `app-overlay.js`, `draw.js`, `text-tools.js`, `mtf.js`, `indicators.js`, `custom.js` → typed `.ts` modules (canvas drawing stays imperative; Svelte only for toolbars/popovers/layers panel).
-  5. **Remaining PT indirections inside the app** (≈55 names, 125 uses in app `.js` now; most used `MTF`, `yOf`, `setUI`, `el`, `drawings`, `xIdx`, `pushHistory`, `ltxt`, `SETUP`): move each shared piece into a module both sides import — overlay helpers → `src/ui/overlay.ts`, drawings store → `src/chart/drawings.ts`, `setUI`/`SRC_UI` → `src/ui/layout.ts`, `SETUP`/`MSHEET` → registry; then delete their `def()` lines except what tests use (switch tests to `window.PT` getters defined in one place).
-  6. **Type-check the remaining `.js`:** every root renderer module becomes `.ts` (or `// @ts-check` while moving); extend `tsconfig` `include`; `check-free.mjs` can then be retired.
-  7. ✅ (Phase 4c) **Main process → TypeScript:** `main.js`, `mt5.js`, `mt5-auto.js`, `api.js`, `journal-store.js`, `logger.js`, `preload.js`, `trader-preload.js`, `vcg-inject.js` (main side), `claude/price-tracker-mcp.js` → `src/main/*.ts` compiled by esbuild to CJS; delete the root wrappers (`analysis.js`, `bounce.js`, `mm.js`, `journal.js`, `ea-update.js`).
-  8. ✅ (Phase 4c) **Android bridge** `bridge.js` → `.ts`; Capacitor plugin typings.
-  9. **Finish:** remove `src/legacy-order.mjs`/`vite/legacy-plugin.mjs` if nothing classic is left (only `lib/` vendor), strict TS everywhere, same tests + screenshots + startup checks as every phase.
-- **Before merging:** rebased on `feat/price-tracker-app` 171d074 (v2.16.0). Later app-branch renderer edits must be ported by hand (see above).
+## Left (follow-ups, not blocking)
+- **lightweight-charts objects are typed `any`** (`LwChart`/`LwSeries` in `src/chart/chart.ts`): the library's branded `Time`/`Logical`/`BarPrice` types need ~40 call-site casts. Everything else is typed.
+- **Tests stay JavaScript** (`tests/unit/*.test.js` run by `node --test`, `tests/ui/run.js` by Electron). Checked with `checkJs` they report fixture objects that are partial on purpose (~300 strict / ~50 non-strict errors), so they are not in `typecheck`.
+- **Imperative modules still render with strings/DOM** (`src/app/mobile.ts` shell, `pages.ts`, parts of `app.ts`, `learn.ts`); they are typed but not Svelte. Converting them is optional.
+- `El` (app-core) is deliberately loose (`HTMLElement & { [k: string]: any }`) so DOM code needs no casts.
+- `tests/ui/mobile-shots.js` (not part of `test:ui`) still uses `PT.setSource/renderConnect`, which no longer exist.
+- **Before merging:** this branch is based on `feat/price-tracker-app` 171d074 (v2.16.0). Renderer edits made there since must be ported by hand (see "Rebasing" above).
