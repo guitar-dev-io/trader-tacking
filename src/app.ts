@@ -9,7 +9,7 @@ import '../lessons.js';
 import '../lessons-guide.js';
 import '../icons.js';
 import '../app-core.js';
-import '../app-chart.js';
+import './chart/chart';
 import '../app-analysis.js';
 import '../app-bounce.js';
 import '../app-data.js';

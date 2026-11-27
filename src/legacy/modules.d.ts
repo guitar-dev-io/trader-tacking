@@ -7,7 +7,7 @@ declare module '*/app-core.js' {
   export const $: (id: string) => any; export const esc: (s: unknown) => string; export const fmt: (v: number, d?: number) => string;
   export const S: Record<string, any>; export const store: { get<T = any>(k: string, d?: T): T; set(k: string, v: unknown): void };
   export const TFS: { label: string; type: number; sec: number }[]; export const THEME: any; export const TC: () => any;
-  export const TZ: number; export const zoneOffsetSec: (tz: string) => number; export const UP: string; export const DOWN: string; export const drawings: any[]; export const createChart: any; export const LineSeries: any; export const AreaSeries: any;
+  export const TZ: number; export const zoneOffsetSec: (tz: string) => number; export const UP: string; export const DOWN: string; export const drawings: any[]; export const createChart: any; export const LineSeries: any; export const AreaSeries: any; export const BarSeries: any; export const IND_COLORS: string[];
   export const HistogramSeries: any; export const CandlestickSeries: any; export const LineStyle: any; export const CrosshairMode: any; export const digits: () => number; export const tf: () => { label: string; type: number; sec: number };
 }
 declare module '*/app-chart.js' { export const chart: any; export const main: any; export const customOut: Map<string, unknown>; export const chartThemeOptions: (...a: any[]) => any; export const applyChartTheme: (...a: any[]) => void; }
