@@ -11,7 +11,7 @@ declare module '*/app-core.js' {
   export const HistogramSeries: any; export const CandlestickSeries: any; export const LineStyle: any; export const CrosshairMode: any; export const digits: () => number; export const tf: () => { label: string; type: number; sec: number };
 }
 declare module '*/app-chart.js' { export const chart: any; export const main: any; export const customOut: Map<string, unknown>; export const chartThemeOptions: (...a: any[]) => any; export const applyChartTheme: (...a: any[]) => void; }
-declare module '*/app-data.js' { export const switchSymbol: (s: string) => void; export const loadChart: (...a: any[]) => any; export const dedupe: any; export const renderAlerts: any; export const toCandle: any; export const valid: any; export const connStatus: any; export const onQuotesMsg: (list: any[]) => void; export const addAlert: (price: number) => void; }
+declare module '*/app-data.js' { export const switchSymbol: (s: string) => void; export const loadChart: (...a: any[]) => any; export const dedupe: any; export const renderAlerts: any; export const toCandle: any; export const valid: any; export const connStatus: any; export const onQuotesMsg: (list: any[]) => void; export const onQuotes: (fn: (list: any[]) => void) => void; export const addAlert: (price: number) => void; }
 declare module '*/positions.js' { export const POSITIONS: any; }
 declare module '*/lessons.js' { export const LESSONS: any; }
 declare module '*/lessons-guide.js' { export const LESSON_CATS: any; export const LESSONS_EXTRA: any; export const LESSON_CAT_OF: any; }

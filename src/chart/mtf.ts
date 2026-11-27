@@ -5,7 +5,7 @@ import { ICON } from '../../icons.js';
 import { AN } from '../legacy/core';
 import { $, DOWN, S, TC, TFS, THEME, TZ, UP, digits, fmt, store, tf } from '../../app-core.js';
 import { chart, chartThemeOptions } from './chart';
-import { dedupe, loadChart, onQuotesMsg, toCandle, valid } from '../../app-data.js';
+import { dedupe, loadChart, onQuotes, toCandle, valid } from '../../app-data.js';
 import { el, label, lToX, txt, yOf } from '../ui/overlay';
 import { xOfT } from '../../draw.js';
 import { DEMO } from '../../extras.js';
@@ -237,8 +237,7 @@ export const MTF = (() => {
   // reload the HTF whenever the main chart reloads (symbol / timeframe / source / timezone change)
   const _load = loadChart;
   PT.loadChart = function (): void { _load(); if (cfg.on) { buildSeries(); load(); } };
-  const _oq = onQuotesMsg;
-  PT.onQuotesMsg = function (list: any[]): void { _oq(list); for (const q of list) onQuote(q); };
+  onQuotes((list: any[]) => { for (const q of list) onQuote(q); });
 
   // Phones: a normal single chart (switch timeframe by tapping) — the split view is a desktop feature.
   const isMobile = () => document.body.classList.contains('mobile');

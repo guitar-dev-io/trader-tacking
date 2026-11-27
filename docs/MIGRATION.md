@@ -139,6 +139,23 @@ Branch: `feat/framework-migration`. The plan has 5 phases: 0 Vite, 1 TypeScript 
   - PT names still used by chart code (Phase 4e): `onQuotesMsg` setter (mtf), `onChartLoaded`, `plannerLot`, `plannerFrom`, `NEWS` in draw.js.
   - Gotcha for shared worktrees: `git commit` takes everything already staged — 4d once swept 4e's staged `git rm mtf.js` into its commit (fixed in ec73eb8). Commit with `git commit <paths>` or check `git diff --cached --stat` first.
 
+### Phase 4e: chart core + drawing tools → TypeScript (checklist item 4 + chart part of 5) — partly done
+- **Done (strict `.ts` under `src/chart/`, `src/ui/overlay.ts`):**
+  - `indicators.ts` (`IndicatorDef`, `Point`, `IND`) and `custom.ts` (`CustomResult`, `TA`, `run`) — root `indicators.js` / `custom.js` removed.
+  - `src/ui/overlay.ts` — SVG overlay + coordinate helpers (`svg`, `yOf`, `xIdx`, `xOf`, `lToX`, `timeToLogical`, `logicalToTime`, `el`, `txt`, `ltxt`, `label`, `resetLabels`). `app-bounce.js` imports them (no more `PT.yOf/xIdx/el/ltxt`).
+  - `analysis-overlay.ts` — `drawAnalysis`, `positionBox`. `app-overlay.js` is now a 3-line re-export shim (importers: `draw.js`, `planner.js`, `extras.js`, `learn.js`).
+  - `chart.ts` — chart, main series, indicators, legend, script editor (`Ind`, `Script` types). `app-chart.js` is a re-export shim (many importers).
+  - `mtf.ts` — multi-timeframe view; root `mtf.js` removed. Uses `onQuotes()` (4d's quote hook) instead of wrapping `onQuotesMsg`; still wraps `loadChart` through `PT.loadChart` (no load hook yet).
+    - **Fix found while typing:** the HTF bar array was named `view` and shadowed the redraw flag, so `view.dirty = true` in MTF never asked the main overlay to redraw. Renamed to `bars`.
+  - `text-tools.ts` — text/callout/labels/context menu/notes; root `text-tools.js` removed.
+  - `types.ts` — `Drawing` (all tool kinds, text style, callout `off`, fib `reverse`, `label`, `by`, id `number | string` because the journal places `'jr-…'` markers), `DPoint`, `ToolKind`, `LegacyDrawing`.
+  - `hooks.ts` — typed late-bound calls from modules loaded BEFORE `draw.js` into it (`setTool`, `pushHistory`, `renderLayers`, `xOfT`, `inkColor`, `uid`, `handles`, `posLevels`, `pointAt`, `mousePos`, `hitTest`, `applyChartCfg`, `redraw`). `draw.js` registers them with one `Object.assign(chartHooks, …)` at its end.
+- **Left for item 4 — `draw.js` (≈630 lines) → `src/chart/draw.ts`:**
+  - Its `PT.*` uses: `PT.drawings =` (3×, setter of app-core's `let drawings` → add `setDrawings()` in app-core or move drawings into `src/chart/drawings.ts`), `PT.FIB/FIBX/FIB_REVERSE =` (settings menu → setters in app-core), `PT.UP/DOWN =` (chart colours), `PT.TZ =` (timezone select), `PT.onChartLoaded =` (app-data hook), and late modules `PT.NEWS.draw`, `PT.MTF.drawOnMain`, `PT.SIM.draw`, `PT.drawPlanner`, `PT.plannerLot`, `PT.plannerFrom` (use `ui` registry entries or `chartHooks` registered by those modules).
+  - Then the shims can go: `app-chart.js` / `app-overlay.js` importers switch to `src/chart/chart.ts` / `src/ui/overlay.ts` + `src/chart/analysis-overlay.ts`, and `src/legacy/modules.d.ts` loses the `app-chart` / `draw` entries.
+  - The `def()` entries in `draw.js` that tests use: `drawings`, `redraw`, `undo`, `redo`, `setTool`, `xOfT`, `hitTest`, `saveDrawings`, `FIB` — keep those (tests/devtools), drop the rest.
+- **Verified each step:** typecheck clean, unit 41/41, UI 107/107 (run in a separate clean worktree while 4d had uncommitted edits), pixel-diff against 66e254e: only live clock/price, the random demo price path and random paper-trade toasts differ; drawings, labels, callouts, panels identical.
+
 ## Interim items from Phase 2 (partly resolved in Phase 3 — see the Phase 4 checklist)
 - **Late-bound names through PT inside the app:** about 55 names, used about 280 times; run `grep -o "PT\.[A-Za-z_$]*" *.js`. The most used are `setUI`, `MTF`, `LEARN`, `DASH`, `yOf`, `NEWSPAGE`, `__mobileBack` and `drawings`. They exist because files call "forward" into modules loaded later.
   - In Phase 3/4, untangle them by moving each shared piece into a small module that both sides import: app state from `app-core.js` → `src/state.ts`; overlay helpers (`yOf`, `xIdx`, `el`, `ltxt`) → `src/ui/overlay.ts`; page objects registered in `src/pages.ts`.
