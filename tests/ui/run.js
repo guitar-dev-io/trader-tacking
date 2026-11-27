@@ -291,6 +291,7 @@ app.whenReady().then(async () => {
       return JSON.stringify(r); })()`));
     check('replay bar: shown, info, step forward/back, speed + play', rb.shown && /ซ่อนอยู่/.test(rb.info) && rb.n1 === rb.n0 + 1 && rb.n2 === rb.n0 && rb.playing, rb);
     await js(`PT.REPLAY.exit(); document.getElementById('mtf-btn').click(); 'ok'`); await sleep(300);
+    check('tools section: buttons, CSV toggle and API line render', await js(`(() => { const d = document.querySelector('details[data-fold=tools]'); return !!d.querySelector('#show-trader') && !!d.querySelector('#reload-trader svg') && !!d.querySelector('#open-csv') && d.querySelector('#csv').type === 'checkbox' && /API/.test(d.querySelector('#api-info').textContent); })()`));
     check('replay bar: hidden after exit', await js(`document.getElementById('replaybar').classList.contains('hidden')`));
 
     // learning center: its own page (no side tab), categories, reader with prev/next, read progress, search, MM practice

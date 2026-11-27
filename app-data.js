@@ -6,13 +6,14 @@ import { view } from './src/state.ts';
 import { toast } from './src/ui/toast.ts';
 import { ICON } from './icons.js';
 import { $, S, TZ, esc, fmt, store, tf } from './app-core.js';
-import { askLine, buildIndicators, chart, displayData, main, priceFormat, refreshPriceLines, renderLegend, updateIndicators } from './app-chart.js';
+import { askLine, buildIndicators, chart, displayData, main, priceFormat, refreshPriceLines, renderLegend, updateIndicators } from './src/chart/chart.ts';
 import { renderAnalysis, runAnalysis } from './app-analysis.js';
 import { bounceTick } from './app-bounce.js';
 import { pages } from './src/pages/registry.ts';
+import { mountTools, setTools } from './src/ui/tabs/tools-view.ts';
 import { renderConnect as connectView, isConnecting } from './src/ui/connect/connect.ts';
-def({ loadTimeout: [() => loadTimeout, (v) => { loadTimeout = v; }], loadChart: [() => loadChart, (v) => { loadChart = v; }], loadMore: [() => loadMore, (v) => { loadMore = v; }], num: [() => num], toCandle: [() => toCandle], valid: [() => valid], dedupe: [() => dedupe, (v) => { dedupe = v; }], setAllData: [() => setAllData, (v) => { setAllData = v; }], pushChartTimer: [() => pushChartTimer, (v) => { pushChartTimer = v; }], pushChartData: [() => pushChartData, (v) => { pushChartData = v; }], onChartMsg: [() => onChartMsg, (v) => { onChartMsg = v; }], upsert: [() => upsert, (v) => { upsert = v; }], pushLast: [() => pushLast, (v) => { pushLast = v; }], tickToCandle: [() => tickToCandle, (v) => { tickToCandle = v; }], onQuotesMsg: [() => onQuotesMsg, (v) => { onQuotesMsg = v; }], updateHeader: [() => updateHeader, (v) => { updateHeader = v; }], renderWatchlist: [() => renderWatchlist, (v) => { renderWatchlist = v; }], updateRow: [() => updateRow, (v) => { updateRow = v; }], switchSymbol: [() => switchSymbol, (v) => { switchSymbol = v; }], lastConnected: [() => lastConnected, (v) => { lastConnected = v; }], renderConnect: [() => renderConnect, (v) => { renderConnect = v; }], renderAlerts: [() => renderAlerts, (v) => { renderAlerts = v; }], addAlert: [() => addAlert, (v) => { addAlert = v; }], desktopNotify: [() => desktopNotify, (v) => { desktopNotify = v; }], beep: [() => beep, (v) => { beep = v; }], checkAlerts: [() => checkAlerts, (v) => { checkAlerts = v; }] });
 import { emitChart, chartHooks } from './src/chart/hooks.ts';
+def({ loadTimeout: [() => loadTimeout, (v) => { loadTimeout = v; }], loadChart: [() => loadChart, (v) => { loadChart = v; }], loadMore: [() => loadMore, (v) => { loadMore = v; }], num: [() => num], toCandle: [() => toCandle], valid: [() => valid], dedupe: [() => dedupe, (v) => { dedupe = v; }], setAllData: [() => setAllData, (v) => { setAllData = v; }], pushChartTimer: [() => pushChartTimer, (v) => { pushChartTimer = v; }], pushChartData: [() => pushChartData, (v) => { pushChartData = v; }], onChartMsg: [() => onChartMsg, (v) => { onChartMsg = v; }], upsert: [() => upsert, (v) => { upsert = v; }], pushLast: [() => pushLast, (v) => { pushLast = v; }], tickToCandle: [() => tickToCandle, (v) => { tickToCandle = v; }], onQuotesMsg: [() => onQuotesMsg, (v) => { onQuotesMsg = v; }], updateHeader: [() => updateHeader, (v) => { updateHeader = v; }], renderWatchlist: [() => renderWatchlist, (v) => { renderWatchlist = v; }], updateRow: [() => updateRow, (v) => { updateRow = v; }], switchSymbol: [() => switchSymbol, (v) => { switchSymbol = v; }], lastConnected: [() => lastConnected, (v) => { lastConnected = v; }], renderConnect: [() => renderConnect, (v) => { renderConnect = v; }], renderAlerts: [() => renderAlerts, (v) => { renderAlerts = v; }], addAlert: [() => addAlert, (v) => { addAlert = v; }], desktopNotify: [() => desktopNotify, (v) => { desktopNotify = v; }], beep: [() => beep, (v) => { beep = v; }], checkAlerts: [() => checkAlerts, (v) => { checkAlerts = v; }] });
 // Price Tracker renderer · data: chart loading, live quotes/watchlist, status, price alerts
 // ---------------------------------------------------------------- data loading
 let loadTimeout = null;
@@ -25,8 +26,8 @@ function loadChart() {
   if (ui.cache) ui.cache.restore();
   clearTimeout(loadTimeout);
   loadTimeout = setTimeout(() => { if (S.pendingHistory) { $('loading').textContent = 'ยังไม่ได้ข้อมูลกราฟ — ตรวจสอบว่า login แล้ว (เปิด WebTrader) หรือกด "เชื่อมต่อใหม่" · ดูรายละเอียดในแท็บ Log'; vcg.log('warn', `ยังไม่ได้แท่งเทียน ${S.symbol} ${tf().label} หลัง 12 วินาที`, null, 'chart'); } }, 12000);
-}
   emitChart('load');
+}
 function loadMore() {
   if (S.replay) return;
   if (S.loadingMore || S.noMore || S.pendingHistory || !S.candles.length) return;
@@ -216,7 +217,7 @@ vcg.onStatus((st) => {
     document.querySelectorAll('#wl tr').forEach((tr) => { const bad = (st.invalid || []).includes(tr.dataset.s); tr.classList.toggle('invalid', bad); tr.title = bad ? 'ไม่พบ symbol นี้ใน VCG — ลองชื่ออื่น เช่น BTCUSD.x / BTCUSDT' : ''; });
     if (inv) toast(`ไม่พบใน VCG: ${inv} — ตรวจชื่อ symbol`, 'warn', 8000);
   }
-  $('csv').checked = st.csv;
+  setTools({ csv: !!st.csv, api: st.api || { enabled: false } });
   if (S.source === 'mt5') {
     const m = st.mt5 || {};
     $('conn').classList.toggle('ok', !!m.connected);
@@ -232,16 +233,12 @@ vcg.onStatus((st) => {
   }
   if (S.source === 'vcg') $('conn').classList.toggle('ok', st.connected);
   if (S.source === 'vcg') $('conn-text').textContent = st.connected ? 'เชื่อมต่อแล้ว' : st.loggedIn ? 'กำลังเชื่อมต่อ…' : 'ยังไม่ได้ login';
-  $('api-info').innerHTML = st.api && st.api.enabled ? `API: <b>http://127.0.0.1:${st.api.port}</b>${st.api.lan ? ' (เปิดให้วง LAN)' : ''}` : 'API: ปิดอยู่';
   // VCG: the main process re-sends the pending chart request itself once chart-history is ready, so no reload here
   // (reloading cleared the cached chart and repeated the analysis). MT5 handles its own reconnect above.
   if (st.connected && lastConnected === false && S.pendingHistory && S.source !== 'vcg') loadChart();
   lastConnected = st.connected;
 });
-$('csv').onchange = () => vcg.toggleCsv();
-$('open-csv').onclick = () => vcg.openCsv();
-$('show-trader').onclick = () => vcg.showTrader();
-$('reload-trader').onclick = () => { vcg.reloadTrader(); setTimeout(loadChart, 8000); };
+mountTools({ toggleCsv: () => vcg.toggleCsv(), openCsv: () => vcg.openCsv(), showTrader: () => vcg.showTrader(), reload: () => { vcg.reloadTrader(); setTimeout(loadChart, 8000); } });
 
 // ---------------------------------------------------------------- alerts
 const alertApi = { fmt, rm: (id) => { S.alerts = S.alerts.filter((a) => a.id !== id); store.set('alerts', S.alerts); renderAlerts(); refreshPriceLines(); } };
