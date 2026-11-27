@@ -1,3 +1,5 @@
+import * as LightweightCharts from 'lightweight-charts';
+import type { SeriesMarker, Time } from 'lightweight-charts';
 import { PT, def } from '../pt';
 import { toast } from '../ui/toast';
 import { $, S, TZ, store, mk } from './app-core';
@@ -81,7 +83,7 @@ const POSITIONS = (() => {
         text: x.entry === 'in' ? `${x.side === 'buy' ? 'B' : 'S'} ${x.vol}` : money(x.profit + x.commission + x.swap) }));
       // snap to candle times (markers must sit on an existing bar)
       const ts = (S.candles || []).map((c: { time: any; }) => c.time), snap = (t: number) => { let lo = 0, hi = ts.length - 1; if (hi < 0 || t < ts[0]) return null; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (ts[m] <= t) lo = m; else hi = m - 1; } return ts[lo]; };
-      const ok = mk.map((m: { time: any; }) => ({ ...m, time: snap(m.time) })).filter((m: { time: null; }) => m.time != null).sort((a: { time: number; }, b: { time: number; }) => a.time - b.time);
+      const ok = mk.map((m: { time: any; }) => ({ ...m, time: snap(m.time) })).filter((m: { time: number | null }) => m.time != null).sort((a: { time: number; }, b: { time: number; }) => a.time - b.time) as SeriesMarker<Time>[];
       try { if (!markersApi) markersApi = LightweightCharts.createSeriesMarkers(main, ok); else markersApi.setMarkers(ok); } catch (_: any) {}
     }
   }

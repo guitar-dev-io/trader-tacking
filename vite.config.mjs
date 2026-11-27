@@ -5,7 +5,7 @@
 import { defineConfig } from 'vite';
 import { createRequire } from 'node:module';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
-import legacyScripts from './vite/legacy-plugin.mjs';
+import appPlugin from './vite/app-plugin.mjs';
 
 const pkg = createRequire(import.meta.url)('./package.json');
 
@@ -14,9 +14,9 @@ export default defineConfig(({ mode }) => {
   return {
     root: '.',
     base: './',                       // file:// (Electron), https://localhost (Capacitor) and a sub-path on GitHub Pages
-    publicDir: false,                 // static files are copied by the legacy plugin (assets/, icon, lib licence)
+    publicDir: false,                 // static files are copied by vite/app-plugin.mjs (assets/, icon, lib licence)
     clearScreen: false,
-    plugins: [svelte(), legacyScripts({ root: process.cwd(), web, version: pkg.version })],
+    plugins: [svelte(), appPlugin({ root: process.cwd(), web, version: pkg.version })],
     define: { __APP_VERSION__: JSON.stringify(pkg.version), __WEB__: JSON.stringify(web) },
     server: { port: 5173, strictPort: true },
     build: {

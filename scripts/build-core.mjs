@@ -2,7 +2,7 @@
 //  • shared modules (browser + Node): an IIFE that defines the same global the old .js file did (window.AN, …)
 //    and also sets module.exports, so the legacy renderer scripts, Electron main and the unit tests use them unchanged
 //  • Node-only modules: CommonJS
-// Runs automatically before vite builds, npm test and npm start (see package.json / vite/legacy-plugin.mjs).
+// Runs automatically before vite builds, npm test and npm start (see package.json / vite/app-plugin.mjs).
 import { build } from 'esbuild';
 import fs from 'node:fs';
 import path from 'node:path';

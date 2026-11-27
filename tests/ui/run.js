@@ -75,8 +75,8 @@ app.whenReady().then(async () => {
     const extra = JSON.parse(await js(`(() => { const f = document.createElement('iframe'); f.style.display = 'none'; document.body.appendChild(f);
       const base = new Set(Object.keys(f.contentWindow)); f.remove();
       return JSON.stringify(Object.keys(window).filter((k) => !base.has(k))); })()`));
-    const allowed = new Set(['PT', 'vcg', 'LightweightCharts', 'Capacitor']);
-    check('globals: only PT, vcg, LightweightCharts, Capacitor are added to window', extra.every((k) => allowed.has(k)) && extra.includes('PT'), extra);
+    const allowed = new Set(['PT', 'vcg', 'Capacitor']);
+    check('globals: only PT, vcg, Capacitor are added to window', extra.every((k) => allowed.has(k)) && extra.includes('PT'), extra);
     check('boot: clean default (no analysis overlays on)', await js(`Object.entries(PT.S.an).filter(([k, v]) => v === true && PT.AN_VIEW_KEYS.includes(k)).length === 0`));
     await js(`PT.store.set('setupDone', 1)`);
     const su = JSON.parse(await js(`(() => { PT.SETUP.open(); const cards = document.querySelectorAll('#setup .su-card').length;

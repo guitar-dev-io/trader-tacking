@@ -1,4 +1,6 @@
 <script lang="ts">
+  import * as LightweightCharts from 'lightweight-charts';
+  import type { CandlestickData, UTCTimestamp } from 'lightweight-charts';
   // Live candlestick chart of one symbol/timeframe (lightweight-charts), fed by the shared slot feed (feeds.ts).
   import { onMount } from 'svelte';
   import { TC, theme } from '../../state';
@@ -32,8 +34,8 @@
       if (feed.err && !feed.candles.length) { msg = feed.err; msgHidden = false; return; }
       if (!feed.candles.length) return;
       msgHidden = true;
-      if (full || !shown) { ser.setData(feed.candles.slice(-400)); shown = feed.candles.length; ch.timeScale().scrollToRealTime(); }
-      else ser.update(feed.candles[feed.candles.length - 1]);
+      if (full || !shown) { ser.setData(feed.candles.slice(-400) as CandlestickData<UTCTimestamp>[]); shown = feed.candles.length; ch.timeScale().scrollToRealTime(); }
+      else ser.update(feed.candles[feed.candles.length - 1] as CandlestickData<UTCTimestamp>);
       head(feed);
     }
     const f = acquire(o.symbol, o.tf, w.id, { update });

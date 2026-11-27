@@ -1,6 +1,6 @@
 // Chart core: the lightweight-charts chart, main series, built-in + custom-script indicators, legend and the
-// script editor. lightweight-charts is a classic <script> (global LightweightCharts), so its objects are typed
-// loosely here (Lw* aliases); the app's own data (indicators, scripts, points) is typed.
+// script editor.
+import { ColorType } from 'lightweight-charts';
 import { def } from '../pt';
 import { view } from '../state';
 import { CUSTOM, type CustomResult } from './custom';
@@ -11,7 +11,8 @@ import { $, AreaSeries, BarSeries, CandlestickSeries, CrosshairMode, DOWN, Histo
 import type { Candle } from '../core/types';
 
 
-/* lightweight-charts objects (library is untyped here) */
+// Chart objects stay loosely typed: the app passes plain numbers where lightweight-charts uses branded
+// Time/Logical/BarPrice types (typing them is a follow-up, see docs/MIGRATION.md).
 export type LwChart = any;
 export type LwSeries = any;
 export type LwPriceLine = any;
@@ -28,7 +29,7 @@ interface IndSeries { ind: Ind; key: string | number; series: LwSeries; hist: bo
 export function chartThemeOptions(fontSize = 11) {
   const c = TC();
   return {
-    layout: { background: { type: 'solid', color: c.bg }, textColor: c.text, fontSize, panes: { separatorColor: c.border, separatorHoverColor: '#2962ff55' } },
+    layout: { background: { type: ColorType.Solid, color: c.bg }, textColor: c.text, fontSize, panes: { separatorColor: c.border, separatorHoverColor: '#2962ff55' } },
     grid: { vertLines: { color: c.grid }, horzLines: { color: c.grid } },
     crosshair: { vertLine: { color: c.cross, labelBackgroundColor: c.text === '#4a4f5c' ? '#4a4f5c' : '#2a2e39' }, horzLine: { color: c.cross, labelBackgroundColor: c.text === '#4a4f5c' ? '#4a4f5c' : '#2a2e39' } },
     rightPriceScale: { borderColor: c.border }, leftPriceScale: { borderColor: c.border },

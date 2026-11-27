@@ -1,3 +1,4 @@
+import * as LightweightCharts from 'lightweight-charts';
 // Multi-timeframe (top-down) view — see the comment below.
 import { PT, def } from '../pt';
 import { view } from '../state';
@@ -13,7 +14,6 @@ import { xOfT } from './draw';
 import { DEMO } from '../app/extras';
 import type { Candle } from '../core/types';
 
-declare const LightweightCharts: any;
 type Tf = { label: string; type: number; sec: number };
 type Analysis = ReturnType<typeof AN.analyze>;
 export interface MtfConfig { on: boolean; tf: 'auto' | number; zones: boolean; levels: boolean }

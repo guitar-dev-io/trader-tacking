@@ -1,3 +1,4 @@
+import * as LightweightCharts from 'lightweight-charts';
 import { PT, def } from '../pt';
 import { ICON } from './icons';
 import { store, THEME, TC, S, AN_DEFAULT, AN_VIEW_KEYS, PREF_DEFAULT, CHART_THEME } from '../state';

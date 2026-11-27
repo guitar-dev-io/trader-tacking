@@ -1,3 +1,5 @@
+import * as LightweightCharts from 'lightweight-charts';
+import type { UTCTimestamp } from 'lightweight-charts';
 // Balance curve + daily P/L bars of the journal page (lightweight-charts). Returns the charts so the page can remove them.
 import { TC } from '../../state';
 import { chartThemeOptions } from '../../chart/chart';
@@ -11,10 +13,10 @@ export function drawCharts(d: Computed, eqEl: HTMLElement | undefined, dEl: HTML
   if (eqEl) {
     const ch = LW.createChart(eqEl, opt); charts.push(ch);
     const s = ch.addSeries(LW.AreaSeries, { lineColor: '#2962ff', topColor: '#2962ff40', bottomColor: '#2962ff05', lineWidth: 2, priceLineVisible: false });
-    const pts: { time: number; value: number }[] = []; let last = -Infinity;
-    for (const p of d.st.curve) { const t = Math.max(p.time + tz(), last + 1); last = t; pts.push({ time: t, value: p.balance }); }
+    const pts: { time: UTCTimestamp; value: number }[] = []; let last = -Infinity;
+    for (const p of d.st.curve) { const t = Math.max(p.time + tz(), last + 1); last = t; pts.push({ time: t as UTCTimestamp, value: p.balance }); }
     s.setData(pts);
-    if (LW.createSeriesMarkers) LW.createSeriesMarkers(s, pts.filter((_, i) => d.st.curve[i].op).map((p) => ({ time: p.time, position: 'belowBar', shape: 'circle', color: '#f5a623', text: '' })));
+    if (LW.createSeriesMarkers) LW.createSeriesMarkers(s, pts.filter((_, i) => d.st.curve[i].op).map((p) => ({ time: p.time, position: 'belowBar' as const, shape: 'circle' as const, color: '#f5a623', text: '' })));
     ch.timeScale().fitContent();
   }
   if (dEl) {
