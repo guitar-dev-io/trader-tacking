@@ -10,6 +10,7 @@ import { renderTfs } from './app.js';
 import { normalize } from './draw.js';
 import { autoVpp, plannerLot, vpp } from './planner.js';
 import { ui } from './src/ui/registry.ts';
+import { showSim, tickSim, showQuiz, showLesson } from './src/ui/tabs/practice-view.ts';
 
 def({ REPLAY: [() => REPLAY], SIM: [() => SIM], _onQuotesMsg: [() => _onQuotesMsg], QUIZ: [() => QUIZ], downloadText: [() => downloadText, (v) => { downloadText = v; }], LESSON: [() => LESSON] });
 // Learning tools: Bar Replay, paper trading (simulated orders on live or replay data), practice exercises, journal & stats, lesson packs.
@@ -185,64 +186,44 @@ const SIM = (() => {
     let eq = 0, peak = 0, dd = 0; for (const h of list) { eq += h.pnl; peak = Math.max(peak, eq); dd = Math.max(dd, peak - eq); }
     return { n, win: n ? wins.length / n : null, avgR: rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : null, pf: gl ? gw / gl : gw ? Infinity : null, total: gw - gl, dd };
   }
-  function render() {
-    const box = $('sim'); if (!box || $('tab-practice').classList.contains('hidden')) return;
+  // snapshot for Sim.svelte (all numbers pre-formatted here, the component only renders)
+  function snap() {
     const a = A(), m = mode();
-    let open = 0; for (const p of a.positions) { const P = px(p.symbol); if (P) open += pnlOf(p, p.side === 1 ? P.bid : P.ask); }
+    let open = 0;
+    const positions = a.positions.map((p) => { const P = px(p.symbol); const pl = P ? pnlOf(p, p.side === 1 ? P.bid : P.ask) : null; if (pl != null) open += pl;
+      return { id: p.id, buy: p.side === 1, lot: p.lot, at: `${p.symbol} @ ${fmt(p.entry)}`, pl, plS: money(pl) }; });
     const st = stats(a.history), pct = (v) => (v == null ? '—' : (v * 100).toFixed(0) + '%');
-    const byTag = Object.keys(TAGS).map((k) => [k, stats(a.history.filter((h) => h.tag === k))]).filter(([, s]) => s.n);
-    box.innerHTML = `
-      <div class="panel-h">บัญชีจำลอง · ${m === 'replay' ? 'Replay' : 'ราคาสด'}</div>
-      <div class="sum"><span>เงินทุน</span><b>${money(a.balance)}</b><span>กำไร/ขาดทุนที่เปิดอยู่</span><b id="sim-open" class="${open >= 0 ? 'up' : 'down'}">${money(open)}</b><span>Equity</span><b id="sim-eq">${money(a.balance + open)}</b></div>
-      <h4>ส่งคำสั่ง (จำลอง)</h4>
-      <div class="seg"><button data-t="side" data-v="1" class="${ticket.side === 1 ? 'on buy' : ''}">▲ Buy</button><button data-t="side" data-v="-1" class="${ticket.side === -1 ? 'on sell' : ''}">▼ Sell</button></div>
-      <div class="grid" style="margin-top:6px">
-        <label>ประเภท<select data-k="type"><option value="market">Market</option><option value="limit">Limit</option><option value="stop">Stop</option></select></label>
-        <label>ราคา (คำสั่งรอ)<input data-k="price" type="number" step="any" value="${esc(ticket.price)}" ${ticket.type === 'market' ? 'disabled' : ''}></label>
-        <label>Lot<input data-k="lot" type="number" step="0.01" min="0.01" value="${esc(ticket.lot)}"></label>
-        <label>เหตุผล (แท็ก)<select data-k="tag">${Object.entries(TAGS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label>
-        <label>SL<input data-k="sl" type="number" step="any" value="${esc(ticket.sl)}"></label>
-        <label>TP<input data-k="tp" type="number" step="any" value="${esc(ticket.tp)}"></label>
-      </div>
-      <label class="note">บันทึก (ทำไมถึงเข้า)<input data-k="note" value="${esc(ticket.note)}" placeholder="เช่น ย่อมาแตะ HL + BE ที่โซน H1"></label>
-      <div class="btns"><button id="sim-plan">ใช้ค่าจากเครื่องคำนวณ</button><button id="sim-lot">lot ตามความเสี่ยง</button><button id="sim-place" class="primary">ส่งคำสั่ง</button></div>
-      ${a.positions.length ? `<h4>สถานะที่เปิด (${a.positions.length})</h4>
-      <div class="btns bulk"><button data-bulk="all">ปิดทั้งหมด</button><button data-bulk="win" class="upb">ปิดไม้กำไร</button><button data-bulk="loss" class="downb">ปิดไม้ขาดทุน</button><button data-bulk="be" title="เลื่อน SL มาที่ราคาเข้า เฉพาะไม้ที่กำไรอยู่">กันทุน (BE)</button></div>
-      <table class="stat"><tbody>${a.positions.map((p) => { const P = px(p.symbol); const pl = P ? pnlOf(p, p.side === 1 ? P.bid : P.ask) : null;
-        return `<tr><td class="${p.side === 1 ? 'up' : 'down'}">${p.side === 1 ? 'BUY' : 'SELL'} ${p.lot}</td><td>${p.symbol} @ ${fmt(p.entry)}</td><td data-pl="${p.id}" class="${pl >= 0 ? 'up' : 'down'}">${money(pl)}</td><td><button data-close="${p.id}">ปิด</button></td></tr>`; }).join('')}</tbody></table>` : ''}
-      ${a.orders.length ? `<h4>คำสั่งรอ (${a.orders.length}) <button data-bulk="cancel" class="mini">ยกเลิกทั้งหมด</button></h4><table class="stat"><tbody>${a.orders.map((o) => `<tr><td>${o.type} ${o.side === 1 ? 'BUY' : 'SELL'} ${o.lot}</td><td>${o.symbol} @ ${fmt(o.price)}</td><td><button data-cancel="${o.id}">ยกเลิก</button></td></tr>`).join('')}</tbody></table>` : ''}
-      <h4>สถิติการฝึก (${st.n} ไม้)</h4>
-      <div class="sum"><span>ชนะ</span><b>${pct(st.win)}</b><span>R เฉลี่ย</span><b>${st.avgR == null ? '—' : st.avgR.toFixed(2) + 'R'}</b><span>Profit factor</span><b>${st.pf == null ? '—' : st.pf === Infinity ? '∞' : st.pf.toFixed(2)}</b><span>กำไรรวม</span><b class="${st.total >= 0 ? 'up' : 'down'}">${money(st.total)}</b><span>Drawdown สูงสุด</span><b>${money(-st.dd)}</b></div>
-      ${byTag.length ? `<table class="stat"><thead><tr><th>แท็ก</th><th>ไม้</th><th>ชนะ</th><th>R เฉลี่ย</th></tr></thead><tbody>${byTag.map(([k, s]) => `<tr><td>${TAGS[k]}</td><td>${s.n}</td><td>${pct(s.win)}</td><td>${s.avgR == null ? '—' : s.avgR.toFixed(2)}</td></tr>`).join('')}</tbody></table>` : ''}
-      ${a.history.length ? `<h4>บันทึกการเทรด (ล่าสุด)</h4><div class="journal">${a.history.slice(-15).reverse().map((h) => `<div class="jr"><b class="${h.pnl >= 0 ? 'up' : 'down'}">${h.pnl >= 0 ? '✓' : '✗'} ${h.side === 1 ? 'BUY' : 'SELL'} ${h.symbol}</b> ${fmt(h.entry)} → ${fmt(h.exit)} · ${h.reason} · ${money(h.pnl)}${h.r != null ? ` · ${h.r.toFixed(2)}R` : ''}${h.quiz ? ' · โจทย์' : ''}<br><span class="muted">${esc(TAGS[h.tag] || '')}${h.note ? ' — ' + esc(h.note) : ''}</span></div>`).join('')}</div>` : ''}
-      <div class="btns"><button id="sim-csv">ส่งออกบันทึก (CSV)</button><button id="sim-reset" class="danger">รีเซ็ตบัญชี${m === 'replay' ? ' Replay' : 'สด'}</button></div>`;
-    box.querySelector('select[data-k=type]').value = ticket.type; box.querySelector('select[data-k=tag]').value = ticket.tag;
-    box.querySelectorAll('[data-k]').forEach((i) => (i.onchange = () => { ticket[i.dataset.k] = i.value; store.set('sim.ticket', ticket); if (i.dataset.k === 'type') render(); }));
-    box.querySelectorAll('[data-t=side]').forEach((b) => (b.onclick = () => { ticket.side = +b.dataset.v; store.set('sim.ticket', ticket); render(); }));
-    box.querySelectorAll('[data-close]').forEach((b) => (b.onclick = () => { const p = a.positions.find((x) => x.id === +b.dataset.close); const P = p && px(p.symbol); if (P) close(p, p.side === 1 ? P.bid : P.ask, 'manual', P.t); }));
-    box.querySelectorAll('[data-bulk]').forEach((b) => (b.onclick = () => bulk(b.dataset.bulk)));
-    box.querySelectorAll('[data-cancel]').forEach((b) => (b.onclick = () => { a.orders = a.orders.filter((x) => x.id !== +b.dataset.cancel); saveAcc(); render(); view.dirty = true; }));
-    $('sim-place').onclick = (e) => {
-      const b = e.currentTarget; if (b.disabled) return;
-      b.disabled = true; setTimeout(() => { b.disabled = false; }, 800);   // one order per click
-      place();
+    return {
+      mode: m, balance: money(a.balance), open, openS: money(open), eq: money(a.balance + open), ticket: { ...ticket }, tags: Object.entries(TAGS),
+      positions, orders: a.orders.map((o) => ({ id: o.id, text: `${o.type} ${o.side === 1 ? 'BUY' : 'SELL'} ${o.lot}`, at: `${o.symbol} @ ${fmt(o.price)}` })),
+      st: { n: st.n, win: pct(st.win), avgR: st.avgR == null ? '—' : st.avgR.toFixed(2) + 'R', pf: st.pf == null ? '—' : st.pf === Infinity ? '∞' : st.pf.toFixed(2), total: money(st.total), totalUp: st.total >= 0, dd: money(-st.dd) },
+      byTag: Object.keys(TAGS).map((k) => [k, stats(a.history.filter((h) => h.tag === k))]).filter(([, s]) => s.n).map(([k, s]) => ({ label: TAGS[k], n: s.n, win: pct(s.win), avgR: s.avgR == null ? '—' : s.avgR.toFixed(2) })),
+      history: a.history.slice(-15).reverse().map((h) => ({ up: h.pnl >= 0, head: `${h.pnl >= 0 ? '✓' : '✗'} ${h.side === 1 ? 'BUY' : 'SELL'} ${h.symbol}`,
+        body: `${fmt(h.entry)} → ${fmt(h.exit)} · ${h.reason} · ${money(h.pnl)}${h.r != null ? ` · ${h.r.toFixed(2)}R` : ''}${h.quiz ? ' · โจทย์' : ''}`, sub: `${TAGS[h.tag] || ''}${h.note ? ' — ' + h.note : ''}` })),
     };
-    $('sim-plan').onclick = () => { const p = S.plan; ticket.side = p.side === 'buy' ? 1 : -1; ticket.sl = p.sl; ticket.tp = p.tp2 || p.tp1; if (p.entry) ticket.price = p.entry; store.set('sim.ticket', ticket); render(); };
-    $('sim-lot').onclick = () => {
+  }
+  const setT = (k, v) => { ticket[k] = v; store.set('sim.ticket', ticket); render(); };
+  const api = {
+    place, bulk, setTicket: (k, v) => setT(k, k === 'side' ? +v : v),
+    closePos: (id) => { const a = A(), p = a.positions.find((x) => x.id === id); const P = p && px(p.symbol); if (P) close(p, p.side === 1 ? P.bid : P.ask, 'manual', P.t); },
+    cancel: (id) => { const a = A(); a.orders = a.orders.filter((x) => x.id !== id); saveAcc(); render(); view.dirty = true; },
+    fromPlan: () => { const p = S.plan; ticket.side = p.side === 'buy' ? 1 : -1; ticket.sl = p.sl; ticket.tp = p.tp2 || p.tp1; if (p.entry) ticket.price = p.entry; store.set('sim.ticket', ticket); render(); },
+    riskLot: () => {
       const sym = S.replay ? S.replay.symbol : S.symbol, P = px(sym), sl = parseFloat(ticket.sl);
       if (!P || !isFinite(sl)) return toast('ใส่ SL ก่อน แล้วแอปจะคำนวณ lot จากความเสี่ยงในแท็บคำนวณ', 'warn');
       const lot = plannerLot(ticket.type === 'market' ? (ticket.side === 1 ? P.ask : P.bid) : parseFloat(ticket.price), sl);
       if (lot) { ticket.lot = lot; store.set('sim.ticket', ticket); render(); } else toast('lot ที่คำนวณได้ต่ำกว่าขั้นต่ำ', 'warn');
-    };
-    $('sim-reset').onclick = (e) => {
-      if (e.target.dataset.armed !== '1') { e.target.dataset.armed = '1'; e.target.textContent = 'กดอีกครั้งเพื่อยืนยัน'; return; }
-      acc[m] = blank(); saveAcc(); render(); view.dirty = true;
-    };
-    $('sim-csv').onclick = () => {
+    },
+    reset: () => { acc[mode()] = blank(); saveAcc(); render(); view.dirty = true; },
+    csv: () => {
       const rows = [['mode', 'symbol', 'side', 'lot', 'entry', 'exit', 'sl', 'tp', 'reason', 'pnl', 'r', 'tag', 'note', 'open', 'close', 'quiz']]
         .concat(['live', 'replay'].flatMap((k) => acc[k].history.map((h) => [k, h.symbol, h.side === 1 ? 'BUY' : 'SELL', h.lot, h.entry, h.exit, h.sl, h.tp, h.reason, h.pnl.toFixed(2), h.r == null ? '' : h.r.toFixed(2), h.tag, (h.note || '').replace(/[",\n]/g, ' '), new Date(h.openTime * 1000).toISOString(), new Date(h.closeTime * 1000).toISOString(), h.quiz ? 1 : 0])));
       downloadText(`practice-journal-${new Date().toISOString().slice(0, 10)}.csv`, rows.map((r) => r.join(',')).join('\n'));
-    };
+    },
+  };
+  function render() {
+    if (!$('sim') || $('tab-practice').classList.contains('hidden')) return;
+    showSim(snap(), api);
   }
   // bulk actions: close all / winners / losers, move SL to entry on winners, cancel pending orders
   function bulk(kind) {
@@ -264,15 +245,7 @@ const SIM = (() => {
   function tickUpdate() {
     if ($('tab-practice').classList.contains('hidden') || !$('sim-open')) return;
     const now = Date.now(); if (now - lastTU < 400) return; lastTU = now;
-    const a = A(); let open = 0;
-    for (const p of a.positions) {
-      const P = px(p.symbol); if (!P) continue;
-      const pl = pnlOf(p, p.side === 1 ? P.bid : P.ask); open += pl;
-      const td = document.querySelector(`#sim [data-pl="${p.id}"]`);
-      if (td) { td.textContent = money(pl); td.className = pl >= 0 ? 'up' : 'down'; }
-    }
-    $('sim-open').textContent = money(open); $('sim-open').className = open >= 0 ? 'up' : 'down';
-    $('sim-eq').textContent = money(a.balance + open);
+    tickSim(snap());          // numbers only: the panel patches text, it is not rebuilt
   }
   // open positions & pending orders on the chart
   function draw(W) {
@@ -327,19 +300,12 @@ const QUIZ = (() => {
   }
   function abort() { q = null; render(); }
   function render() {
-    const box = $('quiz'); if (!box) return;
     const res = store.get('quiz.results', []), done = res.filter((r) => !r.skipped);
     const wins = done.filter((r) => (r.r != null ? r.r > 0 : r.pnl > 0)).length;
     const rs = done.filter((r) => r.r != null).map((r) => r.r);
-    box.innerHTML = `<div class="panel-h">ฝึกด้วย Replay</div>
-      <p class="muted">ย้อนกราฟแล้วเล่นทีละแท่ง โดยไม่เห็นอนาคต — ฝึกตีโซน วางจุดเข้า SL TP แล้วดูผล</p>
-      <div class="btns"><button id="rp-pick">${ICON.html('rewind', 15)}เลือกจุดเริ่มบนกราฟ</button><button id="rp-quiz" class="primary">${ICON.html('target', 15)}สุ่มโจทย์</button>${q && !q.traded ? '<button id="rp-skip">ข้าม (ไม่เข้า)</button>' : ''}${S.replay ? '<button id="rp-exit">ออกจาก Replay</button>' : ''}</div>
-      <div class="sum" style="margin-top:8px"><span>โจทย์ที่ทำ</span><b>${done.length} (ข้าม ${res.length - done.length})</b><span>ถูกทาง</span><b>${done.length ? Math.round((wins / done.length) * 100) + '%' : '—'}</b><span>R เฉลี่ย</span><b>${rs.length ? (rs.reduce((a, b) => a + b, 0) / rs.length).toFixed(2) + 'R' : '—'}</b></div>
-      <p class="muted">คีย์ลัด: Space = เล่น/หยุด · → = 1 แท่ง · Shift+→ = 10 แท่ง · ← = ถอย</p>`;
-    $('rp-pick').onclick = () => REPLAY.pick();
-    $('rp-quiz').onclick = start;
-    if ($('rp-skip')) $('rp-skip').onclick = skip;
-    if ($('rp-exit')) $('rp-exit').onclick = () => REPLAY.exit();
+    showQuiz({ canSkip: !!(q && !q.traded), inReplay: !!S.replay, done: done.length, skipped: res.length - done.length,
+      win: done.length ? Math.round((wins / done.length) * 100) + '%' : '—', avgR: rs.length ? (rs.reduce((a, b) => a + b, 0) / rs.length).toFixed(2) + 'R' : '—' },
+      { pick: () => REPLAY.pick(), start, skip, exit: () => REPLAY.exit() });
   }
   return { start, onTrade, onBar, onClose, abort, render, active: () => !!q };
 })();
@@ -350,8 +316,8 @@ function downloadText(name, text) {
   navigator.clipboard?.writeText(text).then(() => toast('คัดลอกไว้ในคลิปบอร์ดแล้วด้วย', 'ok'), () => {});
 }
 const LESSON = (() => {
-  function exportPack() {
-    const pack = { app: 'Price Tracker', kind: 'lesson', v: 1, symbol: S.symbol, tf: S.tf, note: $('lp-note').value || '', created: new Date().toISOString(),
+  function exportPack(note = '') {
+    const pack = { app: 'Price Tracker', kind: 'lesson', v: 1, symbol: S.symbol, tf: S.tf, note: note || '', created: new Date().toISOString(),
       replayAt: S.replay ? S.replay.full[S.replay.idx].time - TZ : null, drawings };
     downloadText(`lesson-${S.symbol}-${tf().label}.json`, JSON.stringify(pack));
     vcg.log('info', `ส่งออกบทเรียน ${S.symbol} (${drawings.length} รูปวาด)`, null, 'learn');
@@ -366,16 +332,7 @@ const LESSON = (() => {
     if (p.replayAt) { const go = () => { const i = S.candles.findIndex((c) => c.time - TZ >= p.replayAt); if (i > 0) REPLAY.start(i); }; setTimeout(go, 2500); }
     toast(`นำเข้าบทเรียน ${p.symbol}${p.note ? ': ' + p.note : ''}`, 'ok', 10000);
   }
-  function render() {
-    const box = $('lesson-pack'); if (!box) return;
-    box.innerHTML = `<div class="panel-h">แพ็กบทเรียน (แชร์รูปวาด)</div>
-      <p class="muted">ส่งออกโซน/เส้นที่วาดบน ${S.symbol} พร้อมโน้ต ให้คนอื่นนำเข้าแล้วเห็นบนกราฟจุดเดียวกัน (ถ้าอยู่ใน Replay จะจำจุดเริ่มไว้ด้วย)</p>
-      <input id="lp-note" placeholder="โน้ตสำหรับผู้เรียน เช่น ดูการย่อมาแตะ Demand H1" style="width:100%">
-      <div class="btns"><button id="lp-export">ส่งออก / คัดลอก</button><button id="lp-import-btn">นำเข้า</button></div>
-      <textarea id="lp-import" class="hidden" placeholder="วางข้อความบทเรียนที่นี่ แล้วกด นำเข้า อีกครั้ง" style="width:100%;height:80px;margin-top:6px"></textarea>`;
-    $('lp-export').onclick = exportPack;
-    $('lp-import-btn').onclick = () => { const t = $('lp-import'); if (t.classList.contains('hidden')) { t.classList.remove('hidden'); t.focus(); } else importPack(t.value); };
-  }
+  function render() { showLesson({ symbol: S.symbol }, { exportPack, importPack }); }
   return { render, importPack };
 })();
 

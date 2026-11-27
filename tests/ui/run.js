@@ -182,6 +182,10 @@ app.whenReady().then(async () => {
       document.querySelector('[data-bulk=all]').click();
       return JSON.stringify({ before, afterLoss, be, afterAll: PT.SIM.acc().live.positions.length }); })()`));
     check('practice: bulk close losers / BE / close all', bulk.before === 4 && bulk.afterLoss === 2 && bulk.be && bulk.afterAll === 0, bulk);
+    await js(`(() => { const t = (bid) => PT.onQuotesMsg([{ symbol: 'XAUUSD', time: new Date().toISOString(), bid, ask: bid + 0.2, digits: 2, change: 0, changePct: 0 }]);
+      const A0 = PT.SIM.acc().live; A0.positions = []; A0.orders = []; t(3500); for (let i = 0; i < 2; i++) { const b = document.getElementById('sim-place'); b.disabled = false; b.click(); } t(3504); PT.SIM.render(); return 1; })()`);
+    await sleep(300); await A.shot('practice');
+    await js(`document.querySelector('[data-bulk=all]') && document.querySelector('[data-bulk=all]').click(); 1`);
 
     // drawing tools: Fibonacci extension
     const fib = JSON.parse(await js(`(() => { const c = PT.S.candles, n = c.length, t = (i) => c[i].time; const before = PT.svg.querySelectorAll('text').length;
