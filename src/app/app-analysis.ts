@@ -1,12 +1,12 @@
-import { PT, def } from './src/pt.ts';
-import { view } from './src/state.ts';
-import { AN } from './src/legacy/core.ts';
-import { $, AN_VIEW_KEYS, S, TZ, digits, fmt, store, tf } from './app-core.js';
-import { closeMenus } from './src/chart/chart.ts';
+import { PT, def } from '../pt';
+import { view } from '../state';
+import { AN } from '../legacy/core';
+import { $, AN_VIEW_KEYS, S, TZ, digits, fmt, store, tf } from './app-core';
+import { closeMenus } from '../chart/chart';
 import { mount, flushSync } from 'svelte';
-import Analysis from './src/ui/tabs/Analysis.svelte';
-import { analysisTick } from './src/ui/tabs/analysis-view.ts';
-def({ AN_ITEMS: [() => AN_ITEMS], openAnalysisMenu: [() => openAnalysisMenu, (v) => { openAnalysisMenu = v; }], SETUP_TH: [() => SETUP_TH], pct: [() => pct], rr: [() => rr], PERF: [() => PERF], runAnalysis: [() => runAnalysis, (v) => { runAnalysis = v; }], activeSignal: [() => activeSignal, (v) => { activeSignal = v; }], renderAnalysis: [() => renderAnalysis, (v) => { renderAnalysis = v; }], pushTimer: [() => pushTimer, (v) => { pushTimer = v; }], pushAnalysis: [() => pushAnalysis, (v) => { pushAnalysis = v; }], sigPayload: [() => sigPayload, (v) => { sigPayload = v; }] });
+import Analysis from '../ui/tabs/Analysis.svelte';
+import { analysisTick } from '../ui/tabs/analysis-view';
+
 // Price Tracker renderer · structure analysis: menu, run/render, signal notifications
 // ---------------------------------------------------------------- analysis menu
 const AN_ITEMS = [
@@ -27,7 +27,7 @@ function openAnalysisMenu() {
     `<div class="item"><span>Swing length (แท่ง)</span><input type="number" id="an-len" min="2" max="30" value="${S.an.swingLen}"></div>`;
   menu.classList.remove('hidden');
   menu.querySelectorAll('input[data-k]').forEach((i) => (i.onchange = () => { S.an[i.dataset.k] = i.checked; store.set('an', S.an); runAnalysis(); }));
-  const setAll = (v) => { AN_VIEW_KEYS.forEach((k) => { S.an[k] = v && k !== 'td'; }); store.set('an', S.an); runAnalysis(); closeMenus(); openAnalysisMenu(); };
+  const setAll = (v: boolean) => { AN_VIEW_KEYS.forEach((k) => { S.an[k] = v && k !== 'td'; }); store.set('an', S.an); runAnalysis(); closeMenus(); openAnalysisMenu(); };
   $('an-all').onclick = (e) => { e.stopPropagation(); setAll(true); };
   $('an-none').onclick = (e) => { e.stopPropagation(); setAll(false); };
   $('an-len').onchange = () => { S.an.swingLen = Math.max(2, Math.min(30, +$('an-len').value || 5)); store.set('an', S.an); runAnalysis(); };
@@ -36,8 +36,8 @@ $('an-btn').onclick = (e) => { e.stopPropagation(); openAnalysisMenu(); };
 
 // ---------------------------------------------------------------- analysis
 const SETUP_TH = { pullback: 'ย่อตามเทรนด์', choch: 'กลับตัวหลัง CHoCH', sr: 'เด้งแนวรับ/ต้าน' };
-const pct = (v) => (v == null ? '—' : (v * 100).toFixed(0) + '%');
-const rr = (v) => (v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + 'R');
+const pct = (v: number|null) => (v == null ? '—' : (v * 100).toFixed(0) + '%');
+const rr = (v: number|null) => (v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + 'R');
 
 const PERF = { analyze: 0, bounce: 0, render: 0, n: 0, at: 0 };
 function runAnalysis() {
@@ -67,7 +67,7 @@ function renderAnalysis() {
   analysisTick.update((n) => n + 1); flushSync();
 }
 
-let pushTimer = null;
+let pushTimer: ReturnType<typeof setTimeout> | undefined = undefined;
 function pushAnalysis() {
   clearTimeout(pushTimer);
   pushTimer = setTimeout(() => {
@@ -75,15 +75,15 @@ function pushAnalysis() {
     vcg.pushAnalysis(A ? {
       symbol: S.symbol, timeframe: tf().label, bars: A.n, trend: A.lastTrend === 1 ? 'up' : A.lastTrend === -1 ? 'down' : 'none',
       lastEvent: A.lastEvent && { ...A.lastEvent, time: S.candles[A.lastEvent.idx]?.time - TZ },
-      swings: A.swings.slice(-10).map((s) => ({ label: s.label, price: s.price, time: s.time - TZ, bars: s.legBars })),
-      zones: A.zones.map((z) => ({ kind: z.kind, top: z.top, bottom: z.bottom, touches: z.touches })),
+      swings: A.swings.slice(-10).map((s: { label: any; price: any; time: number; legBars: any; }) => ({ label: s.label, price: s.price, time: s.time - TZ, bars: s.legBars })),
+      zones: A.zones.map((z: { kind: any; top: any; bottom: any; touches: any; }) => ({ kind: z.kind, top: z.top, bottom: z.bottom, touches: z.touches })),
       activeSignal: sigPayload(activeSignal()),
       lastSignal: sigPayload(A.signals[A.signals.length - 1]),
       stats: { all: A.stats.all, learned: A.stats.learned, bySetup: A.stats.bySetup, byPattern: A.stats.byPattern },
     } : null);
   }, 300);
 }
-function sigPayload(s) {
+function sigPayload(s: { dir: number; time: number; setup: any; pattern: string|number; entry: any; sl: any; tp1: any; tp2: any; tpS: any; learned: any; prior: any; reasons: any; r1: { res: any; }; r2: { res: any; }; }) {
   if (!s) return null;
   return { symbol: S.symbol, timeframe: tf().label, side: s.dir === 1 ? 'BUY' : 'SELL', time: new Date((s.time - TZ) * 1000).toISOString(),
     setup: s.setup, pattern: AN.PAT[s.pattern].name, entry: s.entry, sl: s.sl, tp1: s.tp1, tp2: s.tp2, structureTarget: s.tpS,

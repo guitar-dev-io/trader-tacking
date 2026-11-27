@@ -114,4 +114,4 @@ export function heikinAshi(c: Candle[]): Candle[] {
 
 export const IND = { DEFS, heikinAshi, _smaArr: smaArr, _emaArr: emaArr };
 export type IndApi = typeof IND;
-def({ IND: [() => IND] });
+

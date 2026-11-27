@@ -1,27 +1,30 @@
-import { PT, def } from './src/pt.ts';
-import { toast } from './src/ui/toast.ts';
-def({ MM_LEARN: [() => MM_LEARN] });
-import { LESSONS_EXTRA, LESSON_CATS } from './lessons-guide.js';
-import { ICON } from './icons.js';
-import { MM } from './src/legacy/core.ts';
-import { esc, store } from './app-core.js';
-import { pages } from './src/pages/registry.ts';
-let MM_LEARN; // set below; exported (was window.MM_LEARN)
+import { PT, def } from '../pt';
+import { toast } from '../ui/toast';
+
+import { LESSONS_EXTRA, LESSON_CATS } from './lessons-guide';
+import { ICON } from './icons';
+import { MM } from '../legacy/core';
+import { esc, store, tgt, type El } from './app-core';
+import { pages } from '../pages/registry';
+import type { PlanRow } from '../core/mm';
+import type { Plan } from '../core/mm';
+export interface MmLearnApi { mount(scope?: ParentNode): void; planWidget(root: El): void; quizWidget(root: El): void }
+let MM_LEARN!: MmLearnApi; // set below; exported (was window.MM_LEARN)
 // Money Management (MM) lessons, the "MM plan by account size" table and random calculation practice.
 // Loaded after lessons-guide.js (adds a lesson category) and before app.js renders the lesson book.
 (function () {
-  const ic = (n, s = 14) => (typeof ICON !== 'undefined' && ICON.html ? ICON.html(n, s) : '');
-  const $$ = (r, q) => r.querySelector(q);
-  const usd = (v, d = 2) => '$' + Number(v).toLocaleString('en-US', { minimumFractionDigits: v % 1 ? Math.min(d, 2) : 0, maximumFractionDigits: d });
-  const n = (v, d = 2) => Number(v).toLocaleString('en-US', { maximumFractionDigits: d });
-  const lot = (v) => Number(v).toFixed(2);
-  const withUnit = (v, u) => (u === '$' ? usd(v, 4) : `${n(v, 4)}${u ? ' ' + u : ''}`);
+  const ic = (n: string, s = 14) => (typeof ICON !== 'undefined' && ICON.html ? ICON.html(n, s) : '');
+  const $$ = (r: any, q: string) => r.querySelector(q);
+  const usd = (v: number, d = 2) => '$' + Number(v).toLocaleString('en-US', { minimumFractionDigits: v % 1 ? Math.min(d, 2) : 0, maximumFractionDigits: d });
+  const n = (v: number, d = 2) => Number(v).toLocaleString('en-US', { maximumFractionDigits: d });
+  const lot = (v: number) => Number(v).toFixed(2);
+  const withUnit = (v: number, u: string) => (u === '$' ? usd(v, 4) : `${n(v, 4)}${u ? ' ' + u : ''}`);
 
   // ------------------------------------------------------------ small theme-aware figures (currentColor + CSS vars)
-  function bars(items, o = {}) {      // items: [{label, v, col}] horizontal bars
-    const W = 300, rowH = 22, H = items.length * rowH + 8, max = o.max || Math.max(...items.map((x) => Math.abs(x.v))), L = o.lw || 92;
+  function bars(items: any[], o: Record<string, any> = {}) {      // items: [{label, v, col}] horizontal bars
+    const W = 300, rowH = 22, H = items.length * rowH + 8, max = o.max || Math.max(...items.map((x: { v: number; }) => Math.abs(x.v))), L = o.lw || 92;
     let s = `<svg viewBox="0 0 ${W} ${H}" class="mm-fig" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif" font-size="10">`;
-    items.forEach((x, i) => {
+    items.forEach((x: { v: number; label: any; col: any; t: any; }, i: number) => {
       const y = 6 + i * rowH, w = Math.max(2, ((W - L - 50) * Math.abs(x.v)) / max);
       s += `<text x="${L - 6}" y="${y + 12}" text-anchor="end" style="fill:var(--muted)">${x.label}</text>`;
       s += `<rect x="${L}" y="${y + 2}" width="${w.toFixed(1)}" height="14" rx="3" style="fill:${x.col || 'var(--accent)'};opacity:.85"/>`;
@@ -29,14 +32,14 @@ let MM_LEARN; // set below; exported (was window.MM_LEARN)
     });
     return `<div class="lg-fig">${s}</svg>${o.cap ? `<div class="lg-cap">${o.cap}</div>` : ''}</div>`;
   }
-  function curve(series, o = {}) {   // series: [{pts:[y...], col, label}] line chart
-    const W = 300, H = 120, P = 26, all = series.flatMap((x) => x.pts), lo = Math.min(...all), hi = Math.max(...all), N = series[0].pts.length - 1;
-    const X = (i) => P + (i / N) * (W - P - 8), Y = (v) => H - 16 - ((v - lo) / (hi - lo || 1)) * (H - 28);
+  function curve(series: any[], o: Record<string, any> = {}) {   // series: [{pts:[y...], col, label}] line chart
+    const W = 300, H = 120, P = 26, all = series.flatMap((x: { pts: any; }) => x.pts), lo = Math.min(...all), hi = Math.max(...all), N = series[0].pts.length - 1;
+    const X = (i: number) => P + (i / N) * (W - P - 8), Y = (v: number) => H - 16 - ((v - lo) / (hi - lo || 1)) * (H - 28);
     let s = `<svg viewBox="0 0 ${W} ${H}" class="mm-fig" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif" font-size="9">`;
     s += `<line x1="${P}" x2="${W - 6}" y1="${H - 16}" y2="${H - 16}" style="stroke:var(--line)"/><line x1="${P}" x2="${P}" y1="8" y2="${H - 16}" style="stroke:var(--line)"/>`;
     s += `<text x="${P - 3}" y="${Y(hi) + 3}" text-anchor="end" style="fill:var(--muted)">${n(hi, 0)}</text><text x="${P - 3}" y="${Y(lo) + 3}" text-anchor="end" style="fill:var(--muted)">${n(lo, 0)}</text>`;
-    series.forEach((sr, k) => {
-      s += `<polyline fill="none" stroke-width="2" style="stroke:${sr.col}" points="${sr.pts.map((v, i) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ')}"/>`;
+    series.forEach((sr: { col: any; pts: any[]; label: any; }, k: any) => {
+      s += `<polyline fill="none" stroke-width="2" style="stroke:${sr.col}" points="${sr.pts.map((v: any, i: any) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ')}"/>`;
       s += `<text x="${W - 8}" y="${Y(sr.pts[N]) + (k ? 11 : -4)}" text-anchor="end" style="fill:${sr.col}">${sr.label}</text>`;
     });
     if (o.xl) s += `<text x="${W - 6}" y="${H - 4}" text-anchor="end" style="fill:var(--muted)">${o.xl}</text>`;
@@ -44,7 +47,7 @@ let MM_LEARN; // set below; exported (was window.MM_LEARN)
   }
   const UPC = 'var(--up)', DNC = 'var(--down)', AC = 'var(--accent)', WC = 'var(--warn)';
   const NA = '<p class="lg-warn">เนื้อหาเพื่อการศึกษา ไม่ใช่คำแนะนำการลงทุน — ตัวเลขสเปกเป็นค่าทั่วไป ตรวจกับโบรกเกอร์ของคุณเสมอ</p>';
-  const practiceBtn = (kind) => `<button class="mm-go" data-mm-practice="${kind || ''}">${ic('calculator')}ฝึกโจทย์${kind ? ' ' + MM.KIND_NAME[kind] : 'คำนวณ'}</button>`;
+  const practiceBtn = (kind?: string) => `<button class="mm-go" data-mm-practice="${kind || ''}">${ic('calculator')}ฝึกโจทย์${kind ? ' ' + MM.KIND_NAME[kind as keyof typeof MM.KIND_NAME] : 'คำนวณ'}</button>`;
 
   // numbers used in the lesson text come from mm.js so they always match the calculator
   const P1000 = MM.plan(1000), P100 = MM.plan(100);
@@ -151,15 +154,15 @@ ${bars([100, 500, 2000].map((lv) => ({ label: `1:${lv}`, v: MM.margin('XAUUSD', 
 
   if (LESSON_CATS && LESSONS_EXTRA) {
     const cat = { id: 'mm', name: 'Money Management (MM) / บัญชีเซ็นต์', icon: 'coins' };
-    const i = LESSON_CATS.findIndex((c) => c.id === 'risk');
-    if (!LESSON_CATS.some((c) => c.id === 'mm')) LESSON_CATS.splice(i >= 0 ? i + 1 : LESSON_CATS.length, 0, cat);
+    const i = LESSON_CATS.findIndex((c: { id: string; }) => c.id === 'risk');
+    if (!LESSON_CATS.some((c: { id: string; }) => c.id === 'mm')) LESSON_CATS.splice(i >= 0 ? i + 1 : LESSON_CATS.length, 0, cat);
     LESSONS_EXTRA.push(...LESSONS.map((l) => ({ c: 'mm', ...l })));
   }
 
   // ------------------------------------------------------------ widget: MM plan by account size
-  const pref = { size: 1000, risk: 1, lev: 500, type: 'auto', ...store.get('mmPlan', {}) };
-  const TYPE_NAME = { cent: 'บัญชีเซ็นต์ (USC)', either: 'เซ็นต์ หรือ มาตรฐาน', standard: 'บัญชีมาตรฐาน' };
-  function reasons(p) {
+  const pref: Record<string, any> = { size: 1000, risk: 1, lev: 500, type: 'auto', ...store.get('mmPlan', {}) };
+  const TYPE_NAME: Record<string, any> = { cent: 'บัญชีเซ็นต์ (USC)', either: 'เซ็นต์ หรือ มาตรฐาน', standard: 'บัญชีมาตรฐาน' };
+  function reasons(p: Plan) {
     const g = p.gold[2], out = [];
     if (p.type === 'cent') out.push(`ทุน ${usd(p.balance)} เสี่ยง ${p.riskPct}% = ${usd(p.risk)} แต่ lot ต่ำสุดบัญชีมาตรฐาน (0.01) ทอง SL 1000 จุด เสีย ${usd(g.riskAtMinLot)} = ${g.riskAtMinLotPct}% ของพอร์ต → ใช้บัญชีเซ็นต์ คุมความเสี่ยงได้ตามแผน`);
     else if (p.type === 'either') out.push(`บัญชีมาตรฐานเปิด 0.01 lot ได้เมื่อ SL ไม่เกิน ~${n(p.risk / 0.01, 0)} จุด · ถ้าชอบ SL กว้างกว่านั้นใช้บัญชีเซ็นต์`);
@@ -169,18 +172,18 @@ ${bars([100, 500, 2000].map((lv) => ({ label: `1:${lv}`, v: MM.margin('XAUUSD', 
     out.push(`เป้าที่สมจริง 2–5%/เดือน = ${usd(p.monthly.low)}–${usd(p.monthly.high)}${p.balance <= 500 ? ' — ทุนน้อยให้เน้นฝึกวินัยและสถิติ ไม่ใช่เร่งโตพอร์ต' : ''}`);
     return out;
   }
-  function planWidget(root) {
+  function planWidget(root: El) {
     const draw = () => {
       const p = MM.plan(pref.size, { riskPct: pref.risk, leverage: pref.lev, type: pref.type === 'auto' ? undefined : pref.type });
       const cent = p.type !== 'standard';
-      const lotCell = (g) => (cent ? `<b>${lot(g.lotCent)}</b><small>cent lot · = ${n(g.centStd, 4)} lot</small>` + (g.tooSmall ? '' : `<small>มาตรฐาน ${lot(g.lotStd)}</small>`)
+      const lotCell = (g: PlanRow) => (cent ? `<b>${lot(g.lotCent)}</b><small>cent lot · = ${n(g.centStd, 4)} lot</small>` + (g.tooSmall ? '' : `<small>มาตรฐาน ${lot(g.lotStd)}</small>`)
         : g.tooSmall ? `<b class="down">ต่ำกว่า 0.01</b><small>0.01 lot เสี่ยง ${g.riskAtMinLotPct}%</small>` : `<b>${lot(g.lotStd)}</b><small>lot</small>`);
-      const seg = (k, vals, f) => `<div class="seg mm-seg">${vals.map((v) => `<button data-p="${k}" data-v="${v}" class="${String(pref[k]) === String(v) ? 'on' : ''}">${f ? f(v) : v}</button>`).join('')}</div>`;
+      const seg = (k: string, vals: any[], f: any) => `<div class="seg mm-seg">${vals.map((v: any) => `<button data-p="${k}" data-v="${v}" class="${String(pref[k]) === String(v) ? 'on' : ''}">${f ? f(v) : v}</button>`).join('')}</div>`;
       root.innerHTML = `<div class="mm-plan">
-        <div class="mm-ctl"><label>ขนาดพอร์ต (USD)</label>${seg('size', MM.SIZES, (v) => n(v, 0))}</div>
-        <div class="mm-ctl2"><div class="mm-ctl"><label>ความเสี่ยง/ไม้</label>${seg('risk', [0.5, 1, 2], (v) => v + '%')}</div>
-          <div class="mm-ctl"><label>Leverage</label>${seg('lev', [100, 500, 2000], (v) => '1:' + v)}</div>
-          <div class="mm-ctl"><label>ประเภทบัญชี</label>${seg('type', ['auto', 'cent', 'standard'], (v) => ({ auto: 'แนะนำ', cent: 'เซ็นต์', standard: 'มาตรฐาน' })[v])}</div></div>
+        <div class="mm-ctl"><label>ขนาดพอร์ต (USD)</label>${seg('size', MM.SIZES, (v: any) => n(v, 0))}</div>
+        <div class="mm-ctl2"><div class="mm-ctl"><label>ความเสี่ยง/ไม้</label>${seg('risk', [0.5, 1, 2], (v: string) => v + '%')}</div>
+          <div class="mm-ctl"><label>Leverage</label>${seg('lev', [100, 500, 2000], (v: string) => '1:' + v)}</div>
+          <div class="mm-ctl"><label>ประเภทบัญชี</label>${seg('type', ['auto', 'cent', 'standard'], (v: string|number) => ({ auto: 'แนะนำ', cent: 'เซ็นต์', standard: 'มาตรฐาน' })[v])}</div></div>
         <div class="mm-sum">
           <div><span>ประเภทบัญชี</span><b>${TYPE_NAME[p.type]}</b></div>
           <div><span>ทุน</span><b>${usd(p.balance)}</b>${cent ? `<small>= ${n(MM.usdToUsc(p.balance), 0)} USC</small>` : ''}</div>
@@ -204,9 +207,9 @@ ${bars([100, 500, 2000].map((lv) => ({ label: `1:${lv}`, v: MM.margin('XAUUSD', 
   const Q = { level: 1, kind: '', right: 0, total: 0, streak: 0, best: 0, ...store.get('mmQuiz', {}) };
   const saveQ = () => store.set('mmQuiz', { level: Q.level, kind: Q.kind, right: Q.right, total: Q.total, streak: Q.streak, best: Q.best });
   const quizRoots = new Set();
-  function quizWidget(root) {
+  function quizWidget(root: El) {
     quizRoots.add(root);
-    let cur = MM.problem(Q.kind, Q.level), state = null, tries = 0;
+    let cur = MM.problem(Q.kind, Q.level), state: string|null = null, tries = 0;
     const draw = () => {
       root.innerHTML = `<div class="mm-quiz">
         <div class="mm-qh"><b>${ic('calculator', 16)}โจทย์ฝึกคำนวณ MM</b><span class="mm-score" title="ถูก / ทั้งหมด · ถูกติดกัน (สูงสุด)">${Q.right}/${Q.total} · ติดกัน ${Q.streak} (สูงสุด ${Q.best})</span></div>
@@ -220,7 +223,7 @@ ${bars([100, 500, 2000].map((lv) => ({ label: `1:${lv}`, v: MM.margin('XAUUSD', 
           ${state === 'ok' || state === 'show' ? `<ol class="mm-steps">${cur.steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ol>` : ''}</div>
         <div class="btns"><button data-a="show" ${state === 'ok' || state === 'show' ? 'disabled' : ''}>ดูวิธีทำ</button><button data-a="next">ข้อถัดไป ›</button></div></div>`;
       const inp = $$(root, '.mm-ans input');
-      $$(root, '.mm-ans').onsubmit = (e) => {
+      $$(root, '.mm-ans').onsubmit = (e: { preventDefault: () => void; }) => {
         e.preventDefault(); if (state === 'ok') return;
         const r = MM.check(cur, inp.value); if (r.empty) return;
         tries++;
@@ -229,7 +232,7 @@ ${bars([100, 500, 2000].map((lv) => ({ label: `1:${lv}`, v: MM.margin('XAUUSD', 
         saveQ(); draw(); const i2 = $$(root, '.mm-ans input'); if (state === 'bad') { i2.value = r.value; i2.focus(); i2.select(); }
       };
       root.querySelectorAll('[data-lv]').forEach((b) => (b.onclick = () => { Q.level = +b.dataset.lv; saveQ(); next(); }));
-      $$(root, '[data-kind]').onchange = (e) => { Q.kind = e.target.value; saveQ(); next(); };
+      $$(root, '[data-kind]').onchange = (e: Event) => { Q.kind = tgt(e).value; saveQ(); next(); };
       $$(root, '[data-a=show]').onclick = () => { if (!tries) { Q.total++; Q.streak = 0; saveQ(); } tries = Math.max(tries, 1); state = 'show'; draw(); };
       $$(root, '[data-a=next]').onclick = next;
     };
@@ -239,17 +242,17 @@ ${bars([100, 500, 2000].map((lv) => ({ label: `1:${lv}`, v: MM.margin('XAUUSD', 
   }
 
   // ------------------------------------------------------------ mount: widgets inside a lesson / practice view
-  function mount(scope = document) {
-    scope.querySelectorAll('.mm-widget[data-w]:not([data-on])').forEach((w) => { w.dataset.on = 1; (w.dataset.w === 'plan' ? planWidget : quizWidget)(w); });
+  function mount(scope: ParentNode = document) {
+    (scope.querySelectorAll('.mm-widget[data-w]:not([data-on])') as NodeListOf<El>).forEach((w) => { w.dataset.on = '1'; (w.dataset.w === 'plan' ? planWidget : quizWidget)(w); });
   }
-  document.addEventListener('toggle', (e) => { if (e.target.tagName === 'DETAILS' && e.target.open) mount(e.target); }, true);
+  document.addEventListener('toggle', (e) => { if (tgt(e).tagName === 'DETAILS' && tgt(e).open) mount(tgt(e)); }, true);
   document.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-mm-practice]'); if (!b) return;
+    const b = tgt(e).closest('[data-mm-practice]'); if (!b) return;
     e.preventDefault();
     if (b.dataset.mmPractice !== Q.kind) { Q.kind = b.dataset.mmPractice; saveQ(); }
     // practice lives in the learning center (src/pages/learn)
     if (pages.learn) pages.learn.open('p:mmquiz');
-    if (typeof toast === 'function') toast('ฝึกโจทย์: ' + (MM.KIND_NAME[Q.kind] || 'ทุกหัวข้อ'), 'info', 2500);
+    if (typeof toast === 'function') toast('ฝึกโจทย์: ' + (MM.KIND_NAME[Q.kind as keyof typeof MM.KIND_NAME] || 'ทุกหัวข้อ'), 'info', 2500);
   });
   MM_LEARN = { mount, planWidget, quizWidget };
 })();

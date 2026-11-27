@@ -3,7 +3,7 @@
   // Clicking an event opens that day on Forex Factory (its own page; nothing is copied).
   import Icon from '../../ui/Icon.svelte';
   import { store } from '../../state';
-  import { NEWS } from '../../../extras.js';
+  import { NEWS } from '../../app/extras';
 
   let { version = 0, openFF }: { version?: number; openFF: (url: string) => void } = $props();
   type Ev = { t: number; impact: string; ccy: string; title: string; when: string; forecast?: string; previous?: string };

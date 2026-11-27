@@ -6,11 +6,10 @@ import { view } from '../state';
 import { CUSTOM, type CustomResult } from './custom';
 import { IND, type IndicatorDef, type Point } from './indicators';
 import { chartHooks } from './hooks';
-import { ICON } from '../../icons.js';
-import { $, AreaSeries, BarSeries, CandlestickSeries, CrosshairMode, DOWN, HistogramSeries, IND_COLORS, LineSeries, LineStyle, S, TC, THEME, UP, createChart, digits, esc, fmt, store, tf } from '../../app-core.js';
+import { ICON } from '../app/icons';
+import { $, AreaSeries, BarSeries, CandlestickSeries, CrosshairMode, DOWN, HistogramSeries, IND_COLORS, LineSeries, LineStyle, S, TC, THEME, UP, createChart, digits, esc, fmt, store, tf, tgt } from '../app/app-core';
 import type { Candle } from '../core/types';
 
-declare const vcg: { log(level: string, msg: string, data?: unknown, src?: string): void };
 
 /* lightweight-charts objects (library is untyped here) */
 export type LwChart = any;
@@ -46,9 +45,9 @@ export const chart: LwChart = createChart($('chart'), {
 export function applyChartTheme(): void {
   chart.applyOptions(chartThemeOptions(11));
   chartHooks.applyChartCfg?.();                                        // keep the user's grid on/off
-  try { view.dirty = true; } catch (_) {}                              // redraw SVG overlays with the new colors
+  try { view.dirty = true; } catch (_: any) {}                              // redraw SVG overlays with the new colors
 }
-THEME.onChange(() => { applyChartTheme(); try { chartHooks.redraw?.(); } catch (_) {} });
+THEME.onChange(() => { applyChartTheme(); try { chartHooks.redraw?.(); } catch (_: any) {} });
 export let main: LwSeries | null = null, askLine: LwPriceLine | null = null;
 let hlineObjs: LwPriceLine[] = [], alertLines: LwPriceLine[] = [], indSeries: IndSeries[] = [];
 export const customOut = new Map<number, CustomResult>(); // ind.id -> last run output
@@ -171,7 +170,7 @@ export function updateIndicators(throttle?: boolean): void {
 function setSeries(x: IndSeries, data: Point[]): void {
   const last = data[data.length - 1];
   x.last = last ? last.value : null;
-  if (x.len === data.length && x.firstT === (data[0] && data[0].time) && last && x.lastT === last.time) { try { x.series.update(last); return; } catch (_) {} }
+  if (x.len === data.length && x.firstT === (data[0] && data[0].time) && last && x.lastT === last.time) { try { x.series.update(last); return; } catch (_: any) {} }
   x.series.setData(data);
   x.len = data.length; x.firstT = data[0] && data[0].time; x.lastT = last && last.time;
 }
@@ -212,7 +211,7 @@ export function renderLegend(param?: any): void {
 }
 chart.subscribeCrosshairMove((p: unknown) => { if (legendTimer) return; legendTimer = requestAnimationFrame(() => { legendTimer = null; renderLegend(p); }); });
 $('legend').addEventListener('click', (e: MouseEvent) => {
-  const b = (e.target as HTMLElement).closest('button'); if (!b) return;
+  const b = (tgt(e) as HTMLElement).closest('button'); if (!b) return;
   const id = +((b.closest('.ind') as HTMLElement).dataset.id as string);
   const ind = (S.inds as Ind[]).find((i) => i.id === id); if (!ind) return;
   if (b.dataset.act === 'del') { S.inds = (S.inds as Ind[]).filter((i) => i.id !== id); customOut.delete(id); store.set('inds', S.inds); buildIndicators(); }
@@ -256,7 +255,7 @@ export function openIndicatorMenu(): void {
   menu.classList.remove('hidden');
   menu.querySelectorAll('[data-type]').forEach((el: HTMLElement) => el.onclick = () => { const t = el.dataset.type as string; addIndicator({ type: t, params: { ...IND.DEFS[t].params } }); closeMenus(); });
   menu.querySelectorAll('[data-script]').forEach((el: HTMLElement) => el.onclick = (e: MouseEvent) => {
-    const ed = (e.target as HTMLElement).dataset.edit;
+    const ed = (tgt(e) as HTMLElement).dataset.edit;
     if (ed) { closeMenus(); return openScriptEditor(+ed); }
     addIndicator({ type: 'custom', scriptId: +(el.dataset.script as string) }); closeMenus();
   });
@@ -264,11 +263,11 @@ export function openIndicatorMenu(): void {
 }
 export function closeMenus(): void { $('ind-menu').classList.add('hidden'); $('an-menu').classList.add('hidden'); }
 $('ind-btn').onclick = (e: MouseEvent) => { e.stopPropagation(); openIndicatorMenu(); };
-document.addEventListener('click', (e) => { if (!(e.target as HTMLElement).closest('.dropdown')) closeMenus(); });
+document.addEventListener('click', (e) => { if (!(tgt(e) as HTMLElement).closest('.dropdown')) closeMenus(); });
 
 // ---------------------------------------------------------------- script editor
 let editingScript: Script | null = null;
-export function openScriptEditor(id: number | null | undefined): void {
+export function openScriptEditor(id?: number | null): void {
   editingScript = id != null ? (S.scripts as Script[]).find((s) => s.id === id) ?? null : null;
   $('sc-name').value = editingScript ? editingScript.name : 'My Indicator';
   $('sc-code').value = editingScript ? editingScript.code : CUSTOM.TEMPLATE;
@@ -280,7 +279,7 @@ export function openScriptEditor(id: number | null | undefined): void {
 $('sc-example').innerHTML += Object.keys(CUSTOM.EXAMPLES).map((k) => `<option>${esc(k)}</option>`).join('');
 $('sc-example').onchange = () => { const k = $('sc-example').value; if (!k) return; $('sc-code').value = CUSTOM.EXAMPLES[k]; $('sc-name').value = k; $('sc-example').value = ''; };
 $('sc-code').addEventListener('keydown', (e: KeyboardEvent) => {
-  if (e.key === 'Tab') { e.preventDefault(); const t = e.target as HTMLTextAreaElement, s = t.selectionStart; t.setRangeText('  ', s, t.selectionEnd, 'end'); }
+  if (e.key === 'Tab') { e.preventDefault(); const t = tgt(e) as HTMLTextAreaElement, s = t.selectionStart; t.setRangeText('  ', s, t.selectionEnd, 'end'); }
 });
 function testScript(): boolean {
   if (!S.candles.length) { $('sc-msg').textContent = 'ยังไม่มีข้อมูลกราฟให้ทดสอบ'; return true; }

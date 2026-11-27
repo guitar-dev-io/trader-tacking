@@ -3,7 +3,7 @@
   // liquidity map. Data: S.B (BOUNCE.find in app-bounce.js); `bounceTick` re-renders.
   import Icon from '../Icon.svelte';
   import { bounceTick } from './bounce-view';
-  import { S, fmt, store, tf } from '../../../app-core.js';
+  import { S, fmt, store, tf } from '../../app/app-core';
   import { AN, BOUNCE } from '../../legacy/core';
   import { view } from '../../state';
   import { toast } from '../toast';

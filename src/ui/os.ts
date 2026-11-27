@@ -1,5 +1,4 @@
 // Windows or macOS? (the desktop preload tags <html> with os-win32 / os-darwin)
-declare const vcg: any;
 export function isWin(): boolean {
   const c = document.documentElement.classList;
   return (typeof vcg !== 'undefined' && vcg.os === 'win32') || c.contains('os-win32') || (!c.contains('os-darwin') && /^Win/i.test(navigator.platform || ''));

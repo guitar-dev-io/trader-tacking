@@ -2,7 +2,7 @@
   // Live candlestick chart of one symbol/timeframe (lightweight-charts), fed by the shared slot feed (feeds.ts).
   import { onMount } from 'svelte';
   import { TC, theme } from '../../state';
-  import { UP, DOWN, TZ } from '../../../app-core.js';
+  import { UP, DOWN, TZ } from '../../app/app-core';
   import { chartThemeOptions } from '../../chart/chart';
   import { acquire, release, type Feed } from './feeds';
   import { MAX, guessDigits, quote, type WidgetCfg } from './model.svelte';

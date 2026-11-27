@@ -1,16 +1,16 @@
-import { PT, def } from './src/pt.ts';
-import { ui } from './src/ui/registry.ts';
-import { $, S, TFS, esc, store } from './app-core.js';
-import { buildIndicators, buildMain, refreshPriceLines } from './src/chart/chart.ts';
-import { renderAnalysis } from './app-analysis.js';
-import { loadChart, renderAlerts, updateHeader } from './app-data.js';
-import * as logTab from './src/ui/tabs/log.ts';
-def({ renderTfs: [() => renderTfs, (v) => { renderTfs = v; }] });
+import { PT, def } from '../pt';
+import { ui } from '../ui/registry';
+import { $, S, TFS, esc, store, qsa } from './app-core';
+import { buildIndicators, buildMain, refreshPriceLines } from '../chart/chart';
+import { renderAnalysis } from './app-analysis';
+import { loadChart, renderAlerts, updateHeader } from './app-data';
+import * as logTab from '../ui/tabs/log';
+
 // Price Tracker renderer · tabs, lessons, logs, toolbar and start-up (loaded last of the app-*.js files)
 // ---------------------------------------------------------------- tabs, lessons, logs
-document.querySelectorAll('#tabs button[data-tab]').forEach((b) => (b.onclick = () => {
-  document.querySelectorAll('#tabs button[data-tab]').forEach((x) => x.classList.toggle('active', x === b));
-  document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('hidden', t.id !== 'tab-' + b.dataset.tab));
+qsa('#tabs button[data-tab]').forEach((b) => (b.onclick = () => {
+  qsa('#tabs button[data-tab]').forEach((x) => x.classList.toggle('active', x === b));
+  qsa('.tab').forEach((t) => t.classList.toggle('hidden', t.id !== 'tab-' + b.dataset.tab));
   if (b.dataset.tab === 'log') logTab.opened();
 }));
 // lesson book: category chips + search over the original lessons (lessons.js) and the guide (lessons-guide.js)

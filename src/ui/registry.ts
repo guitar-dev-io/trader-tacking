@@ -21,7 +21,7 @@ export const ui: {
   news?: { render: () => void; [k: string]: any };
   headlines?: { render: () => void; [k: string]: any };
   /** demo data source + chart cache + source switch (extras.js) */
-  demo?: { requestChart: (req: any) => void; connect: () => void; [k: string]: any };
+  demo?: { requestChart: (req: any, handler?: (m: any) => void) => unknown; connect: () => void; [k: string]: any };
   cache?: { restore: () => void; save: () => void; [k: string]: any };
   setSource?: (src: string) => void;
 } = {};

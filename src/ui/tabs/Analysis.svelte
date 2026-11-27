@@ -3,7 +3,7 @@
   // back-test table. Data: S.A (from runAnalysis in app-analysis.js); `analysisTick` re-renders.
   import Icon from '../Icon.svelte';
   import { analysisTick } from './analysis-view';
-  import { S, fmt, tf } from '../../../app-core.js';
+  import { S, fmt, tf } from '../../app/app-core';
   import { AN } from '../../legacy/core';
 
   interface Api { activeSignal: () => any; SETUP_TH: Record<string, string>; pct: (v: number | null) => string; rr: (v: number | null) => string }

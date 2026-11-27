@@ -12,4 +12,4 @@ export const drawingsKey = (): string => 'drawings:' + S.symbol;
 export const saveDrawings = (): void => store.set(drawingsKey(), drawings);
 
 // tests / devtools / not-yet-migrated modules: PT.drawings (get + set), PT.saveDrawings
-def({ drawings: [() => drawings, (v) => setDrawings(v as Drawing[])], drawingsKey: [() => drawingsKey], saveDrawings: [() => saveDrawings] });
+def({ drawings: [() => drawings, (v) => setDrawings(v as Drawing[])], saveDrawings: [() => saveDrawings] });

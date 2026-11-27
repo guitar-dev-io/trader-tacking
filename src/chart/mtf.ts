@@ -1,19 +1,18 @@
 // Multi-timeframe (top-down) view — see the comment below.
 import { PT, def } from '../pt';
 import { view } from '../state';
-import { ICON } from '../../icons.js';
+import { ICON } from '../app/icons';
 import { AN } from '../legacy/core';
-import { $, DOWN, S, TC, TFS, THEME, TZ, UP, digits, fmt, store, tf } from '../../app-core.js';
+import { $, DOWN, S, TC, TFS, THEME, TZ, UP, digits, fmt, store, tf, mk } from '../app/app-core';
 import { chart, chartThemeOptions } from './chart';
-import { dedupe, onQuotes, toCandle, valid } from '../../app-data.js';
+import { dedupe, onQuotes, toCandle, valid } from '../app/app-data';
 import { onChartEvent } from './hooks';
 import { ui } from '../ui/registry';
 import { el, label, lToX, txt, yOf } from '../ui/overlay';
 import { xOfT } from './draw';
-import { DEMO } from '../../extras.js';
+import { DEMO } from '../app/extras';
 import type { Candle } from '../core/types';
 
-declare const vcg: { requestChart(req: unknown): void };
 declare const LightweightCharts: any;
 type Tf = { label: string; type: number; sec: number };
 type Analysis = ReturnType<typeof AN.analyze>;
@@ -31,9 +30,9 @@ export const MTF = (() => {
   let candles: Candle[] = [], bars: Candle[] = [], A: Analysis | null = null, pending = false, hoverT: number | null = null, mdirty = true, err = '';
 
   // ---------------- layout
-  const row = document.createElement('div'); row.id = 'chart-row';
+  const row = mk('div'); row.id = 'chart-row';
   $('chart-wrap').before(row); row.appendChild($('chart-wrap'));
-  const pane = document.createElement('div'); pane.id = 'mtf-pane'; pane.className = 'hidden';
+  const pane = mk('div'); pane.id = 'mtf-pane'; pane.className = 'hidden';
   pane.innerHTML = `<div class="mtf-head"><b id="mtf-title"></b><span id="mtf-trend"></span><span class="grow"></span>
     <select id="mtf-tf" title="Timeframe ใหญ่"><option value="auto">อัตโนมัติ</option>${TFS.map((t: Tf) => `<option value="${t.type}">${t.label}</option>`).join('')}</select>
     <label class="chk" title="วาดโซนของ TF ใหญ่ลงบนกราฟหลัก"><input type="checkbox" id="mtf-zones"> โซน</label>
@@ -198,7 +197,7 @@ export const MTF = (() => {
     if (!p || p.time == null || !S.candles.length) return;
     const vr = chart.timeScale().getVisibleRange(); const span = vr ? vr.to - vr.from : tf().sec * 120;
     const t = Math.max(S.candles[0].time + span / 2, p.time + tfo().sec / 2);
-    try { chart.timeScale().setVisibleRange({ from: t - span / 2, to: t + span / 2 }); } catch (_) {}
+    try { chart.timeScale().setVisibleRange({ from: t - span / 2, to: t + span / 2 }); } catch (_: any) {}
   });
 
   // ---------------- HTF levels drawn on the main chart (called from draw.js redraw)

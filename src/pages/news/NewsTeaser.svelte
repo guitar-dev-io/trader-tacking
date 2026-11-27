@@ -1,7 +1,7 @@
 <script lang="ts">
   // "ข่าวล่าสุด" — 3 headlines in the ราคา tab, with a link to the full news page.
   import Icon from '../../ui/Icon.svelte';
-  import { HEADLINES } from '../../../news.js';
+  import { HEADLINES } from '../../app/news';
 
   let { onall }: { onall: () => void } = $props();
   let version = $state(0);

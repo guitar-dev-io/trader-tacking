@@ -1,22 +1,23 @@
-import { PT, def } from './src/pt.ts';
-def({ LESSONS_EXTRA: [() => LESSONS_EXTRA], LESSON_CAT_OF: [() => LESSON_CAT_OF], LESSON_CATS: [() => LESSON_CATS] });
-let LESSONS_EXTRA; // set below; exported (was window.LESSONS_EXTRA)
-let LESSON_CAT_OF; // set below; exported (was window.LESSON_CAT_OF)
-let LESSON_CATS; // set below; exported (was window.LESSON_CATS)
+import { PT, def } from '../pt';
+
+import type { Lesson, LessonCat } from './lessons';
+let LESSONS_EXTRA!: Lesson[]; // set below; exported (was window.LESSONS_EXTRA)
+let LESSON_CAT_OF!: Record<number, string>; // set below: index in LESSONS → category id
+let LESSON_CATS!: LessonCat[]; // set below; exported (was window.LESSON_CATS)
 // Lesson book: categories + extra lessons (Thai). Loaded after lessons.js.
 // Candle illustrations are generated from OHLC numbers (0–100 scale, higher = higher price) so shapes are always correct.
 (function () {
   const UP = '#26a69a', DN = '#ef5350', WK = '#b2b5be', MU = '#8a90a0';
-  const Y = (p, H) => (H - 6 - p * ((H - 14) / 100)).toFixed(1);
+  const Y = (p: number, H: number) => (H - 6 - p * ((H - 14) / 100)).toFixed(1);
   // cs: [{o,h,l,c}], opts: {w, h, labels:[{x?, i?, p, t, col}], lines:[{p1,p2,t,col,dash}], rects:[{i1,i2,p1,p2,col}]}
-  function svg(cs, o = {}) {
+  function svg(cs: any[], o: Record<string, any> = {}) {
     // o.lw = width reserved on the right for line labels (candles are laid out left of it, so text never covers them)
     const W = o.w || 160, H = o.h || 90, lw = o.lw || 0, CW = W - lw, n = cs.length, step = o.step || Math.min(26, (CW - 20) / Math.max(n, 1)), bw = o.bw || Math.max(5, Math.min(12, step * 0.6));
-    const x0 = (CW - step * (n - 1)) / 2, X = (i) => x0 + i * step;
+    const x0 = (CW - step * (n - 1)) / 2, X = (i: number) => x0 + i * step;
     let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">`;
     for (const r of o.rects || []) {
       const ya = Y(Math.max(r.p1, r.p2), H), yb = Y(Math.min(r.p1, r.p2), H), xa = r.i1 == null ? 4 : X(r.i1) - bw, xb = r.i2 == null ? CW - 2 : X(r.i2) + bw;
-      s += `<rect x="${xa.toFixed(1)}" y="${ya}" width="${(xb - xa).toFixed(1)}" height="${Math.max(2, yb - ya).toFixed(1)}" fill="${r.col}" fill-opacity="0.18" stroke="${r.col}" stroke-opacity="0.7" stroke-width="0.8"/>`;
+      s += `<rect x="${xa.toFixed(1)}" y="${ya}" width="${(xb - xa).toFixed(1)}" height="${Math.max(2, +yb - +ya).toFixed(1)}" fill="${r.col}" fill-opacity="0.18" stroke="${r.col}" stroke-opacity="0.7" stroke-width="0.8"/>`;
     }
     for (const L of o.lines || []) {
       const y = +Y(L.p, H);
@@ -24,10 +25,10 @@ let LESSON_CATS; // set below; exported (was window.LESSON_CATS)
       if (L.t) s += lw ? `<text x="${CW + 5}" y="${(y + 2.5).toFixed(1)}" font-size="6.8" fill="${L.col || MU}">${L.t}</text>`
         : `<text x="${W - 5}" y="${(y - 2).toFixed(1)}" font-size="7" fill="${L.col || MU}" text-anchor="end">${L.t}</text>`;
     }
-    cs.forEach((c, i) => {
+    cs.forEach((c: { col: string; c: number; o: number; h: any; l: any; }, i: any) => {
       const x = X(i), col = c.col || (c.c >= c.o ? UP : DN), yt = Y(Math.max(c.o, c.c), H), yb = Y(Math.min(c.o, c.c), H);
       s += `<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${Y(c.h, H)}" y2="${Y(c.l, H)}" style="stroke:var(--fig-wick,${WK})" stroke-width="1.2"/>`;
-      s += `<rect x="${(x - bw / 2).toFixed(1)}" y="${yt}" width="${bw.toFixed(1)}" height="${Math.max(1.2, yb - yt).toFixed(1)}" fill="${col}"/>`;
+      s += `<rect x="${(x - bw / 2).toFixed(1)}" y="${yt}" width="${bw.toFixed(1)}" height="${Math.max(1.2, +yb - +yt).toFixed(1)}" fill="${col}"/>`;
     });
     for (const t of o.labels || []) {
       const x = t.i != null ? X(t.i) : t.x;
@@ -36,7 +37,7 @@ let LESSON_CATS; // set below; exported (was window.LESSON_CATS)
     return `<div class="lg-fig">${s}</svg>${o.cap ? `<div class="lg-cap">${o.cap}</div>` : ''}</div>`;
   }
   // build a trend of n candles from p0 drifting by d per bar
-  const trend = (p0, d, n, rng = 4) => Array.from({ length: n }, (_, i) => { const o = p0 + d * i, c = o + d; return { o, c, h: Math.max(o, c) + rng * 0.4, l: Math.min(o, c) - rng * 0.4 }; });
+  const trend = (p0: number, d: number, n: number, rng = 4) => Array.from({ length: n }, (_, i) => { const o = p0 + d * i, c = o + d; return { o, c, h: Math.max(o, c) + rng * 0.4, l: Math.min(o, c) - rng * 0.4 }; });
 
   LESSON_CATS = [
     { id: 'basics', name: 'พื้นฐานการอ่านกราฟ', icon: 'chart-line' },

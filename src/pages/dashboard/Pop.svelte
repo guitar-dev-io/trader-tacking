@@ -1,7 +1,7 @@
 <script lang="ts">
   // Widget settings popover: symbol, timeframe, symbol list, news filter, size, height, duplicate, remove.
   import { S, connStatus } from '../../state';
-  import { TFS } from '../../../app-core.js';
+  import { TFS } from '../../app/app-core';
   import { IC, svg } from './icons';
   import { mobile, TYPES, layout, save } from './model.svelte';
 

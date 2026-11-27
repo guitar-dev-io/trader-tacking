@@ -1,7 +1,7 @@
 // SVG overlay on the chart + coordinate mapping (bar index / time ↔ pixels) and small text helpers.
 // Shared by every module that draws on the chart (analysis, bounce, drawings, MTF, replay, planner…).
 import { def } from '../pt';
-import { $, S, tf } from '../../app-core.js';
+import { $, S, tf } from '../app/app-core';
 import { chart, main } from '../chart/chart';
 
 /** something with logicalToCoordinate — a lightweight-charts time scale */

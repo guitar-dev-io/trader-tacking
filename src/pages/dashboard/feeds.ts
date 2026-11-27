@@ -1,9 +1,9 @@
 // Live data for the dashboard's chart/bounce widgets: one chart-history "slot" (w1…w6) per symbol+timeframe,
 // shared by every widget that shows it. Not reactive on purpose — the widgets subscribe with a callback.
 import { S } from '../../state';
-import { TZ } from '../../../app-core.js';
-import { dedupe, toCandle, valid } from '../../../app-data.js';
-import { DEMO } from '../../../extras.js';
+import { TZ } from '../../app/app-core';
+import { dedupe, toCandle, valid } from '../../app/app-data';
+import { DEMO } from '../../app/extras';
 import { MAX, base, quote, tfOf } from './model.svelte';
 
 export interface Candle { time: number; open: number; high: number; low: number; close: number }

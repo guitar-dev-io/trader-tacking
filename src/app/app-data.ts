@@ -1,22 +1,25 @@
-import { PT, def } from './src/pt.ts';
-import { showWatchlist, quoteWatchlist, showAlerts } from './src/ui/tabs/market-view.ts';
-import { ui } from './src/ui/registry.ts';
-import { connStatus, setConnStatus } from './src/state.ts';
-import { view } from './src/state.ts';
-import { toast } from './src/ui/toast.ts';
-import { ICON } from './icons.js';
-import { $, S, TZ, esc, fmt, store, tf } from './app-core.js';
-import { askLine, buildIndicators, chart, displayData, main, priceFormat, refreshPriceLines, renderLegend, updateIndicators } from './src/chart/chart.ts';
-import { renderAnalysis, runAnalysis } from './app-analysis.js';
-import { bounceTick } from './app-bounce.js';
-import { pages } from './src/pages/registry.ts';
-import { mountTools, setTools } from './src/ui/tabs/tools-view.ts';
-import { renderConnect as connectView, isConnecting } from './src/ui/connect/connect.ts';
-import { emitChart, chartHooks } from './src/chart/hooks.ts';
-def({ loadTimeout: [() => loadTimeout, (v) => { loadTimeout = v; }], loadChart: [() => loadChart, (v) => { loadChart = v; }], loadMore: [() => loadMore, (v) => { loadMore = v; }], num: [() => num], toCandle: [() => toCandle], valid: [() => valid], dedupe: [() => dedupe, (v) => { dedupe = v; }], setAllData: [() => setAllData, (v) => { setAllData = v; }], pushChartTimer: [() => pushChartTimer, (v) => { pushChartTimer = v; }], pushChartData: [() => pushChartData, (v) => { pushChartData = v; }], onChartMsg: [() => onChartMsg, (v) => { onChartMsg = v; }], upsert: [() => upsert, (v) => { upsert = v; }], pushLast: [() => pushLast, (v) => { pushLast = v; }], tickToCandle: [() => tickToCandle, (v) => { tickToCandle = v; }], onQuotesMsg: [() => onQuotesMsg, (v) => { onQuotesMsg = v; }], updateHeader: [() => updateHeader, (v) => { updateHeader = v; }], renderWatchlist: [() => renderWatchlist, (v) => { renderWatchlist = v; }], updateRow: [() => updateRow, (v) => { updateRow = v; }], switchSymbol: [() => switchSymbol, (v) => { switchSymbol = v; }], lastConnected: [() => lastConnected, (v) => { lastConnected = v; }], renderConnect: [() => renderConnect, (v) => { renderConnect = v; }], renderAlerts: [() => renderAlerts, (v) => { renderAlerts = v; }], addAlert: [() => addAlert, (v) => { addAlert = v; }], desktopNotify: [() => desktopNotify, (v) => { desktopNotify = v; }], beep: [() => beep, (v) => { beep = v; }], checkAlerts: [() => checkAlerts, (v) => { checkAlerts = v; }] });
+import { PT, def } from '../pt';
+import { showWatchlist, quoteWatchlist, showAlerts, type Quote } from '../ui/tabs/market-view';
+import { ui } from '../ui/registry';
+import { connStatus, setConnStatus } from '../state';
+import { view } from '../state';
+import { toast } from '../ui/toast';
+import { ICON } from './icons';
+import { $, S, TZ, esc, fmt, store, tf, qs, qsa } from './app-core';
+import { askLine, buildIndicators, chart, displayData, main, priceFormat, refreshPriceLines, renderLegend, updateIndicators } from '../chart/chart';
+import { renderAnalysis, runAnalysis } from './app-analysis';
+import { bounceTick } from './app-bounce';
+import { pages } from '../pages/registry';
+import { mountTools, setTools } from '../ui/tabs/tools-view';
+import { renderConnect as connectView, isConnecting } from '../ui/connect/connect';
+import { emitChart, chartHooks } from '../chart/hooks';
+import type { Quote } from '../main/types';
+import type { ChartMsg } from '../main/types';
+import type { Candle } from '../core/types';
+def({ loadChart: [() => loadChart], onChartMsg: [() => onChartMsg], onQuotesMsg: [() => onQuotesMsg], renderConnect: [() => renderConnect], desktopNotify: [() => desktopNotify], beep: [() => beep] });
 // Price Tracker renderer · data: chart loading, live quotes/watchlist, status, price alerts
 // ---------------------------------------------------------------- data loading
-let loadTimeout = null;
+let loadTimeout: ReturnType<typeof setTimeout> | undefined = undefined;
 function loadChart() {
   S.candles = []; S.pendingHistory = true; S.loadingMore = false; S.noMore = false; S.A = null;
   if (main) main.setData([]);
@@ -36,10 +39,10 @@ function loadMore() {
   (S.source === 'demo' ? ui.demo.requestChart : vcg.requestChart)({ symbol: S.symbol, candleType: tf().type, to, inclusive: false, limit: 1000 });
   setTimeout(() => { S.loadingMore = false; }, 8000);
 }
-const num = (v) => (v == null ? null : typeof v === 'object' ? ('value' in v ? Number(v.value) / 10 ** (v.scale || 0) : null) : Number(v));
-const toCandle = (c) => ({ time: Number(c.timeSeconds ?? c.time) + TZ, open: num(c.open), high: num(c.high), low: num(c.low), close: num(c.close) });
-const valid = (c) => isFinite(c.time) && c.open > 0 && c.high > 0 && c.low > 0 && c.close > 0;
-function dedupe(arr) { const out = []; for (const c of arr) { if (out.length && out[out.length - 1].time === c.time) out[out.length - 1] = c; else out.push(c); } return out; }
+const num = (v: { value: any; scale: any; }|null) => (v == null ? null : typeof v === 'object' ? ('value' in v ? Number(v.value) / 10 ** (v.scale || 0) : null) : Number(v));
+const toCandle = (c: { timeSeconds: any; time: any; open: any; high: any; low: any; close: any; }) => ({ time: Number(c.timeSeconds ?? c.time) + TZ, open: num(c.open), high: num(c.high), low: num(c.low), close: num(c.close) });
+const valid = (c: { time: number; open: number; high: number; low: number; close: number; }) => isFinite(c.time) && c.open > 0 && c.high > 0 && c.low > 0 && c.close > 0;
+function dedupe(arr: Candle[]) { const out = []; for (const c of arr) { if (out.length && out[out.length - 1].time === c.time) out[out.length - 1] = c; else out.push(c); } return out; }
 
 function setAllData() {
   if (!main) return;
@@ -49,14 +52,14 @@ function setAllData() {
   renderLegend();
   pushChartData();
 }
-let pushChartTimer = null;
+let pushChartTimer: ReturnType<typeof setTimeout> | undefined = undefined;
 function pushChartData() {
   clearTimeout(pushChartTimer);
   pushChartTimer = setTimeout(() => (ui.cache && ui.cache.save(), vcg.pushChart({ symbol: S.symbol, timeframe: tf().label,
-    candles: S.candles.map((c) => ({ time: c.time - TZ, open: c.open, high: c.high, low: c.low, close: c.close })) })), 500);
+    candles: S.candles.map((c: { time: number; open: any; high: any; low: any; close: any; }) => ({ time: c.time - TZ, open: c.open, high: c.high, low: c.low, close: c.close })) })), 500);
 }
 
-function onChartMsg(m) {
+function onChartMsg(m: ChartMsg) {
   if (m.type === 'chartAuthRenew') { if (S.pendingHistory) $('loading').textContent = 'token หมดอายุ — กำลังขอ token ใหม่และโหลดซ้ำ…'; else toast('ต่อ token ใหม่ให้กราฟแล้ว (token ของ VCG มีอายุ 15 นาที)', 'info'); return; }
   if (m.type === 'chartError') {
     const msg = (m.data && m.data.message) || JSON.stringify(m.data).slice(0, 200);
@@ -69,7 +72,7 @@ function onChartMsg(m) {
   const sym = d.symbol || (d.history && d.history.symbol);
   if (sym && sym !== S.symbol) return;
   if (d.history && d.history.candles) {
-    const arr = d.history.candles.map(toCandle).filter(valid).sort((a, b) => a.time - b.time);
+    const arr = d.history.candles.map(toCandle).filter(valid).sort((a: { time: number; }, b: { time: number; }) => a.time - b.time);
     if (S.pendingHistory) {
       const q = S.quotes[S.symbol], lastC = arr[arr.length - 1];
       if (q && lastC && Math.abs(lastC.close - q.bid) / q.bid > 0.25) { vcg.log('warn', `ข้ามข้อมูลกราฟที่ไม่ตรงกับ ${S.symbol} (ราคา ${lastC.close} vs ${q.bid}) — น่าจะเป็นของ symbol ก่อนหน้า`, null, 'chart'); return; }
@@ -82,7 +85,7 @@ function onChartMsg(m) {
       emitChart('loaded');
     } else if (S.loadingMore) {
       S.loadingMore = false;
-      const older = arr.filter((c) => c.time < S.candles[0].time);
+      const older = arr.filter((c: { time: number; }) => c.time < S.candles[0].time);
       if (!older.length) { S.noMore = true; return; }
       const r = chart.timeScale().getVisibleLogicalRange();
       S.candles = older.concat(S.candles);
@@ -95,16 +98,16 @@ function onChartMsg(m) {
 }
 vcg.onChart((m) => { if (S.source === 'demo') return; if (m.slot === 'mtf') { if (typeof PT.MTF !== 'undefined') PT.MTF.onMsg(m); } else if (m.slot && /^w\d/.test(m.slot)) { if (pages.dash) pages.dash.onMsg(m); } else onChartMsg(m); });
 
-function upsert(c) {
+function upsert(c: { time: number; }) {
   if (S.replay) return;
   const cs = S.candles; if (!cs.length) return;
   const last = cs[cs.length - 1];
-  if (c.time < last.time) { const i = cs.findIndex((x) => x.time === c.time); if (i >= 0) { cs[i] = c; setAllData(); } return; }
+  if (c.time < last.time) { const i = cs.findIndex((x: { time: any; }) => x.time === c.time); if (i >= 0) { cs[i] = c; setAllData(); } return; }
   const isNew = c.time > last.time;
   if (isNew) cs.push(c); else cs[cs.length - 1] = c;
   pushLast(isNew);
 }
-function pushLast(isNew) {
+function pushLast(isNew: boolean) {
   const cs = S.candles; const last = cs[cs.length - 1];
   if (!main || !last) return;
   if (S.ctype === 'ha') main.setData(displayData());
@@ -113,7 +116,7 @@ function pushLast(isNew) {
   else updateIndicators(true);
   view.dirty = true;
 }
-function tickToCandle(q) {
+function tickToCandle(q: { bid: number|null; time: string; }) {
   if (S.replay) return;   // chart is frozen during Bar Replay
   const cs = S.candles; if (!cs.length || q.bid == null) return;
   const t = Math.floor(Date.parse(q.time) / 1000) + TZ;
@@ -127,13 +130,13 @@ function tickToCandle(q) {
     pushLast(false);
   }
 }
-chart.timeScale().subscribeVisibleLogicalRangeChange((r) => { view.dirty = true; if (r && r.from < 15) loadMore(); });
+chart.timeScale().subscribeVisibleLogicalRangeChange((r: { from: number; }) => { view.dirty = true; if (r && r.from < 15) loadMore(); });
 
 // ---------------------------------------------------------------- quotes / watchlist
 // other modules (paper trading, …) add a hook instead of wrapping onQuotesMsg
-const quoteHooks = [];
-function onQuotes(fn) { quoteHooks.push(fn); }
-function onQuotesMsg(list) {
+const quoteHooks: any[] = [];
+function onQuotes(fn: (...a: any[]) => unknown) { quoteHooks.push(fn); }
+function onQuotesMsg(list: Quote[]|{ symbol: any; time: string; bid: number; ask: number; digits: number; spread: number; change: number; changePct: number; }[]) {
   let cur = null;
   for (const q of list) {
     const prev = S.quotes[q.symbol];
@@ -165,18 +168,18 @@ function updateHeader() {
   else c.textContent = '';
   document.title = q ? `${S.symbol} ${fmt(q.bid)} — Price Tracker` : 'Price Tracker';
 }
-const wlApi = { pick: (s) => switchSymbol(s), rm: (s) => vcg.removeSymbol(s), star: (s) => vcg.setTray(s), fmt };
+const wlApi = { pick: (s: any) => switchSymbol(s), rm: (s: string) => vcg.removeSymbol(s), star: (s: string) => vcg.setTray(s), fmt };
 function renderWatchlist() {
   showWatchlist({ symbols: S.symbols.slice(), sel: S.symbol, tray: S.traySymbol, quotes: { ...S.quotes } }, wlApi);
 }
 // per tick: patch just this symbol's row (Watchlist.svelte flashes the bid cell)
-function updateRow(q) { quoteWatchlist(q); }
+function updateRow(q: Quote) { quoteWatchlist(q); }
 $('add-form').onsubmit = (e) => {
   e.preventDefault();
   const s = $('add-input').value.trim().toUpperCase(); if (!s) return;
   vcg.addSymbol(s); $('add-input').value = ''; switchSymbol(s);
 };
-function switchSymbol(s) {
+function switchSymbol(s: unknown) {
   if (s === S.symbol) return;
   if (S.replay && ui.replay) ui.replay.exit();
   S.symbol = s; store.set('symbol', s);
@@ -190,15 +193,15 @@ function switchSymbol(s) {
 }
 
 // ---------------------------------------------------------------- status
-let lastConnected = null;
+let lastConnected: boolean|null = null;
 // ---------------------------------------------------------------- connect screen (shown until prices flow) → src/ui/connect
-function connectAction(k) {
+function connectAction(k: string|any[]) {
   if (k === 'login') { const ok = vcg.showTrader(); vcg.log('info', 'ผู้ใช้กดเข้าสู่ระบบ VCG จากหน้าเชื่อมต่อ', null, 'auth'); if (ok === false) toast('เปิดหน้า login ไม่ได้ — ดูแท็บ Log', 'error'); }
   else if (k === 'demo') ui.setSource?.('demo');
   else if (k === 'retry') { vcg.reloadTrader(); toast('กำลังเชื่อมต่อใหม่…', 'info'); setTimeout(loadChart, 8000); }
   else if (k === 'guide') ui.setup?.open();
   else if (k === 'mt5guide') ui.setup?.open('mt5', 0);
-  else if (k === 'log') { $('connect').classList.add('hidden'); document.querySelector('#tabs [data-tab="log"]').click(); }
+  else if (k === 'log') { $('connect').classList.add('hidden'); qs('#tabs [data-tab="log"]').click(); }
   else if (k === 'src:vcg' || k === 'src:mt5') { const src = k.slice(4); if (S.source !== src) ui.setSource?.(src); if (src === 'mt5') ui.setup?.open('mt5', 0); }
 }
 function renderConnect(st = connStatus) {
@@ -214,7 +217,7 @@ vcg.onStatus((st) => {
   const inv = (st.invalid || []).join(',');
   if (inv !== S.invalidKey) {
     S.invalidKey = inv;
-    document.querySelectorAll('#wl tr').forEach((tr) => { const bad = (st.invalid || []).includes(tr.dataset.s); tr.classList.toggle('invalid', bad); tr.title = bad ? 'ไม่พบ symbol นี้ใน VCG — ลองชื่ออื่น เช่น BTCUSD.x / BTCUSDT' : ''; });
+    qsa('#wl tr').forEach((tr) => { const bad = (st.invalid || []).includes(tr.dataset.s); tr.classList.toggle('invalid', bad); tr.title = bad ? 'ไม่พบ symbol นี้ใน VCG — ลองชื่ออื่น เช่น BTCUSD.x / BTCUSDT' : ''; });
     if (inv) toast(`ไม่พบใน VCG: ${inv} — ตรวจชื่อ symbol`, 'warn', 8000);
   }
   setTools({ csv: !!st.csv, api: st.api || { enabled: false } });
@@ -241,9 +244,9 @@ vcg.onStatus((st) => {
 mountTools({ toggleCsv: () => vcg.toggleCsv(), openCsv: () => vcg.openCsv(), showTrader: () => vcg.showTrader(), reload: () => { vcg.reloadTrader(); setTimeout(loadChart, 8000); } });
 
 // ---------------------------------------------------------------- alerts
-const alertApi = { fmt, rm: (id) => { S.alerts = S.alerts.filter((a) => a.id !== id); store.set('alerts', S.alerts); renderAlerts(); refreshPriceLines(); } };
-function renderAlerts() { showAlerts(S.symbol, S.alerts.filter((a) => a.symbol === S.symbol), alertApi); }
-function addAlert(price) {
+const alertApi = { fmt, rm: (id: any) => { S.alerts = S.alerts.filter((a: { id: any; }) => a.id !== id); store.set('alerts', S.alerts); renderAlerts(); refreshPriceLines(); } };
+function renderAlerts() { showAlerts(S.symbol, S.alerts.filter((a: { symbol: any; }) => a.symbol === S.symbol), alertApi); }
+function addAlert(price: number) {
   const q = S.quotes[S.symbol]; if (!isFinite(price)) return;
   const cur = q ? q.bid : (S.candles.slice(-1)[0] || {}).close;
   S.alerts.push({ id: Date.now(), symbol: S.symbol, price, dir: cur != null && price < cur ? 'down' : 'up', fired: false });
@@ -251,14 +254,14 @@ function addAlert(price) {
   vcg.log('info', `ตั้ง alert ${S.symbol} @ ${price}`, null, 'alert');
 }
 $('alert-form').onsubmit = (e) => { e.preventDefault(); addAlert(parseFloat($('alert-input').value)); $('alert-input').value = ''; };
-function desktopNotify(title, body) { if (S.prefs.desktop) try { new Notification(title, { body }); } catch (_) {} }
+function desktopNotify(title: string, body: string) { if (S.prefs.desktop) try { new Notification(title, { body }); } catch (_: any) {} }
 function beep() {
   if (!S.prefs.sound) return;
   try { const ac = new AudioContext(); [0, 0.25].forEach((t) => { const o = ac.createOscillator(), g = ac.createGain();
     o.frequency.value = 880; o.connect(g); g.connect(ac.destination); g.gain.setValueAtTime(0.2, ac.currentTime + t);
-    g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + t + 0.2); o.start(ac.currentTime + t); o.stop(ac.currentTime + t + 0.2); }); } catch (_) {}
+    g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + t + 0.2); o.start(ac.currentTime + t); o.stop(ac.currentTime + t + 0.2); }); } catch (_: any) {}
 }
-function checkAlerts(q) {
+function checkAlerts(q: { symbol: any; bid: number|null; digits: any; ask: number|null; time: any; }) {
   let changed = false;
   for (const a of S.alerts) {
     if (a.fired || a.symbol !== q.symbol || q.bid == null) continue;

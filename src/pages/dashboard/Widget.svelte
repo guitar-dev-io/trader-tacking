@@ -2,10 +2,10 @@
   // One dashboard widget: header (drag handle, icon, symbol/name, settings, remove) + its body. The body mounts
   // lazily — only once the widget has been on screen while the dashboard is shown (charts and feeds are costly).
   import { S, store } from '../../state';
-  import { renderAlerts } from '../../../app-data.js';
-  import { NEWS } from '../../../extras.js';
-  import { HEADLINES } from '../../../news.js';
-  import { POSITIONS } from '../../../positions.js';
+  import { renderAlerts } from '../../app/app-data';
+  import { NEWS } from '../../app/extras';
+  import { HEADLINES } from '../../app/news';
+  import { POSITIONS } from '../../app/positions';
   import ChartBody from './ChartBody.svelte';
   import BounceBody from './BounceBody.svelte';
   import { IC, svg } from './icons';

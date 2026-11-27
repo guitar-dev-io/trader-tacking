@@ -5,12 +5,11 @@ import { def } from '../../pt';
 import { THEME } from '../../state';
 import { toast } from '../toast';
 import { ui, type SettingsApi } from '../registry';
-import { ICON } from '../../../icons.js';
-import { $ } from '../../../app-core.js';
+import { ICON } from '../../app/icons';
+import { $ } from '../../app/app-core';
 import '../net';
 import Settings from './Settings.svelte';
 
-declare const vcg: any;
 const host = $('modal-settings')!;
 host.replaceChildren();
 const view = mount(Settings, { target: host }) as unknown as SettingsApi & { save: () => Promise<void> };

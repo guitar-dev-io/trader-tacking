@@ -3,8 +3,8 @@
 // (lc.read, lc.view, lc.cats, lc.scroll, lc.last), so saved progress carries over.
 import { SvelteSet } from 'svelte/reactivity';
 import { store } from '../../state';
-import { LESSONS } from '../../../lessons.js';
-import { LESSONS_EXTRA, LESSON_CATS, LESSON_CAT_OF } from '../../../lessons-guide.js';
+import { LESSONS } from '../../app/lessons';
+import { LESSONS_EXTRA, LESSON_CATS, LESSON_CAT_OF } from '../../app/lessons-guide';
 
 export interface Cat { id: string; name: string; icon?: string }
 export interface Lesson { id: string; c: string; t: string; b: string; title: string; text: string; q: string; min: number }

@@ -1,9 +1,9 @@
 // see the comment below
 import { def } from '../pt';
 import { view } from '../state';
-import { ICON } from '../../icons.js';
-import { $, S, TC, digits, drawings, esc, fmt, saveDrawings, store } from '../../app-core.js';
-import { addAlert } from '../../app-data.js';
+import { ICON } from '../app/icons';
+import { $, S, TC, digits, drawings, esc, fmt, saveDrawings, store, tgt, mk } from '../app/app-core';
+import { addAlert } from '../app/app-data';
 import { el, yOf } from '../ui/overlay';
 import { chartHooks as hook } from './hooks';
 import type { DPoint, Drawing, TextAlign } from './types';
@@ -57,8 +57,8 @@ export const TXT = (() => {
       border: d.border ?? callout, align: d.align || 'left' };
   }
   // text width with the real font (Thai vowels/tones included), not a per-letter guess
-  const ctx = document.createElement('canvas').getContext('2d') as CanvasRenderingContext2D, mcache = new Map<string, Measure>();
-  function measure(text: string | undefined, size: number, weight: number): Measure {
+  const ctx = mk('canvas').getContext('2d') as CanvasRenderingContext2D, mcache = new Map<string, Measure>();
+  function measure(text?: string, size: number, weight: number): Measure {
     const key = size + '|' + weight + '|' + text; let m = mcache.get(key); if (m) return m;
     ctx.font = `${weight} ${size}px ${FONT}`;
     const lines = String(text || '').split('\n'), ws = lines.map((l) => ctx.measureText(l || ' ').width);
@@ -102,7 +102,7 @@ export const TXT = (() => {
 
   // ---- labels on other drawings
   function labelPos(d: Drawing, P: Px[], W: number, _H: number): { x: number; y: number; a: 'start' | 'middle' | 'end'; inside?: boolean } | null {
-    const ok = (p: Px | undefined): p is XY => !!p && p.x != null && p.y != null;
+    const ok = (p?: Px): p is XY => !!p && p.x != null && p.y != null;
     const p0 = P[0] as XY, p1 = P[1] as XY;
     switch (d.type) {
       case 'trend': case 'ray': case 'channel': if (ok(P[0]) && ok(P[1])) return { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 - 8, a: 'middle' }; break;
@@ -159,7 +159,7 @@ export const TXT = (() => {
     close();
     const kind = o.kind || 'text', d = o.existing || o.target || null;
     const s: Partial<Style> = kind === 'label' ? { color: (d && d.color) || '#ffffff' } : d ? { ...st(d), ...(d.size == null ? { size: 13 } : {}) } : { ...last, ...(kind === 'callout' ? { border: true } : {}) };
-    const box = document.createElement('div'); box.className = 'txe' + (mobile() ? ' txe-sheet' : '');
+    const box = mk('div'); box.className = 'txe' + (mobile() ? ' txe-sheet' : '');
     const title = ({ text: d ? 'แก้ข้อความ' : 'ข้อความ', callout: d ? 'แก้โน้ตชี้จุด' : 'โน้ตชี้จุด', label: 'ข้อความบนรูปวาด' } as Record<string, string>)[kind];
     box.innerHTML = `<div class="txe-h"><b>${ic(kind === 'callout' ? 'callout' : 'type', 15)}${title}</b><span class="muted">Ctrl/⌘+Enter บันทึก · Esc ยกเลิก</span></div>
       ${kind === 'label' ? styleBar(s, { noSize: true }) : styleBar(s)}
@@ -212,7 +212,7 @@ export const TXT = (() => {
     });
     (box.querySelector('.txe-ok') as HTMLElement).onclick = commit; (box.querySelector('.txe-cancel') as HTMLElement).onclick = cancel;
     box.addEventListener('pointerdown', (e) => e.stopPropagation());
-    const outside = (e: PointerEvent) => { if (ed && !box.contains(e.target as Node)) commit(); };
+    const outside = (e: PointerEvent) => { if (ed && !box.contains(tgt(e) as Node)) commit(); };
     ed = { box, ta, commit, cancel, outside };
     setTimeout(() => { if (ed && ed.box === box) document.addEventListener('pointerdown', outside, true); }, 0);
     preview(); setTimeout(() => { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }, 0);
@@ -220,7 +220,7 @@ export const TXT = (() => {
   }
 
   // ---- floating toolbar for the selected drawing
-  const bar = document.createElement('div'); bar.className = 'txt-bar hidden';
+  const bar = mk('div'); bar.className = 'txt-bar hidden';
   let barFor: Drawing | null = null, barKey = '';
   function applyTo(d: Drawing, patch: Partial<Style>): void {
     hook.pushHistory(); Object.assign(d, patch);
@@ -270,7 +270,7 @@ export const TXT = (() => {
   }
 
   // ---- right-click / long-press menu: "บันทึกราคา"
-  const menu = document.createElement('div'); menu.className = 'ctx-menu hidden';
+  const menu = mk('div'); menu.className = 'ctx-menu hidden';
   function closeMenu(): void { menu.classList.add('hidden'); }
   function openMenu(cx: number, cy: number, x: number, y: number): void {
     const p = hook.pointAt(x, y, false); if (!p) return;
@@ -298,19 +298,19 @@ export const TXT = (() => {
       else if (c === 'notes') NOTES.open();
     }));
   }
-  document.addEventListener('pointerdown', (e) => { if (!menu.classList.contains('hidden') && !menu.contains(e.target as Node)) closeMenu(); }, true);
+  document.addEventListener('pointerdown', (e) => { if (!menu.classList.contains('hidden') && !menu.contains(tgt(e) as Node)) closeMenu(); }, true);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
   function wireChart(): void {
     const wrap = $('chart-wrap');
     const skip = (t: EventTarget | null) => (t as Element).closest('#legend, #zoombar, #layers-pop, .txe, .txt-bar, #connect, #m-draw, #m-pill');
     wrap.addEventListener('contextmenu', (e: MouseEvent) => {
-      if (skip(e.target) || !S.candles || !S.candles.length) return;
+      if (skip(tgt(e)) || !S.candles || !S.candles.length) return;
       e.preventDefault(); const { x, y } = hook.mousePos(e); openMenu(e.clientX, e.clientY, x, y);
     });
     // phone: long-press on empty chart area
     let lp: { x: number; y: number; t: ReturnType<typeof setTimeout> } | null = null;
     wrap.addEventListener('pointerdown', (e: PointerEvent) => {
-      if (e.pointerType !== 'touch' || S.tool !== 'cursor' || skip(e.target)) return;
+      if (e.pointerType !== 'touch' || S.tool !== 'cursor' || skip(tgt(e))) return;
       const { x, y } = hook.mousePos(e); if (hook.hitTest(x, y) != null) return;
       lp = { x: e.clientX, y: e.clientY, t: setTimeout(() => { lp = null; openMenu(e.clientX, e.clientY, x, y); if (navigator.vibrate) navigator.vibrate(12); }, 550) };
     }, true);
@@ -338,12 +338,12 @@ export const TXT = (() => {
     }
     function save(text: string): void {
       const k = key(sym);
-      if (text.trim()) store.set(k, { text, at: Date.now() }); else { try { localStorage.removeItem(k); } catch (_) {} }
+      if (text.trim()) store.set(k, { text, at: Date.now() }); else { try { localStorage.removeItem(k); } catch (_: any) {} }
       const at = pop && pop.querySelector('.nt-at'); if (at) at.textContent = text.trim() ? 'บันทึกล่าสุด ' + when(Date.now()) : 'ยังไม่มีโน้ตของ ' + sym;
       badge();
     }
     function open(): void {
-      if (!pop) { pop = document.createElement('div'); pop.id = 'notes-pop'; pop.className = 'notes-pop'; pop.addEventListener('pointerdown', (e) => e.stopPropagation()); }
+      if (!pop) { pop = mk('div'); pop.id = 'notes-pop'; pop.className = 'notes-pop'; pop.addEventListener('pointerdown', (e) => e.stopPropagation()); }
       const p = pop; (mobile() ? document.body : $('chart-wrap')).appendChild(p);
       p.classList.toggle('np-sheet', mobile());
       render(); p.classList.remove('hidden'); setTimeout(() => (p.querySelector('textarea') as HTMLTextAreaElement).focus(), 0);
@@ -354,12 +354,12 @@ export const TXT = (() => {
     function toggle(): void { if (isOpen()) close(); else open(); }
     // follow symbol switches
     setInterval(() => { if (isOpen() && S.symbol !== sym) { close(); open(); } badge(); }, 700);
-    document.addEventListener('pointerdown', (e) => { if (isOpen() && !(e.target as Element).closest('#notes-pop, #notes-btn, .ctx-menu')) close(); });
+    document.addEventListener('pointerdown', (e) => { if (isOpen() && !(tgt(e) as Element).closest('#notes-pop, #notes-btn, .ctx-menu')) close(); });
     return { open, close, toggle, get, isOpen };
   })();
   function addNotesButton(): void {
     const end = $('tb-end'); if (!end || $('notes-btn')) return;
-    const b = document.createElement('button'); b.id = 'notes-btn'; b.className = 'ib'; b.title = 'โน้ตของฉัน (แยกตาม symbol)';
+    const b = mk('button'); b.id = 'notes-btn'; b.className = 'ib'; b.title = 'โน้ตของฉัน (แยกตาม symbol)';
     b.innerHTML = ic('sticky-note', 18); b.onclick = (e: MouseEvent) => { e.stopPropagation(); NOTES.toggle(); };
     end.insertBefore(b, end.firstChild);
   }

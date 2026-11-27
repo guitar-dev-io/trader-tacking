@@ -3,7 +3,6 @@
 import { mount, flushSync } from 'svelte';
 import { writable, get } from 'svelte/store';
 import LogTab from './LogTab.svelte';
-declare const vcg: any;
 
 export interface LogEntry { t: string | number; level: 'debug' | 'info' | 'warn' | 'error'; source: string; msg: string; data?: string | null }
 export const LV: Record<string, number> = { debug: 0, info: 1, warn: 2, error: 3 };

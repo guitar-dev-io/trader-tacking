@@ -117,4 +117,4 @@ export function persisted<T>(key: string, init: T): Writable<T> {
   return w;
 }
 
-def({ dirty: [() => view.dirty, (v) => { view.dirty = Boolean(v); }], connStatus: [() => connStatus, (v) => setConnStatus(v as ConnStatus)] });
+def({ dirty: [() => view.dirty, (v: any) => { view.dirty = v; }] });

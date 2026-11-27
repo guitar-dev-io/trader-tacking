@@ -19,7 +19,7 @@ export interface ChartHooks {
   /** draw.ts: time → x pixel (incl. future bars) */
   xOfT: (t: number) => number | null;
   /** draw.ts: a drawing's ink colour adapted to the theme */
-  inkColor: (c: string | undefined) => string;
+  inkColor: (c?: string) => string;
   /** draw.ts: new drawing id */
   uid: () => number;
   /** draw.ts: handle points (pixels) of a drawing */
@@ -47,6 +47,6 @@ export type ChartEvent = 'load' | 'loaded';
 const chartListeners: Record<ChartEvent, (() => void)[]> = { load: [], loaded: [] };
 export function onChartEvent(ev: ChartEvent, cb: () => void): void { chartListeners[ev].push(cb); }
 export function emitChart(ev: ChartEvent): void {
-  for (const cb of chartListeners[ev]) { try { cb(); } catch (e) { console.error(`chart ${ev} listener`, e); } }
+  for (const cb of chartListeners[ev]) { try { cb(); } catch (e: any) { console.error(`chart ${ev} listener`, e); } }
 }
 

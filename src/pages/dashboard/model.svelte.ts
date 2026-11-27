@@ -1,7 +1,7 @@
 // Dashboard state (Svelte runes): widget catalog, preset layouts, the saved layouts (dash.layout — same key as
 // before), edit mode, the catalog/popover state and a 1-second tick that list widgets re-render on.
 import { S, store } from '../../state';
-import { TFS } from '../../../app-core.js';
+import { TFS } from '../../app/app-core';
 import { IC } from './icons';
 
 export interface WidgetCfg { id: string; type: string; w: number; h: number; opts: Record<string, any> }

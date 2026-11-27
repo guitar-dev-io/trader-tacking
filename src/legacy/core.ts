@@ -9,4 +9,4 @@ export const AN = { ...analysis };
 export const BOUNCE = { ...bounce };
 export const MM = { ...mm };
 export const JOURNAL = { ...journal };
-def({ AN: [() => AN], BOUNCE: [() => BOUNCE], MM: [() => MM], JOURNAL: [() => JOURNAL] });
+

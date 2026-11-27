@@ -3,7 +3,7 @@
 import { JOURNAL } from '../../legacy/core';
 import type { Trade, Metrics, JournalData } from '../../core/journal';
 import { store } from '../../state';
-import { TZ } from '../../../app-core.js';
+import { TZ } from '../../app/app-core';
 
 export const TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 export const TH_WD = ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'];
