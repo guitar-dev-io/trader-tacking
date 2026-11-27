@@ -1,7 +1,8 @@
 import { PT, def } from './src/pt.ts';
 import { ICON } from './icons.js';
 import { store, THEME, TC, S, AN_DEFAULT, AN_VIEW_KEYS, PREF_DEFAULT, CHART_THEME } from './src/state.ts';
-def({ createChart: [() => createChart], CandlestickSeries: [() => CandlestickSeries], BarSeries: [() => BarSeries], LineSeries: [() => LineSeries], AreaSeries: [() => AreaSeries], HistogramSeries: [() => HistogramSeries], LineStyle: [() => LineStyle], CrosshairMode: [() => CrosshairMode], TFS: [() => TFS], store: [() => store], _dtf: [() => _dtf], zoneOffsetSec: [() => zoneOffsetSec, (v) => { zoneOffsetSec = v; }], TZ: [() => TZ, (v) => { TZ = v; }], FIB_DEF: [() => FIB_DEF], FIBX_DEF: [() => FIBX_DEF], FIB: [() => FIB, (v) => { FIB = v; }], FIBX: [() => FIBX, (v) => { FIBX = v; }], FIB_REVERSE: [() => FIB_REVERSE, (v) => { FIB_REVERSE = v; }], FIB_PRESETS: [() => FIB_PRESETS], FIB_PRESET_REVERSE: [() => FIB_PRESET_REVERSE], fibColor: [() => fibColor], IND_COLORS: [() => IND_COLORS], UP: [() => UP, (v) => { UP = v; }], DOWN: [() => DOWN, (v) => { DOWN = v; }], CHART_THEME: [() => CHART_THEME], THEME: [() => THEME], TC: [() => TC], AN_DEFAULT: [() => AN_DEFAULT], AN_VIEW_KEYS: [() => AN_VIEW_KEYS], S: [() => S], PREF_DEFAULT: [() => PREF_DEFAULT], tf: [() => tf], drawingsKey: [() => drawingsKey], drawings: [() => drawings, (v) => { drawings = v; }], saveDrawings: [() => saveDrawings], digits: [() => digits], fmt: [() => fmt], $: [() => $], esc: [() => esc] });
+import { drawings, drawingsKey, saveDrawings } from './src/chart/drawings.ts';
+def({ createChart: [() => createChart], CandlestickSeries: [() => CandlestickSeries], BarSeries: [() => BarSeries], LineSeries: [() => LineSeries], AreaSeries: [() => AreaSeries], HistogramSeries: [() => HistogramSeries], LineStyle: [() => LineStyle], CrosshairMode: [() => CrosshairMode], TFS: [() => TFS], store: [() => store], _dtf: [() => _dtf], zoneOffsetSec: [() => zoneOffsetSec, (v) => { zoneOffsetSec = v; }], TZ: [() => TZ, (v) => { TZ = v; }], FIB_DEF: [() => FIB_DEF], FIBX_DEF: [() => FIBX_DEF], FIB: [() => FIB, (v) => { FIB = v; }], FIBX: [() => FIBX, (v) => { FIBX = v; }], FIB_REVERSE: [() => FIB_REVERSE, (v) => { FIB_REVERSE = v; }], FIB_PRESETS: [() => FIB_PRESETS], FIB_PRESET_REVERSE: [() => FIB_PRESET_REVERSE], fibColor: [() => fibColor], IND_COLORS: [() => IND_COLORS], UP: [() => UP, (v) => { UP = v; }], DOWN: [() => DOWN, (v) => { DOWN = v; }], CHART_THEME: [() => CHART_THEME], THEME: [() => THEME], TC: [() => TC], AN_DEFAULT: [() => AN_DEFAULT], AN_VIEW_KEYS: [() => AN_VIEW_KEYS], S: [() => S], PREF_DEFAULT: [() => PREF_DEFAULT], tf: [() => tf], digits: [() => digits], fmt: [() => fmt], $: [() => $], esc: [() => esc] });
 // Price Tracker renderer · core: constants, storage, shared state (S), formatting helpers
 const { createChart, CandlestickSeries, BarSeries, LineSeries, AreaSeries, HistogramSeries, LineStyle, CrosshairMode } = LightweightCharts;
 
@@ -37,15 +38,18 @@ const FIB_PRESET_REVERSE = { 'เป้าต่อขา 1.127–2.618': true }
 const fibColor = (lv) => ({ 1.127: '#4caf50',  '-1.618': '#e91e63', '-1': '#ff9800', '-0.618': '#f23645', '-0.27': '#2962ff', 0.62: '#089981', 0.65: '#089981', 0.705: '#00bcd4', 0.79: '#00bcd4', 0: '#787b86', 0.236: '#f23645', 0.382: '#ff9800', 0.5: '#4caf50', 0.618: '#089981', 0.786: '#00bcd4', 1: '#787b86', 1.272: '#2962ff', 1.414: '#9c27b0', 1.618: '#f23645', 2: '#ff9800', 2.618: '#e91e63', 3.618: '#9c27b0', 4.236: '#00bcd4' })[lv] || '#b2b5be';
 const IND_COLORS = ['#f5a623', '#2962ff', '#e040fb', '#00bcd4', '#ff5252', '#8bc34a', '#ffeb3b'];
 let UP = '#26a69a', DOWN = '#ef5350';
+// setters (Phase 5a): the chart settings menu / timezone selector change these; importers see the live binding
+function setFib(v) { FIB = v; }
+function setFibX(v) { FIBX = v; }
+function setFibReverse(v) { FIB_REVERSE = !!v; }
+function setCandleColors(up, down) { UP = up; DOWN = down; }
+function setTZ(v) { TZ = v; }
 
 
 
 
 
 const tf = () => TFS.find((t) => t.type === S.tf) || TFS[3];
-const drawingsKey = () => 'drawings:' + S.symbol;
-let drawings = [];
-const saveDrawings = () => store.set(drawingsKey(), drawings);
 const digits = () => S.digits[S.symbol] ?? 2;
 const fmt = (v, d = digits()) => (v == null || !isFinite(v) ? '—' : Number(v).toFixed(d));
 const $ = (id) => document.getElementById(id);
@@ -57,4 +61,5 @@ document.querySelectorAll('[data-icon]').forEach((i) => (i.innerHTML = ICON.svg(
 // renderer errors → log
 window.addEventListener('error', (e) => vcg.log('error', `${e.message} @ ${(e.filename || '').split('/').pop()}:${e.lineno}`));
 window.addEventListener('unhandledrejection', (e) => vcg.log('error', 'unhandledrejection: ' + (e.reason && e.reason.message || e.reason)));
+export { setFib, setFibX, setFibReverse, setCandleColors, setTZ };
 export { $, AN_VIEW_KEYS, AreaSeries, BarSeries, CandlestickSeries, CrosshairMode, DOWN, FIB, FIBX, FIBX_DEF, FIB_DEF, FIB_PRESETS, FIB_PRESET_REVERSE, FIB_REVERSE, HistogramSeries, IND_COLORS, LineSeries, LineStyle, S, TC, TFS, THEME, TZ, UP, createChart, digits, drawings, drawingsKey, esc, fibColor, fmt, saveDrawings, store, tf, zoneOffsetSec };

@@ -6,6 +6,8 @@ import type { DPoint, Drawing } from './types';
 export interface ChartHooks {
   /** draw.ts: re-apply the user's chart settings (grid…) after a theme change */
   applyChartCfg?: () => void;
+  /** draw.ts: load the drawings of the (new) symbol from the store, clearing undo/redo */
+  reloadDrawings?: () => void;
   /** draw.ts: redraw the SVG overlay now */
   redraw?: () => void;
   /** draw.ts: switch the active drawing tool */
@@ -21,9 +23,9 @@ export interface ChartHooks {
   /** draw.ts: new drawing id */
   uid: () => number;
   /** draw.ts: handle points (pixels) of a drawing */
-  handles: (d: Drawing) => { x: number; y: number }[];
+  handles: (d: Drawing) => { x: number; y: number; k: number }[];
   /** draw.ts: long/short levels */
-  posLevels?: (d: Drawing) => { entry: number; sl: number; tp: number } | null;
+  posLevels?: (d: Drawing) => { e: number; sl: number; tp: number; rr: number } | null;
   /** draw.ts: chart point under a pixel */
   pointAt: (x: number, y: number, magnet?: boolean) => DPoint | null;
   /** draw.ts: pointer event → chart pixels */
@@ -36,3 +38,15 @@ export const chartHooks: ChartHooks = {
   uid: missing('uid'), handles: missing('handles'), pointAt: missing('pointAt'), mousePos: missing('mousePos'), hitTest: missing('hitTest'),
   setTool: missing('setTool'), pushHistory: missing('pushHistory'), renderLayers: missing('renderLayers'), xOfT: missing('xOfT'), inkColor: missing('inkColor'),
 };
+
+// ------------------------------------------------------------ chart load events (Phase 5a)
+// app-data's loadChart() emits 'load' when it (re)requests the main chart (symbol / timeframe / source / timezone
+// change) and 'loaded' when the history has arrived and is on screen. Replaces wrapping PT.loadChart (mtf) and
+// the PT.onChartLoaded callback (draw: apply a pending range like 1D / 5D).
+export type ChartEvent = 'load' | 'loaded';
+const chartListeners: Record<ChartEvent, (() => void)[]> = { load: [], loaded: [] };
+export function onChartEvent(ev: ChartEvent, cb: () => void): void { chartListeners[ev].push(cb); }
+export function emitChart(ev: ChartEvent): void {
+  for (const cb of chartListeners[ev]) { try { cb(); } catch (e) { console.error(`chart ${ev} listener`, e); } }
+}
+

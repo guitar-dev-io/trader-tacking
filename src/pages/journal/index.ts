@@ -10,8 +10,9 @@ import { pages, lazyMount, type PageApi } from '../registry';
 import type { Trade } from '../../core/journal';
 import { JOURNAL } from '../../legacy/core';
 import { ICON } from '../../../icons.js';
-import { $, TFS, drawings } from '../../../app-core.js';
-import { chart } from '../../../app-chart.js';
+import { $, TFS } from '../../../app-core.js';
+import { drawings, setDrawings } from '../../chart/drawings';
+import { chart } from '../../chart/chart';
 import { switchSymbol } from '../../../app-data.js';
 import { SETUP } from '../../ui/setup/index';
 import { PAGES } from '../../../pages.js';
@@ -55,7 +56,7 @@ export const JOURNALPAGE: PageApi = (() => {
       const ready = c.length > 1 && c[c.length - 1].time - c[c.length - 2].time === span && (t.open == null || c[0].time <= t.open + tz());
       if (!ready && Date.now() - start < 4000) { setTimeout(place, 250); return; }
       const snap = (time: number) => { let best: number | null = null; for (const x of c) { if (x.time <= time) best = x.time; else break; } return best ?? (c[0] && c[0].time); };
-      PT.drawings = drawings.filter((x: { by?: string }) => x.by !== 'journal');
+      setDrawings(drawings.filter((x: { by?: string }) => x.by !== 'journal'));
       const color = t.side === 'buy' ? '#2962ff' : '#e91e63';
       if (t.open != null && t.openPrice != null) drawings.push({ id: 'jr-in-' + t.pos, type: t.side === 'buy' ? 'arrowUp' : 'arrowDown', pts: [{ time: snap(t.open + tz()), price: t.openPrice }], color, by: 'journal' });
       if (t.close != null && t.closePrice != null) drawings.push({ id: 'jr-out-' + t.pos, type: 'text', pts: [{ time: snap(t.close + tz()), price: t.closePrice }], text: `ปิด ${money(t.net)}`, color: t.net >= 0 ? '#26a69a' : '#ef5350', by: 'journal' });

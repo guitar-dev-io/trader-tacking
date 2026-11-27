@@ -12,6 +12,7 @@ import { bounceTick } from './app-bounce.js';
 import { pages } from './src/pages/registry.ts';
 import { renderConnect as connectView, isConnecting } from './src/ui/connect/connect.ts';
 def({ loadTimeout: [() => loadTimeout, (v) => { loadTimeout = v; }], loadChart: [() => loadChart, (v) => { loadChart = v; }], loadMore: [() => loadMore, (v) => { loadMore = v; }], num: [() => num], toCandle: [() => toCandle], valid: [() => valid], dedupe: [() => dedupe, (v) => { dedupe = v; }], setAllData: [() => setAllData, (v) => { setAllData = v; }], pushChartTimer: [() => pushChartTimer, (v) => { pushChartTimer = v; }], pushChartData: [() => pushChartData, (v) => { pushChartData = v; }], onChartMsg: [() => onChartMsg, (v) => { onChartMsg = v; }], upsert: [() => upsert, (v) => { upsert = v; }], pushLast: [() => pushLast, (v) => { pushLast = v; }], tickToCandle: [() => tickToCandle, (v) => { tickToCandle = v; }], onQuotesMsg: [() => onQuotesMsg, (v) => { onQuotesMsg = v; }], updateHeader: [() => updateHeader, (v) => { updateHeader = v; }], renderWatchlist: [() => renderWatchlist, (v) => { renderWatchlist = v; }], updateRow: [() => updateRow, (v) => { updateRow = v; }], switchSymbol: [() => switchSymbol, (v) => { switchSymbol = v; }], lastConnected: [() => lastConnected, (v) => { lastConnected = v; }], renderConnect: [() => renderConnect, (v) => { renderConnect = v; }], renderAlerts: [() => renderAlerts, (v) => { renderAlerts = v; }], addAlert: [() => addAlert, (v) => { addAlert = v; }], desktopNotify: [() => desktopNotify, (v) => { desktopNotify = v; }], beep: [() => beep, (v) => { beep = v; }], checkAlerts: [() => checkAlerts, (v) => { checkAlerts = v; }] });
+import { emitChart, chartHooks } from './src/chart/hooks.ts';
 // Price Tracker renderer · data: chart loading, live quotes/watchlist, status, price alerts
 // ---------------------------------------------------------------- data loading
 let loadTimeout = null;
@@ -25,6 +26,7 @@ function loadChart() {
   clearTimeout(loadTimeout);
   loadTimeout = setTimeout(() => { if (S.pendingHistory) { $('loading').textContent = 'ยังไม่ได้ข้อมูลกราฟ — ตรวจสอบว่า login แล้ว (เปิด WebTrader) หรือกด "เชื่อมต่อใหม่" · ดูรายละเอียดในแท็บ Log'; vcg.log('warn', `ยังไม่ได้แท่งเทียน ${S.symbol} ${tf().label} หลัง 12 วินาที`, null, 'chart'); } }, 12000);
 }
+  emitChart('load');
 function loadMore() {
   if (S.replay) return;
   if (S.loadingMore || S.noMore || S.pendingHistory || !S.candles.length) return;
@@ -76,7 +78,7 @@ function onChartMsg(m) {
       setAllData();
       if (S.candles.length > 150) chart.timeScale().setVisibleLogicalRange({ from: S.candles.length - 150, to: S.candles.length + 10 });
       else chart.timeScale().fitContent();
-      if (typeof PT.onChartLoaded === 'function') PT.onChartLoaded();
+      emitChart('loaded');
     } else if (S.loadingMore) {
       S.loadingMore = false;
       const older = arr.filter((c) => c.time < S.candles[0].time);
@@ -177,7 +179,7 @@ function switchSymbol(s) {
   if (s === S.symbol) return;
   if (S.replay && ui.replay) ui.replay.exit();
   S.symbol = s; store.set('symbol', s);
-  PT.drawings = PT.loadDrawings(); S.selected = null; S.pending = null; S.measure = null;
+  chartHooks.reloadDrawings?.(); S.selected = null; S.pending = null; S.measure = null;
   if (main) main.applyOptions({ priceFormat: priceFormat() });
   refreshPriceLines(); buildIndicators(); renderWatchlist(); renderAlerts(); updateHeader();
   if (ui.news) ui.news.render();

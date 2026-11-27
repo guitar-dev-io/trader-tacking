@@ -8,7 +8,8 @@ import { PERF } from './app-analysis.js';
 import { runBounce } from './app-bounce.js';
 import { loadChart, switchSymbol } from './app-data.js';
 import { renderTfs } from './app.js';
-import { redraw, uid } from './draw.js';
+import { redraw, uid } from './src/chart/draw.ts';
+import { setDrawings } from './src/chart/drawings.ts';
 import { computePlan, isCentAcct, renderPlanner, savePlan } from './planner.js';
 import { CACHE, NEWS } from './extras.js';
 import { HEADLINES } from './news.js';
@@ -105,7 +106,7 @@ import { HEADLINES } from './news.js';
   }
   function clearDrawings({ all } = {}) {
     const before = drawings.length;
-    PT.drawings = all ? [] : drawings.filter((d) => d.by !== 'claude');
+    setDrawings(all ? [] : drawings.filter((d) => d.by !== 'claude'));
     saveDrawings(); view.dirty = true;
     return { removed: before - drawings.length };
   }

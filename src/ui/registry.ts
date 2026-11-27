@@ -9,8 +9,10 @@ export const ui: {
   msheet?: { open: (...a: any[]) => void; close: () => void; isOpen: () => boolean };
   setUI?: (k: string, v: boolean) => void;
   srcPill?: { render: () => void; info: () => { cls: string; t: string; hint: string }; menu: () => void };
-  /** calculator tab (planner.js) */
-  planner?: { save: () => void; render: () => void };
+  /** calculator tab (planner.js): also the lot size shown on long/short tools, "open in calculator" and its plan lines */
+  planner?: { save: () => void; render: () => void; lot?: (entry: number, sl: number) => number | string | null; from?: (d: any) => void; draw?: (W: number, H: number) => void };
+  /** multi-timeframe view (src/chart/mtf.ts) */
+  mtf?: { drawOnMain: (W: number) => void; onMsg: (m: any) => void; replaySync: () => void; activeType: () => number | null; [k: string]: any };
   /** practice tab: trade simulator (learn.js) */
   sim?: { prefill: (t: any) => void; [k: string]: any };
   /** bar replay (learn.js) */

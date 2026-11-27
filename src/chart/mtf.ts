@@ -5,9 +5,11 @@ import { ICON } from '../../icons.js';
 import { AN } from '../legacy/core';
 import { $, DOWN, S, TC, TFS, THEME, TZ, UP, digits, fmt, store, tf } from '../../app-core.js';
 import { chart, chartThemeOptions } from './chart';
-import { dedupe, loadChart, onQuotes, toCandle, valid } from '../../app-data.js';
+import { dedupe, onQuotes, toCandle, valid } from '../../app-data.js';
+import { onChartEvent } from './hooks';
+import { ui } from '../ui/registry';
 import { el, label, lToX, txt, yOf } from '../ui/overlay';
-import { xOfT } from '../../draw.js';
+import { xOfT } from './draw';
 import { DEMO } from '../../extras.js';
 import type { Candle } from '../core/types';
 
@@ -235,8 +237,7 @@ export const MTF = (() => {
   $('mtf-levels').checked = cfg.levels; $('mtf-levels').onchange = () => { cfg.levels = $('mtf-levels').checked; save(); view.dirty = true; };
 
   // reload the HTF whenever the main chart reloads (symbol / timeframe / source / timezone change)
-  const _load = loadChart;
-  PT.loadChart = function (): void { _load(); if (cfg.on) { buildSeries(); load(); } };
+  onChartEvent('load', () => { if (cfg.on) { buildSeries(); load(); } });
   onQuotes((list: any[]) => { for (const q of list) onQuote(q); });
 
   // Phones: a normal single chart (switch timeframe by tapping) — the split view is a desktop feature.
@@ -246,4 +247,5 @@ export const MTF = (() => {
   return { onMsg, drawOnMain, replaySync, activeType, setOn, get A() { return A; } };
 })();
 
+ui.mtf = MTF;
 def({ MTF: [() => MTF] });

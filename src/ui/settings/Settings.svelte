@@ -9,10 +9,10 @@
   import { PT } from '../../pt';
   import { ui } from '../registry';
   import { ICON } from '../../../icons.js';
-  import { $ as byId, zoneOffsetSec } from '../../../app-core.js';
+  import { $ as byId, zoneOffsetSec, setTZ } from '../../../app-core.js';
   import { runAnalysis } from '../../../app-analysis.js';
   import { loadChart } from '../../../app-data.js';
-  import { DEFAULT_SESSIONS, SESSIONS_ALL, ZONES, _sessionWindow, setSessions } from '../../../draw.js';
+  import { DEFAULT_SESSIONS, SESSIONS_ALL, ZONES, _sessionWindow, setSessions } from '../../chart/draw';
   import { netState, NET_TH } from '../net';
   import { osKeys } from '../os';
 
@@ -94,7 +94,7 @@
     });
     const csvEl = byId('csv') as HTMLInputElement | null;
     if (csvEl && f.csv !== csvEl.checked) vcg.toggleCsv();
-    if (f.tz !== store.get('tz', 'local')) { store.set('tz', f.tz); (byId('tz-sel') as HTMLSelectElement).value = f.tz; PT.TZ = zoneOffsetSec(f.tz); loadChart(); }
+    if (f.tz !== store.get('tz', 'local')) { store.set('tz', f.tz); (byId('tz-sel') as HTMLSelectElement).value = f.tz; setTZ(zoneOffsetSec(f.tz)); loadChart(); }
     else if (before !== JSON.stringify([P, S.an])) runAnalysis();
     vcg.log('info', 'บันทึกการตั้งค่า', null, 'settings');
     msg = 'บันทึกแล้ว ✓';

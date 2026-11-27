@@ -8,7 +8,7 @@ import { $, S, esc, fmt, store } from './app-core.js';
 import { openIndicatorMenu } from './app-chart.js';
 import { openAnalysisMenu } from './app-analysis.js';
 import { switchSymbol } from './app-data.js';
-import { GROUPS, TOOLS, setTool, undo } from './draw.js';
+import { GROUPS, TOOLS, onToolChange, setTool, undo } from './src/chart/draw.ts';
 import { REPLAY } from './learn.js';
 import { SETUP } from './src/ui/setup/index.ts';
 import { pages } from './src/pages/registry.ts';
@@ -99,10 +99,7 @@ import { pages } from './src/pages/registry.ts';
     p.classList.toggle('hidden', !drawing); $('m-draw').classList.toggle('on', drawing);
     if (drawing) { p.querySelector('.mp-ic').innerHTML = ICON.svg(TOOLS[t].icon, 16); p.querySelector('.mp-t').textContent = `${TOOLS[t].name.split(' (')[0].split(' ·')[0]} · ${HINT[t] || ''}`; }
   }
-  const _setTool = PT.setTool;
-  PT.setTool = function (t) { _setTool(t); syncPill(); };
-  // draw.js calls setTool internally (e.g. back to cursor after a drawing) through its own binding → poll cheaply
-  let lastTool = S.tool; setInterval(() => { if (S.tool !== lastTool) { lastTool = S.tool; syncPill(); } }, 250);
+  onToolChange(() => syncPill());   // every tool change, incl. draw's own switch back to cursor
 
   function openTools() {
     const body = openSheet('เครื่องมือวาด', `<div class="m-tools">${GROUPS.flat().filter((k) => TOOLS[k]).map((k) =>

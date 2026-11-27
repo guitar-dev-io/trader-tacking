@@ -130,7 +130,7 @@ function drawPlanner(W) {
   if (r.rows.length > 1) line(r.avg, TC().fg, `เฉลี่ย ${fmt(r.avg)}`, '2 3');
 }
 
-ui.planner = { save: savePlan, render: renderPlanner };
+ui.planner = { save: savePlan, render: renderPlanner, lot: (e, sl) => plannerLot(e, sl), from: (d) => plannerFrom(d), draw: (W, H) => drawPlanner(W, H) };
 mount(Planner, { target: $('planner'), props: { api: { computePlan, autoVpp, contractSize, isCentAcct, CUR, money, lotFmt, pointSize, toPts, savePlan, activeSignal,
   changed: () => { renderPlanner(); view.dirty = true; } } } });
 document.querySelector('#tabs [data-tab="calc"]').addEventListener('click', () => { renderPlanner(); view.dirty = true; });
