@@ -17,7 +17,7 @@
     "prestart": "npm run build:core && npm run build:renderer",
     "prebuild:mac": "npm run build:renderer",
     "prebuild:win": "npm run build:renderer",
-    "typecheck": "tsc -p tsconfig.json && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings --output human",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.tools.json && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings --output human",
     "build:core": "node scripts/build-core.mjs",
     "pretest": "npm run build:core"
   },
@@ -60,7 +60,8 @@
       "!**/*.map",
       "!vite.config.mjs",
       "!tsconfig*.json",
-      "!svelte.config.mjs"
+      "!svelte.config.mjs",
+      "!gen/**/*.d.ts"
     ],
     "asar": false,
     "win": {

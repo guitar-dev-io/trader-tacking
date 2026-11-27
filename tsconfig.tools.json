@@ -1,0 +1,6 @@
+{
+  // Build tooling (Node): scripts/, vite/, the Vite/Svelte configs — plain .mjs/.js checked strictly via JSDoc.
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "allowJs": true, "checkJs": true, "types": ["node"], "lib": ["ES2022", "DOM"] },
+  "include": ["scripts/**/*", "vite/**/*", "*.mjs"]
+}

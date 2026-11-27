@@ -25,6 +25,7 @@ export default defineConfig(({ mode }) => {
       assetsDir: '_v',                // keep Vite's hashed files apart from the app's own assets/ folder
       target: 'chrome120',
       modulePreload: false,
+      chunkSizeWarningLimit: 1500,    // one local app bundle (chart library included) — not fetched over the network
       rollupOptions: { input: 'index.html' },
     },
   };
