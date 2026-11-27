@@ -1,7 +1,6 @@
 import { PT, def } from './src/pt.ts';
 import { view } from './src/state.ts';
 import { toast } from './src/ui/toast.ts';
-import { ICON } from './icons.js';
 import { $, DOWN, S, TZ, UP, drawings, esc, fmt, saveDrawings, store, tf } from './app-core.js';
 import { chart } from './app-chart.js';
 import { beep, loadChart, onQuotes, pushLast, setAllData, switchSymbol } from './app-data.js';
@@ -11,20 +10,15 @@ import { normalize } from './draw.js';
 import { autoVpp, plannerLot, vpp } from './planner.js';
 import { ui } from './src/ui/registry.ts';
 import { showSim, tickSim, showQuiz, showLesson } from './src/ui/tabs/practice-view.ts';
+import { mountReplayBar, setReplay, replaySpeed } from './src/ui/tabs/replay-view.ts';
 
 def({ REPLAY: [() => REPLAY], SIM: [() => SIM], QUIZ: [() => QUIZ], downloadText: [() => downloadText, (v) => { downloadText = v; }], LESSON: [() => LESSON] });
 // Learning tools: Bar Replay, paper trading (simulated orders on live or replay data), practice exercises, journal & stats, lesson packs.
 
 // ================================================================ Bar Replay
 const REPLAY = (() => {
-  const bar = document.createElement('div');
-  bar.id = 'replaybar'; bar.className = 'hidden';
-  bar.innerHTML = `<span class="rp-title">${ICON.html('rewind', 16)}Replay</span>
-    <button data-r="back" title="ถอย 1 แท่ง" aria-label="ถอย 1 แท่ง">${ICON.svg('skip-back', 16)}</button><button data-r="play" title="เล่น/หยุด (Space)" aria-label="เล่น/หยุด">${ICON.svg('play', 16)}</button><button data-r="step" title="เดินหน้า 1 แท่ง (→)" aria-label="เดินหน้า 1 แท่ง">${ICON.svg('skip-forward', 16)}</button>
-    <select data-r="speed" title="ความเร็ว"><option value="1">1 แท่ง/วิ</option><option value="2">2/วิ</option><option value="5">5/วิ</option><option value="10">10/วิ</option><option value="25">25/วิ</option></select>
-    <span class="rp-info"></span><button data-r="exit" class="rp-exit" title="ออกจาก Replay">${ICON.html('x', 14)}ออก</button>`;
-  $('chart-wrap').appendChild(bar);
-  const info = bar.querySelector('.rp-info'), playBtn = bar.querySelector('[data-r=play]');
+  // the control bar is ReplayBar.svelte (src/ui/tabs/replay-view.ts); this module keeps the replay logic
+  mountReplayBar($('chart-wrap'), { back: () => back(), play: () => play(), step: () => step(1), exit: () => exit(), speed: (v) => { setReplay({ speed: v }); if (timer) { stopPlay(); play(); } } });
   let timer = null, picking = false;
 
   function start(idx) {
@@ -36,7 +30,7 @@ const REPLAY = (() => {
     S.candles = full.slice(0, idx + 1);
     setAllData();
     chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, idx - 120), to: idx + 25 });
-    bar.classList.remove('hidden'); document.body.classList.add('replaying');
+    setReplay({ visible: true }); document.body.classList.add('replaying');
     if (typeof PT.MTF !== 'undefined') PT.MTF.replaySync();
     update(); SIM.render(); QUIZ.render(); vcg.log('info', `เริ่ม Replay ${S.symbol} ${tf().label} ที่แท่ง ${idx}`, null, 'learn');
   }
@@ -58,27 +52,22 @@ const REPLAY = (() => {
     R.idx--; S.candles = R.full.slice(0, R.idx + 1); setAllData(); update();
     if (typeof PT.MTF !== 'undefined') PT.MTF.replaySync();
   }
-  function play() { if (timer) return stopPlay(); const sp = +bar.querySelector('[data-r=speed]').value; timer = setInterval(() => step(1), 1000 / sp); playBtn.innerHTML = ICON.svg('pause', 16); }
-  function stopPlay() { clearInterval(timer); timer = null; playBtn.innerHTML = ICON.svg('play', 16); }
+  function play() { if (timer) return stopPlay(); timer = setInterval(() => step(1), 1000 / replaySpeed()); setReplay({ playing: true }); }
+  function stopPlay() { clearInterval(timer); timer = null; setReplay({ playing: false }); }
   function exit() {
     if (!S.replay) return;
     stopPlay(); QUIZ.abort();
     S.candles = S.replay.full; S.replay = null;
-    bar.classList.add('hidden'); document.body.classList.remove('replaying');
+    setReplay({ visible: false }); document.body.classList.remove('replaying');
     setAllData(); loadChart(); SIM.render(); QUIZ.render();
     vcg.log('info', 'ออกจาก Replay', null, 'learn');
   }
   function update() {
     const R = S.replay; if (!R) return;
     const b = R.full[R.idx], d = new Date(b.time * 1000), p = (x) => String(x).padStart(2, '0');
-    info.textContent = `${p(d.getUTCDate())}/${p(d.getUTCMonth() + 1)}/${d.getUTCFullYear()} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())} · ซ่อนอยู่ ${R.full.length - 1 - R.idx} แท่ง`;
+    setReplay({ info: `${p(d.getUTCDate())}/${p(d.getUTCMonth() + 1)}/${d.getUTCFullYear()} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())} · ซ่อนอยู่ ${R.full.length - 1 - R.idx} แท่ง` });
     SIM.tickUpdate();
   }
-  bar.addEventListener('click', (e) => {
-    const r = e.target.dataset.r; if (!r) return;
-    ({ back, play, step: () => step(1), exit })[r]?.();
-  });
-  bar.querySelector('[data-r=speed]').onchange = () => { if (timer) { stopPlay(); play(); } };
   // pick a start bar by clicking on the chart
   function pick() { picking = true; toast('คลิกบนกราฟที่แท่งที่จะเริ่ม Replay (Esc = ยกเลิก)', 'info'); document.body.classList.add('picking'); }
   $('chart-wrap').addEventListener('click', (ev) => {

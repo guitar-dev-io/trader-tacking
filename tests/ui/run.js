@@ -285,7 +285,13 @@ app.whenReady().then(async () => {
     await js(`PT.REPLAY.start(600); 'ok'`); await sleep(400);
     const rp = JSON.parse(await js(`JSON.stringify({ n: PT.S.candles.length, bounceOk: !PT.S.B || [...PT.S.B.buy, ...PT.S.B.sell].every((z) => z.born < PT.S.candles.length) })`));
     check('replay: analysis only uses visible bars', rp.bounceOk, rp);
+    const rb = JSON.parse(await js(`(() => { const b = document.getElementById('replaybar'); const r = { shown: !!b && !b.classList.contains('hidden'), info: (b.querySelector('.rp-info') || {}).textContent || '', n0: PT.S.candles.length };
+      b.querySelector('[data-r=step]').click(); r.n1 = PT.S.candles.length; b.querySelector('[data-r=back]').click(); r.n2 = PT.S.candles.length;
+      const sp = b.querySelector('[data-r=speed]'); sp.value = '5'; sp.dispatchEvent(new Event('change')); b.querySelector('[data-r=play]').click(); r.playing = !!b.querySelector('[data-r=play] svg') && b.querySelector('[data-r=play]').innerHTML !== ''; b.querySelector('[data-r=play]').click();
+      return JSON.stringify(r); })()`));
+    check('replay bar: shown, info, step forward/back, speed + play', rb.shown && /ซ่อนอยู่/.test(rb.info) && rb.n1 === rb.n0 + 1 && rb.n2 === rb.n0 && rb.playing, rb);
     await js(`PT.REPLAY.exit(); document.getElementById('mtf-btn').click(); 'ok'`); await sleep(300);
+    check('replay bar: hidden after exit', await js(`document.getElementById('replaybar').classList.contains('hidden')`));
 
     // learning center: its own page (no side tab), categories, reader with prev/next, read progress, search, MM practice
     {
