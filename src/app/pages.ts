@@ -1,4 +1,4 @@
-import { PT, def } from '../pt';
+import { def } from '../pt';
 import { $, S, store, qs, qsa, tgt, mk } from './app-core';
 def({ PAGES: [() => PAGES] });
 // Page tabs (desktop): open a side-panel tab (บทเรียน, ข่าว, คำนวณ, ฝึก, วิเคราะห์, Log, ราคา) as a full page next to

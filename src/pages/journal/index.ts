@@ -2,7 +2,7 @@ import { onBack } from '../../ui/back';
 // "ผลการเทรด" page (Svelte). Desktop: a page tab (titlebar button, Ctrl/⌘+J). Phone: a full-screen page from the
 // More page. "ดูตัวอย่าง" shows sample data.
 import { mount, flushSync } from 'svelte';
-import { PT, def } from '../../pt';
+import { def } from '../../pt';
 import { ui } from '../../ui/registry';
 import { toast } from '../../ui/toast';
 import { S, store, view } from '../../state';

@@ -6,7 +6,6 @@
   import About from '../about/About.svelte';
   import { S, store, THEME, setMainCfg } from '../../state';
   import { toast } from '../toast';
-  import { PT } from '../../pt';
   import { ui } from '../registry';
   import { ICON } from '../../app/icons';
   import { $ as byId, zoneOffsetSec, setTZ } from '../../app/app-core';
@@ -254,7 +253,7 @@
         <h4>โปรแกรม</h4>
         <label class="chk"><input type="checkbox" id="st-login" bind:checked={f.login}> เปิด Price Tracker อัตโนมัติเมื่อเปิดเครื่อง</label>
         <label class="chk"><input type="checkbox" id="st-autoupd" bind:checked={f.autoupd}> ตรวจหาเวอร์ชันใหม่อัตโนมัติ</label>
-        <div class="row"><button id="st-checkupd" onclick={() => PT.UPDATE.check(true)}>ตรวจหาเวอร์ชันใหม่ตอนนี้</button></div>
+        <div class="row"><button id="st-checkupd" onclick={() => ui.update?.check(true)}>ตรวจหาเวอร์ชันใหม่ตอนนี้</button></div>
       </section>
 
       <section data-sec="source" class:hidden={section !== 'source'}>

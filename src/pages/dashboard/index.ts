@@ -2,7 +2,7 @@
 // session clock, bounce zones, alerts and notes. Widgets are added from a catalog, dragged to reorder, resized,
 // and saved as named layouts. Desktop: a page tab (titlebar button, Ctrl/⌘+D). Phone: a full-screen page.
 import { mount, flushSync } from 'svelte';
-import { PT, def } from '../../pt';
+import { def } from '../../pt';
 import { ui } from '../../ui/registry';
 import { toast } from '../../ui/toast';
 import { S } from '../../state';

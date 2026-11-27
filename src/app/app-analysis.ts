@@ -1,6 +1,7 @@
-import { PT, def } from '../pt';
+import { def } from '../pt';
 import { view } from '../state';
 import { AN } from '../legacy/core';
+import { ui } from '../ui/registry';
 import type { Signal } from '../core/analysis';
 import { $, AN_VIEW_KEYS, S, TZ, digits, fmt, store, tf } from './app-core';
 import { closeMenus } from '../chart/chart';
@@ -46,13 +47,13 @@ function runAnalysis() {
   const t0 = performance.now();
   S.A = closed.length >= 50 ? AN.analyze(closed, { swingLen: S.an.swingLen, digits: digits(), rr1: +S.prefs.rr1, rr2: +S.prefs.rr2, slBuf: +S.prefs.slBuf, minSamples: +S.prefs.minSamples, maxBars: +S.prefs.maxBars }) : null;
   const t1 = performance.now();
-  PT.runBounce();
+  ui.bounce?.run();
   const t2 = performance.now();
   renderAnalysis();
   Object.assign(PERF, { analyze: Math.round(t1 - t0), bounce: Math.round(t2 - t1), render: Math.round(performance.now() - t2), n: closed.length, at: Date.now() });
   if (performance.now() - t0 > 400) vcg.log('warn', `วิเคราะห์ช้า: ${Math.round(performance.now() - t0)} ms (${closed.length} แท่ง · โครงสร้าง ${PERF.analyze} · จุดเด้ง ${PERF.bounce} · แสดงผล ${PERF.render} ms)`, null, 'perf');
   pushAnalysis();
-  PT.checkNewSignal();
+  ui.bounce?.checkNewSignal();
   view.dirty = true;
 }
 function activeSignal() {

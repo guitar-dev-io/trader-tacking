@@ -1,4 +1,4 @@
-import { PT, def } from '../pt';
+import { def } from '../pt';
 import { ui } from '../ui/registry';
 import { $, S, TFS, esc, store, qsa } from './app-core';
 import { buildIndicators, buildMain, refreshPriceLines } from '../chart/chart';

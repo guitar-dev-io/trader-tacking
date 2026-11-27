@@ -1,4 +1,4 @@
-import { PT, def } from '../pt';
+import { def } from '../pt';
 import { view } from '../state';
 import { toast } from '../ui/toast';
 import { AN, BOUNCE } from '../legacy/core';

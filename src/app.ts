@@ -1,5 +1,5 @@
-// App modules in the old <script> order. Evaluation order = this order: modules only import EARLIER modules,
-// and reach later ones through PT (src/pt.ts). Add a new module here (not as a <script> tag).
+// App modules in evaluation order: modules only import EARLIER modules and reach later ones through the
+// registries (src/ui/registry.ts, src/pages/registry.ts) or src/chart/hooks.ts. Add a new module here.
 import './pt';
 import './legacy/core';
 import './platform/bridge';

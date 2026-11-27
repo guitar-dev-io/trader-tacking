@@ -1,4 +1,4 @@
-import { PT, def } from '../pt';
+import { def } from '../pt';
 
 export interface IconSet { svg(name: string, size?: number): string; html(name: string, size?: number, cls?: string): string; has(name: string): boolean }
 let ICON!: IconSet; // set below; exported (was window.ICON)

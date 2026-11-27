@@ -1,6 +1,6 @@
 import * as LightweightCharts from 'lightweight-charts';
 import type { SeriesMarker, Time } from 'lightweight-charts';
-import { PT, def } from '../pt';
+import { def } from '../pt';
 import { toast } from '../ui/toast';
 import { $, S, TZ, store, mk } from './app-core';
 import { main } from '../chart/chart';

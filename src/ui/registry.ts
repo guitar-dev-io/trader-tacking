@@ -24,4 +24,10 @@ export const ui: {
   demo?: { requestChart: (req: any, handler?: (m: any) => void) => unknown; connect: () => void; [k: string]: any };
   cache?: { restore: () => void; save: () => void; [k: string]: any };
   setSource?: (src: string) => void;
+  /** bounce zones (app-bounce.ts): run after each analysis, and the new-signal alert */
+  bounce?: { run: () => void; checkNewSignal: () => void };
+  /** desktop notification + alert sound (app-data.ts) */
+  notify?: { desktop: (title: string, body: string) => void; beep: () => void };
+  /** update checker (extras.ts) */
+  update?: { check: (manual: boolean) => unknown; [k: string]: any };
 } = {};

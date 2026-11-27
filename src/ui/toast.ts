@@ -1,12 +1,13 @@
 // Toast messages (bottom-right). Its own module so any file — even ones loaded before the app state —
-// can import it; it reads the "show toasts" preference lazily from PT.S at call time.
-import { PT, def } from '../pt';
+// can import it; it reads the "show toasts" preference from S at call time.
+import { def } from '../pt';
+import { S as APP } from '../state';
 import { ICON } from '../app/icons';
 
 export type ToastKind = 'info' | 'ok' | 'warn' | 'error';
 
 export function toast(msg: unknown, kind: ToastKind | string = 'info', ms = 5000): void {
-  const S = PT.S as { prefs?: { toast?: boolean } } | undefined;
+  const S = APP as { prefs?: { toast?: boolean } } | undefined;
   if (S && S.prefs && !S.prefs.toast && kind !== 'error') return;
   const box = document.getElementById('toasts'); if (!box) return;
   // one icon per kind (Lucide) instead of emoji in the text

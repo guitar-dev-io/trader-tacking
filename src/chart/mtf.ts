@@ -1,6 +1,6 @@
 import * as LightweightCharts from 'lightweight-charts';
 // Multi-timeframe (top-down) view — see the comment below.
-import { PT, def } from '../pt';
+import { def } from '../pt';
 import { view } from '../state';
 import { ICON } from '../app/icons';
 import { AN } from '../legacy/core';

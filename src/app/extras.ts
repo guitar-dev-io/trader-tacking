@@ -1,4 +1,4 @@
-import { PT, def } from '../pt';
+import { def } from '../pt';
 import { ui } from '../ui/registry';
 import { view } from '../state';
 import { toast } from '../ui/toast';
@@ -10,7 +10,7 @@ import { el, lToX, timeToLogical, txt } from '../ui/overlay';
 import { pages } from '../pages/registry';
 import type { ChartMsg } from '../main/types';
 
-def({ UPDATE: [() => UPDATE] });   // NEWS: draw.js (chart, Phase 4e) · UPDATE: settings
+def({ UPDATE: [() => UPDATE] });   // tests/devtools
 // Extras: Demo data source (Binance public market data), local candle cache, economic calendar, update checker.
 
 // ---------------------------------------------------------------- helpers
@@ -28,7 +28,7 @@ const DEMO = (() => {
   let ws: WebSocket|null = null, wsKey = '', cur: any = null, retry: ReturnType<typeof setTimeout> | undefined = undefined;
 
   async function requestChart(o: { slot?: string; symbol: string; candleType: string | number; limit?: number; to?: string; inclusive?: boolean }, handler?: (m: any) => void) {
-    if (o.slot === 'mtf') handler = (m: any) => PT.MTF.onMsg({ ...m, slot: 'mtf' });
+    if (o.slot === 'mtf') handler = (m: any) => ui.mtf?.onMsg({ ...m, slot: 'mtf' });
     const extra = o.slot && o.slot !== 'main';          // MTF / dashboard widgets: never replace the main request
     const dash = pages.dash; if (extra && !handler && dash) handler = (m: any) => dash.onMsg({ ...m, slot: o.slot });
     handler = handler || onChartMsg;
@@ -51,7 +51,7 @@ const DEMO = (() => {
     const syms = [...new Set([...S.symbols, S.symbol])];
     const streams = syms.map((s) => map(s).toLowerCase() + '@ticker');
     streams.push(map(S.symbol).toLowerCase() + '@kline_' + IV[S.tf]);
-    const mtfType = typeof PT.MTF !== 'undefined' ? PT.MTF.activeType() : null;
+    const mtfType = ui.mtf ? ui.mtf.activeType() : null;
     if (mtfType != null && mtfType !== S.tf) streams.push(map(S.symbol).toLowerCase() + '@kline_' + IV[mtfType]);
     const key = streams.join('/');
     if (ws && wsKey === key && ws.readyState <= 1) return;
@@ -70,7 +70,7 @@ const DEMO = (() => {
       } else if (d.e === 'kline' && map(S.symbol) === d.s) {
         const k = d.k, msg = { type: 'chart', data: { updates: { candles: [{ timeSeconds: k.t / 1000, open: +k.o, high: +k.h, low: +k.l, close: +k.c }] } } };
         if (k.i === IV[S.tf]) onChartMsg(msg);
-        if (typeof PT.MTF !== 'undefined' && PT.MTF.activeType() != null && k.i === IV[PT.MTF.activeType()]) PT.MTF.onMsg({ ...msg, slot: 'mtf' });
+        if (ui.mtf && ui.mtf.activeType() != null && k.i === IV[ui.mtf.activeType()!]) ui.mtf.onMsg({ ...msg, slot: 'mtf' });
       }
     };
   }
@@ -220,5 +220,6 @@ const UPDATE = (() => {
   if (store.get('autoUpdateCheck', true)) { setTimeout(() => check(false), 8000); setInterval(() => check(false), 6 * 3600e3); }
   return { check };
 })();
+ui.update = UPDATE;
 ui.demo = DEMO; ui.cache = CACHE; ui.news = NEWS; ui.setSource = (src: string) => setSource(src);
 export { CACHE, DEMO, NEWS, setSource };

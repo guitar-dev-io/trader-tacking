@@ -1,4 +1,4 @@
-import { PT, def } from '../pt';
+import { def } from '../pt';
 import { onBack } from '../ui/back';
 import { ui } from '../ui/registry';
 import { view } from '../state';
@@ -63,7 +63,7 @@ import { pages } from '../pages/registry';
     on(g, 'touchstart', (e: { touches: { clientY: any; }[]; }) => { y0 = e.touches[0].clientY; }, { passive: true });
     on(g, 'touchend', (e: { changedTouches: { clientY: number; }[]; }) => { if (y0 != null && e.changedTouches[0].clientY - y0 > 60) closeSheet(); y0 = null; }); })();
   const MSHEET = { open: openSheet, close: closeSheet, isOpen: () => !sheet.classList.contains('hidden') };
-  ui.msheet = MSHEET; PT.MSHEET = MSHEET;   // PT: tests
+  ui.msheet = MSHEET; def({ MSHEET: [() => MSHEET] });   // def: tests/devtools
 
   // ------------------------------------------------------------ header + timeframe row
   const tb = $('titlebar');

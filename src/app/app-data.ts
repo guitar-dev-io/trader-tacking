@@ -1,4 +1,4 @@
-import { PT, def } from '../pt';
+import { def } from '../pt';
 import { showWatchlist, quoteWatchlist, showAlerts } from '../ui/tabs/market-view';
 import { ui } from '../ui/registry';
 import { connStatus, setConnStatus } from '../state';
@@ -96,7 +96,7 @@ function onChartMsg(m: ChartMsg) {
   }
   if (d.updates && d.updates.candles && !S.pendingHistory) d.updates.candles.map(toCandle).filter(valid).forEach(upsert);
 }
-vcg.onChart((m) => { if (S.source === 'demo') return; if (m.slot === 'mtf') { if (typeof PT.MTF !== 'undefined') PT.MTF.onMsg(m); } else if (m.slot && /^w\d/.test(m.slot)) { if (pages.dash) pages.dash.onMsg(m); } else onChartMsg(m); });
+vcg.onChart((m) => { if (S.source === 'demo') return; if (m.slot === 'mtf') { ui.mtf?.onMsg(m); } else if (m.slot && /^w\d/.test(m.slot)) { if (pages.dash) pages.dash.onMsg(m); } else onChartMsg(m); });
 
 function upsert(c: { time: number; }) {
   if (S.replay) return;
@@ -253,6 +253,7 @@ function addAlert(price: number) {
   vcg.log('info', `ตั้ง alert ${S.symbol} @ ${price}`, null, 'alert');
 }
 $('alert-form').onsubmit = (e) => { e.preventDefault(); addAlert(parseFloat($('alert-input').value)); $('alert-input').value = ''; };
+ui.notify = { desktop: (t, b) => desktopNotify(t, b), beep: () => beep() };
 function desktopNotify(title: string, body: string) { if (S.prefs.desktop) try { new Notification(title, { body }); } catch (_: any) {} }
 function beep() {
   if (!S.prefs.sound) return;

@@ -1,4 +1,4 @@
-import { PT, def } from '../pt';
+import { def } from '../pt';
 
 /** a lesson: t = title, b = body HTML; c = category id (extra lessons); demo/try fields drive "ลองบนกราฟ" */
 export interface Lesson { t: string; b: string; c?: string; [k: string]: any }

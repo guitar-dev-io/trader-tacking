@@ -1,4 +1,4 @@
-import { PT, def } from '../pt';
+import { def } from '../pt';
 import { ui } from '../ui/registry';
 import { toast } from '../ui/toast';
 import { $, S, store, type El } from './app-core';

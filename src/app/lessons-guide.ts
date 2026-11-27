@@ -1,4 +1,4 @@
-import { PT, def } from '../pt';
+import { def } from '../pt';
 
 import type { Lesson, LessonCat } from './lessons';
 let LESSONS_EXTRA!: Lesson[]; // set below; exported (was window.LESSONS_EXTRA)

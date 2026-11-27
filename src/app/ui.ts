@@ -1,4 +1,4 @@
-import { PT, def } from '../pt';
+import { def } from '../pt';
 import { back } from '../ui/back';
 import { ui } from '../ui/registry';
 import { view } from '../state';

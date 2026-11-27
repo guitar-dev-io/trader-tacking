@@ -1,4 +1,4 @@
-import { PT, def } from '../pt';
+import { def } from '../pt';
 import { toast } from '../ui/toast';
 
 import { LESSONS_EXTRA, LESSON_CATS } from './lessons-guide';

@@ -1,8 +1,9 @@
-import { PT, def } from '../pt';
+import { def } from '../pt';
 import { view } from '../state';
 import { toast } from '../ui/toast';
 import { ICON } from './icons';
 import { AN, BOUNCE } from '../legacy/core';
+import { ui } from '../ui/registry';
 import type { PatternKey } from '../core/analysis';
 import type { ZoneType } from '../core/bounce';
 import { $, DOWN, S, TC, UP, esc, fibColor, fmt, store, tf } from './app-core';
@@ -12,6 +13,7 @@ import Bounce from '../ui/tabs/Bounce.svelte';
 import { bounceTick as bounceTickStore } from '../ui/tabs/bounce-view';
 import { el, ltxt, xIdx, yOf } from '../ui/overlay';
 def({ runBounce: [() => runBounce], checkNewSignal: [() => checkNewSignal] });
+ui.bounce = { run: () => runBounce(), checkNewSignal: () => checkNewSignal() };
 // Price Tracker renderer · bounce finder (จุดเด้ง), liquidity map, auto-Fibo
 // ---------------------------------------------------------------- bounce finder (จุดเด้ง)
 function runBounce() {
@@ -94,7 +96,7 @@ function checkBounce() {
     S.notified[key] = Date.now(); store.set('notified', S.notified);
     const title = `${z.status === 'confirmed' ? '✅' : '👀'} ${S.symbol} ${tf().label} ${z.status === 'confirmed' ? 'ยืนยันเด้ง' : 'เข้าโซนเด้ง'} ${sd === 'buy' ? 'Buy' : 'Sell'}`;
     const body = `โซน ${fmt(Math.min(z.lo, z.hi))}–${fmt(Math.max(z.lo, z.hi))} · Entry ${fmt(z.entry)} · SL ${fmt(z.sl)} · TP ${fmt(z.tp1)}`;
-    PT.desktopNotify(title, body); PT.beep(); toast(title + ' · ' + body, 'ok', 8000);
+    ui.notify?.desktop(title, body); ui.notify?.beep(); toast(title + ' · ' + body, 'ok', 8000);
     vcg.log('info', title + ' ' + body, null, 'signal');
     vcg.notify('bounce', { symbol: S.symbol, timeframe: tf().label, side: sd.toUpperCase(), status: z.status, zone: [z.lo, z.hi], entry: z.entry, sl: z.sl, tp1: z.tp1, tp2: z.tp2, stars: z.stars }, title + '\n' + body);
   }
@@ -112,8 +114,8 @@ function checkNewSignal() {
   store.set('notified', S.notified);
   const side = s.dir === 1 ? 'BUY' : 'SELL';
   const text = `${s.dir === 1 ? '🟢' : '🔴'} ${side} ${S.symbol} ${tf().label}\n${SETUP_TH[s.setup]} · ${AN.PAT[s.pattern as PatternKey].name}\nEntry ${fmt(s.entry)} | SL ${fmt(s.sl)} | TP1 ${fmt(s.tp1)} | TP2 ${fmt(s.tp2)}\nสถิติก่อนหน้า: ${s.prior.n} ไม้, TP2 ${pct(s.prior.wr2)}, ${rr(s.prior.exp)}`;
-  PT.desktopNotify(`${side} ${S.symbol} ${tf().label}`, `Entry ${fmt(s.entry)} · SL ${fmt(s.sl)} · TP2 ${fmt(s.tp2)}`);
-  PT.beep();
+  ui.notify?.desktop(`${side} ${S.symbol} ${tf().label}`, `Entry ${fmt(s.entry)} · SL ${fmt(s.sl)} · TP2 ${fmt(s.tp2)}`);
+  ui.notify?.beep();
   vcg.log('info', `สัญญาณใหม่ ${side} ${S.symbol} ${tf().label} @ ${fmt(s.entry)}`, null, 'signal');
   vcg.notify('signal', sigPayload(s), text);
 }

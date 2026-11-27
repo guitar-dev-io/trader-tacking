@@ -1,4 +1,4 @@
-import { PT, def } from '../pt';
+import { def } from '../pt';
 import { view } from '../state';
 import { toast } from '../ui/toast';
 import { $, DOWN, S, TZ, UP, drawings, esc, fmt, saveDrawings, store, tf, qs, tgt, mk } from './app-core';
@@ -9,6 +9,7 @@ import { renderTfs } from './app';
 import { normalize } from '../chart/draw';
 import { autoVpp, plannerLot, vpp } from './planner';
 import { ui } from '../ui/registry';
+import { setDrawings } from '../chart/drawings';
 import { showSim, tickSim, showQuiz, showLesson } from '../ui/tabs/practice-view';
 import { mountReplayBar, setReplay, replaySpeed } from '../ui/tabs/replay-view';
 
@@ -31,7 +32,7 @@ const REPLAY = (() => {
     setAllData();
     chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, idx - 120), to: idx + 25 });
     setReplay({ visible: true }); document.body.classList.add('replaying');
-    if (typeof PT.MTF !== 'undefined') PT.MTF.replaySync();
+    ui.mtf?.replaySync();
     update(); SIM.render(); QUIZ.render(); vcg.log('info', `เริ่ม Replay ${S.symbol} ${tf().label} ที่แท่ง ${idx}`, null, 'learn');
   }
   function step(n = 1) {
@@ -43,14 +44,14 @@ const REPLAY = (() => {
       pushLast(true);
       SIM.onBar(b);
       QUIZ.onBar();
-      if (typeof PT.MTF !== 'undefined') PT.MTF.replaySync();
+      ui.mtf?.replaySync();
     }
     update();
   }
   function back() {
     const R = S.replay; if (!R || R.idx <= 30) return;
     R.idx--; S.candles = R.full.slice(0, R.idx + 1); setAllData(); update();
-    if (typeof PT.MTF !== 'undefined') PT.MTF.replaySync();
+    ui.mtf?.replaySync();
   }
   function play() { if (timer) return stopPlay(); timer = setInterval(() => step(1), 1000 / replaySpeed()); setReplay({ playing: true }); }
   function stopPlay() { clearInterval(timer); timer = undefined; setReplay({ playing: false }); }
@@ -325,7 +326,7 @@ const LESSON = (() => {
     if (p.app !== 'Price Tracker' || p.kind !== 'lesson') return toast('ไม่ใช่ไฟล์บทเรียนของ Price Tracker', 'warn');
     if (S.replay) REPLAY.exit();
     store.set('drawings:' + p.symbol, (p.drawings || []).map(normalize));
-    if (p.symbol !== S.symbol) switchSymbol(p.symbol); else { PT.drawings = (p.drawings || []).map(normalize); saveDrawings(); view.dirty = true; }
+    if (p.symbol !== S.symbol) switchSymbol(p.symbol); else { setDrawings((p.drawings || []).map(normalize)); saveDrawings(); view.dirty = true; }
     if (p.tf !== S.tf) { S.tf = p.tf; store.set('tf', p.tf); renderTfs(); loadChart(); }
     if (p.replayAt) { const go = () => { const i = S.candles.findIndex((c: { time: number; }) => c.time - TZ >= p.replayAt); if (i > 0) REPLAY.start(i); }; setTimeout(go, 2500); }
     toast(`นำเข้าบทเรียน ${p.symbol}${p.note ? ': ' + p.note : ''}`, 'ok', 10000);

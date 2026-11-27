@@ -2,7 +2,7 @@ import { onBack } from '../../ui/back';
 // "ข่าวและปฏิทิน" page (Svelte). Desktop: a page tab with a titlebar button + unread badge.
 // Phone: a full-screen page from the More page. The ราคา tab keeps a small "ข่าวล่าสุด" teaser.
 import { mount } from 'svelte';
-import { PT, def } from '../../pt';
+import { def } from '../../pt';
 import { pages, lazyMount, type PageApi } from '../registry';
 import { ICON } from '../../app/icons';
 import { $ } from '../../app/app-core';

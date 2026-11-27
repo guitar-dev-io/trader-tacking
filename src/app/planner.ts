@@ -1,4 +1,4 @@
-import { PT, def } from '../pt';
+import { def } from '../pt';
 import { view } from '../state';
 import { MM } from '../legacy/core';
 import { $, DOWN, S, TC, UP, digits, fmt, store, qs } from './app-core';
