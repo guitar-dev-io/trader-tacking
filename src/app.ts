@@ -3,8 +3,8 @@
 import './pt';
 import './legacy/core';
 import './platform/bridge';
-import '../indicators.js';
-import '../custom.js';
+import './chart/indicators';
+import './chart/custom';
 import '../lessons.js';
 import '../lessons-guide.js';
 import '../icons.js';
