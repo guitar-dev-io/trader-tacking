@@ -125,6 +125,20 @@ Branch: `feat/framework-migration`. The plan has 5 phases: 0 Vite, 1 TypeScript 
   - Mobile shell (`mobile.js`: bottom nav, sheets, More page; replace `window.__mobileBack` with a module), `ui.js` (panel toggles, rail, Esc, folds).
   - PT uses in app `.js`: 143 left (was ~165). Chart/drawing names (`MTF` 17, `yOf` 11, `el` 8, `drawings` 7, `xIdx`/`pushHistory`/`ltxt` 6, `setTool`, `inkColor`, `xOfT`, `renderLayers`, `FIB`) belong to item 4; the rest are `REPLAY`/`NEWS`/`DEMO`/`CACHE`/`setSource`/`onChartLoaded`/`__mobileBack`/`plannerLot`/`plannerFrom`/`onQuotesMsg`.
 
+### Phase 4d: practice tab, market tab, back handling, non-chart PT names — partly done
+- **Done:**
+  - **ฝึก tab** → `Sim.svelte` (paper trading), `Quiz.svelte` (replay exercises), `LessonPack.svelte` (+ `practice-view.ts`). `learn.js` keeps the simulator, replay and quiz logic and pushes snapshots (`showSim/showQuiz/showLesson`); per tick `tickSim()` only patches numbers (UI test "panel not rebuilt per tick" still passes). Position/order rows are unkeyed on purpose: ids are `Date.now()` and two orders in one ms collide.
+  - **ราคา tab** → `Watchlist.svelte` (rows mounted into `#wl tbody`, bid cell flashes via an action) and `Alerts.svelte` (into `#alerts`), + `market-view.ts`. `app-data.js` keeps symbols/quotes/alerts; `updateRow(q)` is now `quoteWatchlist(q)`.
+  - **Back handling** → `src/ui/back.ts` (`onBack(h)` stack, `back()`), used by mobile.js, ui.js (Android back) and the journal/news/learn pages. `PT.__mobileBack` remains only as a test getter.
+  - **No PT inside the app for** REPLAY, NEWS (except draw.js), HEADLINES, DEMO, CACHE, setSource: they register in `src/ui/registry.ts` (`ui.replay/news/headlines/demo/cache/setSource`). Paper trading listens through `onQuotes(fn)` (app-data.js quote hooks) instead of wrapping `onQuotesMsg`.
+  - New UI screenshot `practice.png`. Pixel diff vs 66e254e: practice, panel-dark, connect-desktop, positions-panel differ only in the clock/session countdown; android-connect, mobile, icons-mobile-more(-light), theme-light-mobile(-market) identical.
+- **Left (not done in 4d):**
+  - Replay control bar (`#replaybar` in learn.js) is still imperative HTML.
+  - "การเชื่อมต่อ & เครื่องมือ" section stays static markup in index.html with handlers in app-data.js (no dynamic content except `#api-info`); connect screen `renderConnect()` in app-data.js is still an HTML string.
+  - `mobile.js` shell (bottom nav, sheets, More page) and `ui.js` are still `.js` (behaviour unchanged; only the back chain moved).
+  - PT names still used by chart code (Phase 4e): `onQuotesMsg` setter (mtf), `onChartLoaded`, `plannerLot`, `plannerFrom`, `NEWS` in draw.js.
+  - Gotcha for shared worktrees: `git commit` takes everything already staged — 4d once swept 4e's staged `git rm mtf.js` into its commit (fixed in ec73eb8). Commit with `git commit <paths>` or check `git diff --cached --stat` first.
+
 ## Interim items from Phase 2 (partly resolved in Phase 3 — see the Phase 4 checklist)
 - **Late-bound names through PT inside the app:** about 55 names, used about 280 times; run `grep -o "PT\.[A-Za-z_$]*" *.js`. The most used are `setUI`, `MTF`, `LEARN`, `DASH`, `yOf`, `NEWSPAGE`, `__mobileBack` and `drawings`. They exist because files call "forward" into modules loaded later.
   - In Phase 3/4, untangle them by moving each shared piece into a small module that both sides import: app state from `app-core.js` → `src/state.ts`; overlay helpers (`yOf`, `xIdx`, `el`, `ltxt`) → `src/ui/overlay.ts`; page objects registered in `src/pages.ts`.
