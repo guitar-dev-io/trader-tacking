@@ -1,2 +1,0 @@
-// Moved to src/chart/chart.ts (typed). Re-exported here for modules that still import './app-chart.js'.
-export { askLine, buildIndicators, buildMain, chart, chartThemeOptions, applyChartTheme, closeMenus, customOut, displayData, main, openIndicatorMenu, priceFormat, refreshPriceLines, renderLegend, updateIndicators, addIndicator, editIndicator, openScriptEditor, indName } from './src/chart/chart.ts';

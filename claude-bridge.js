@@ -3,7 +3,7 @@ import { view } from './src/state.ts';
 import { toast } from './src/ui/toast.ts';
 import { AN, BOUNCE } from './src/legacy/core.ts';
 import { S, TFS, TZ, drawings, fmt, saveDrawings, store, tf } from './app-core.js';
-import { chart } from './app-chart.js';
+import { chart } from './src/chart/chart.ts';
 import { PERF } from './app-analysis.js';
 import { runBounce } from './app-bounce.js';
 import { loadChart, switchSymbol } from './app-data.js';

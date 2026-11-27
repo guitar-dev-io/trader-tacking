@@ -1,7 +1,7 @@
 import { PT, def } from './src/pt.ts';
 import { ui } from './src/ui/registry.ts';
 import { $, S, TFS, esc, store } from './app-core.js';
-import { buildIndicators, buildMain, refreshPriceLines } from './app-chart.js';
+import { buildIndicators, buildMain, refreshPriceLines } from './src/chart/chart.ts';
 import { renderAnalysis } from './app-analysis.js';
 import { loadChart, renderAlerts, updateHeader } from './app-data.js';
 import * as logTab from './src/ui/tabs/log.ts';

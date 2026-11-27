@@ -4,9 +4,9 @@ import { view } from './src/state.ts';
 import { toast } from './src/ui/toast.ts';
 import { ICON } from './icons.js';
 import { $, S, TZ, esc, store, tf } from './app-core.js';
-import { chart } from './app-chart.js';
+import { chart } from './src/chart/chart.ts';
 import { beep, desktopNotify, loadChart, onChartMsg, onQuotesMsg, renderConnect, renderWatchlist, setAllData } from './app-data.js';
-import { el, lToX, timeToLogical, txt } from './app-overlay.js';
+import { el, lToX, timeToLogical, txt } from './src/ui/overlay.ts';
 import { pages } from './src/pages/registry.ts';
 
 def({ NEWS: [() => NEWS], UPDATE: [() => UPDATE] });   // NEWS: draw.js (chart, Phase 4e) · UPDATE: settings

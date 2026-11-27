@@ -3,7 +3,7 @@
   import { onMount } from 'svelte';
   import { TC, theme } from '../../state';
   import { UP, DOWN, TZ } from '../../../app-core.js';
-  import { chartThemeOptions } from '../../../app-chart.js';
+  import { chartThemeOptions } from '../../chart/chart';
   import { acquire, release, type Feed } from './feeds';
   import { MAX, guessDigits, quote, type WidgetCfg } from './model.svelte';
 

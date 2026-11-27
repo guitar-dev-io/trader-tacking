@@ -96,7 +96,7 @@ export let mainCfg: Record<string, any> | null = null;
 export function setMainCfg(c: Record<string, any> | null): void { mainCfg = c; }
 
 // ------------------------------------------------------------ small UI flags
-// `view.dirty = true` asks the overlay to redraw on the next frame (app-overlay.js).
+// `view.dirty = true` asks the overlay to redraw on the next frame (src/chart/draw.ts).
 export const view = { dirty: true };
 
 // ------------------------------------------------------------ stores for Svelte components

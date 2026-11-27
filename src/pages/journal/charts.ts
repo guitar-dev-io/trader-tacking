@@ -1,6 +1,6 @@
 // Balance curve + daily P/L bars of the journal page (lightweight-charts). Returns the charts so the page can remove them.
 import { TC } from '../../state';
-import { chartThemeOptions } from '../../../app-chart.js';
+import { chartThemeOptions } from '../../chart/chart';
 import { tz, type Computed } from './model.svelte';
 
 

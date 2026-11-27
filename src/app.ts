@@ -13,7 +13,6 @@ import './chart/chart';
 import '../app-analysis.js';
 import '../app-bounce.js';
 import '../app-data.js';
-import '../app-overlay.js';
 import '../mm-learn.js';
 import '../app.js';
 import './chart/text-tools';

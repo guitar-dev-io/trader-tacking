@@ -1,7 +1,7 @@
 import { PT, def } from './src/pt.ts';
 import { toast } from './src/ui/toast.ts';
 import { $, S, TZ, store } from './app-core.js';
-import { main } from './app-chart.js';
+import { main } from './src/chart/chart.ts';
 import { connStatus, switchSymbol } from './app-data.js';
 import { mount, flushSync } from 'svelte';
 import Positions from './src/ui/tabs/Positions.svelte';

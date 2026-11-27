@@ -5,7 +5,7 @@ import { view } from './src/state.ts';
 import { toast } from './src/ui/toast.ts';
 import { ICON } from './icons.js';
 import { $, S, esc, fmt, store } from './app-core.js';
-import { openIndicatorMenu } from './app-chart.js';
+import { openIndicatorMenu } from './src/chart/chart.ts';
 import { openAnalysisMenu } from './app-analysis.js';
 import { switchSymbol } from './app-data.js';
 import { GROUPS, TOOLS, onToolChange, setTool, undo } from './src/chart/draw.ts';

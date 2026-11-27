@@ -2,7 +2,7 @@
 // long/short position box, drawn on the SVG overlay each frame (called from the drawing loop in draw.js).
 import { AN } from '../legacy/core';
 import { DOWN, S, TC, UP, fmt } from '../../app-core.js';
-import { chart, customOut } from '../../app-chart.js';
+import { chart, customOut } from './chart';
 import { activeSignal } from '../../app-analysis.js';
 import { drawAutoFib, drawBounce, drawLiquidity } from '../../app-bounce.js';
 import { el, label, txt, xIdx, yOf } from '../ui/overlay';

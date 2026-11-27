@@ -2,7 +2,7 @@ import { PT, def } from './src/pt.ts';
 import { view } from './src/state.ts';
 import { AN } from './src/legacy/core.ts';
 import { $, AN_VIEW_KEYS, S, TZ, digits, fmt, store, tf } from './app-core.js';
-import { closeMenus } from './app-chart.js';
+import { closeMenus } from './src/chart/chart.ts';
 import { mount, flushSync } from 'svelte';
 import Analysis from './src/ui/tabs/Analysis.svelte';
 import { analysisTick } from './src/ui/tabs/analysis-view.ts';

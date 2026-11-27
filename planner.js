@@ -3,7 +3,7 @@ import { view } from './src/state.ts';
 import { MM } from './src/legacy/core.ts';
 import { $, DOWN, S, TC, UP, digits, fmt, store } from './app-core.js';
 import { activeSignal } from './app-analysis.js';
-import { el, label, yOf } from './app-overlay.js';
+import { el, label, yOf } from './src/ui/overlay.ts';
 import { mount, flushSync } from 'svelte';
 import Planner from './src/ui/tabs/Planner.svelte';
 import { plannerTick } from './src/ui/tabs/planner-view.ts';

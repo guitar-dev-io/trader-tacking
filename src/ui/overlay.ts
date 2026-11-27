@@ -2,7 +2,7 @@
 // Shared by every module that draws on the chart (analysis, bounce, drawings, MTF, replay, planner…).
 import { def } from '../pt';
 import { $, S, tf } from '../../app-core.js';
-import { chart, main } from '../../app-chart.js';
+import { chart, main } from '../chart/chart';
 
 /** something with logicalToCoordinate — a lightweight-charts time scale */
 export interface TimeScaleLike { logicalToCoordinate(l: number): number | null }
