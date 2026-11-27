@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { showWatchlist, quoteWatchlist, showAlerts } from './src/ui/tabs/market-view.ts';
 import { ui } from './src/ui/registry.ts';
 import { connStatus, setConnStatus } from './src/state.ts';
 import { view } from './src/state.ts';
@@ -156,31 +157,12 @@ function updateHeader() {
   else c.textContent = '';
   document.title = q ? `${S.symbol} ${fmt(q.bid)} — Price Tracker` : 'Price Tracker';
 }
+const wlApi = { pick: (s) => switchSymbol(s), rm: (s) => vcg.removeSymbol(s), star: (s) => vcg.setTray(s), fmt };
 function renderWatchlist() {
-  const tb = document.querySelector('#wl tbody');
-  tb.innerHTML = S.symbols.map((s) => `<tr data-s="${s}" class="${s === S.symbol ? 'sel' : ''}">
-    <td><button class="star ${s === S.traySymbol ? 'on' : ''}" data-act="star" title="แสดงบนแถบเมนู" aria-label="แสดงบนแถบเมนู">${ICON.svg('star', 14)}</button>${s}</td>
-    <td class="b">—</td><td class="a">—</td><td class="p">—</td>
-    <td><button class="x" data-act="rm" title="ลบ" aria-label="ลบ">${ICON.svg('x', 14)}</button></td></tr>`).join('');
-  S.symbols.forEach((s) => S.quotes[s] && updateRow(S.quotes[s]));
+  showWatchlist({ symbols: S.symbols.slice(), sel: S.symbol, tray: S.traySymbol, quotes: { ...S.quotes } }, wlApi);
 }
-function updateRow(q, prev) {
-  const tr = document.querySelector(`#wl tr[data-s="${q.symbol}"]`); if (!tr) return;
-  const b = tr.querySelector('.b'), a = tr.querySelector('.a'), p = tr.querySelector('.p');
-  b.textContent = fmt(q.bid, q.digits); a.textContent = fmt(q.ask, q.digits);
-  p.textContent = q.changePct == null ? '—' : (q.changePct >= 0 ? '+' : '') + q.changePct.toFixed(2);
-  p.className = 'p ' + (q.changePct >= 0 ? 'up' : 'down');
-  if (prev && prev.bid !== q.bid && b.animate) {   // Web Animations: no forced re-layout per tick
-    b.animate([{ backgroundColor: q.bid > prev.bid ? 'rgba(38,166,154,.45)' : 'rgba(239,83,80,.45)' }, { backgroundColor: 'transparent' }], { duration: 600 });
-  }
-}
-document.querySelector('#wl tbody').addEventListener('click', (e) => {
-  const tr = e.target.closest('tr'); if (!tr) return;
-  const s = tr.dataset.s, act = e.target.dataset.act;
-  if (act === 'rm') return vcg.removeSymbol(s);
-  if (act === 'star') return vcg.setTray(s);
-  switchSymbol(s);
-});
+// per tick: patch just this symbol's row (Watchlist.svelte flashes the bid cell)
+function updateRow(q) { quoteWatchlist(q); }
 $('add-form').onsubmit = (e) => {
   e.preventDefault();
   const s = $('add-input').value.trim().toUpperCase(); if (!s) return;
@@ -312,13 +294,8 @@ $('show-trader').onclick = () => vcg.showTrader();
 $('reload-trader').onclick = () => { vcg.reloadTrader(); setTimeout(loadChart, 8000); };
 
 // ---------------------------------------------------------------- alerts
-function renderAlerts() {
-  const ul = $('alerts');
-  const list = S.alerts.filter((a) => a.symbol === S.symbol);
-  ul.innerHTML = list.length ? list.map((a) => `<li class="${a.fired ? 'fired' : ''}"><span>${a.symbol} ${a.dir === 'up' ? '≥' : '≤'} ${fmt(a.price)}</span><button data-id="${a.id}" aria-label="ลบ">${ICON.svg('x', 14)}</button></li>`).join('')
-    : '<li class="muted" style="border:none">ยังไม่มีการแจ้งเตือนของ ' + S.symbol + '</li>';
-  const n = $('alerts-n'); if (n) n.textContent = list.length ? String(list.length) : '';
-}
+const alertApi = { fmt, rm: (id) => { S.alerts = S.alerts.filter((a) => a.id !== id); store.set('alerts', S.alerts); renderAlerts(); refreshPriceLines(); } };
+function renderAlerts() { showAlerts(S.symbol, S.alerts.filter((a) => a.symbol === S.symbol), alertApi); }
 function addAlert(price) {
   const q = S.quotes[S.symbol]; if (!isFinite(price)) return;
   const cur = q ? q.bid : (S.candles.slice(-1)[0] || {}).close;
@@ -326,10 +303,6 @@ function addAlert(price) {
   store.set('alerts', S.alerts); renderAlerts(); refreshPriceLines();
   vcg.log('info', `ตั้ง alert ${S.symbol} @ ${price}`, null, 'alert');
 }
-$('alerts').onclick = (e) => {
-  const id = +e.target.dataset.id; if (!id) return;
-  S.alerts = S.alerts.filter((a) => a.id !== id); store.set('alerts', S.alerts); renderAlerts(); refreshPriceLines();
-};
 $('alert-form').onsubmit = (e) => { e.preventDefault(); addAlert(parseFloat($('alert-input').value)); $('alert-input').value = ''; };
 function desktopNotify(title, body) { if (S.prefs.desktop) try { new Notification(title, { body }); } catch (_) {} }
 function beep() {
