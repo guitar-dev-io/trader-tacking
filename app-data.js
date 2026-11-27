@@ -10,7 +10,8 @@ import { askLine, buildIndicators, chart, displayData, main, priceFormat, refres
 import { renderAnalysis, runAnalysis } from './app-analysis.js';
 import { bounceTick } from './app-bounce.js';
 import { pages } from './src/pages/registry.ts';
-def({ loadTimeout: [() => loadTimeout, (v) => { loadTimeout = v; }], loadChart: [() => loadChart, (v) => { loadChart = v; }], loadMore: [() => loadMore, (v) => { loadMore = v; }], num: [() => num], toCandle: [() => toCandle], valid: [() => valid], dedupe: [() => dedupe, (v) => { dedupe = v; }], setAllData: [() => setAllData, (v) => { setAllData = v; }], pushChartTimer: [() => pushChartTimer, (v) => { pushChartTimer = v; }], pushChartData: [() => pushChartData, (v) => { pushChartData = v; }], onChartMsg: [() => onChartMsg, (v) => { onChartMsg = v; }], upsert: [() => upsert, (v) => { upsert = v; }], pushLast: [() => pushLast, (v) => { pushLast = v; }], tickToCandle: [() => tickToCandle, (v) => { tickToCandle = v; }], onQuotesMsg: [() => onQuotesMsg, (v) => { onQuotesMsg = v; }], updateHeader: [() => updateHeader, (v) => { updateHeader = v; }], renderWatchlist: [() => renderWatchlist, (v) => { renderWatchlist = v; }], updateRow: [() => updateRow, (v) => { updateRow = v; }], switchSymbol: [() => switchSymbol, (v) => { switchSymbol = v; }], lastConnected: [() => lastConnected, (v) => { lastConnected = v; }], BOOT_AT: [() => BOOT_AT], connectingSince: [() => connectingSince, (v) => { connectingSince = v; }], renderConnect: [() => renderConnect, (v) => { renderConnect = v; }], renderAlerts: [() => renderAlerts, (v) => { renderAlerts = v; }], addAlert: [() => addAlert, (v) => { addAlert = v; }], desktopNotify: [() => desktopNotify, (v) => { desktopNotify = v; }], beep: [() => beep, (v) => { beep = v; }], checkAlerts: [() => checkAlerts, (v) => { checkAlerts = v; }] });
+import { renderConnect as connectView, isConnecting } from './src/ui/connect/connect.ts';
+def({ loadTimeout: [() => loadTimeout, (v) => { loadTimeout = v; }], loadChart: [() => loadChart, (v) => { loadChart = v; }], loadMore: [() => loadMore, (v) => { loadMore = v; }], num: [() => num], toCandle: [() => toCandle], valid: [() => valid], dedupe: [() => dedupe, (v) => { dedupe = v; }], setAllData: [() => setAllData, (v) => { setAllData = v; }], pushChartTimer: [() => pushChartTimer, (v) => { pushChartTimer = v; }], pushChartData: [() => pushChartData, (v) => { pushChartData = v; }], onChartMsg: [() => onChartMsg, (v) => { onChartMsg = v; }], upsert: [() => upsert, (v) => { upsert = v; }], pushLast: [() => pushLast, (v) => { pushLast = v; }], tickToCandle: [() => tickToCandle, (v) => { tickToCandle = v; }], onQuotesMsg: [() => onQuotesMsg, (v) => { onQuotesMsg = v; }], updateHeader: [() => updateHeader, (v) => { updateHeader = v; }], renderWatchlist: [() => renderWatchlist, (v) => { renderWatchlist = v; }], updateRow: [() => updateRow, (v) => { updateRow = v; }], switchSymbol: [() => switchSymbol, (v) => { switchSymbol = v; }], lastConnected: [() => lastConnected, (v) => { lastConnected = v; }], renderConnect: [() => renderConnect, (v) => { renderConnect = v; }], renderAlerts: [() => renderAlerts, (v) => { renderAlerts = v; }], addAlert: [() => addAlert, (v) => { addAlert = v; }], desktopNotify: [() => desktopNotify, (v) => { desktopNotify = v; }], beep: [() => beep, (v) => { beep = v; }], checkAlerts: [() => checkAlerts, (v) => { checkAlerts = v; }] });
 // Price Tracker renderer · data: chart loading, live quotes/watchlist, status, price alerts
 // ---------------------------------------------------------------- data loading
 let loadTimeout = null;
@@ -187,78 +188,21 @@ function switchSymbol(s) {
 
 // ---------------------------------------------------------------- status
 let lastConnected = null;
-// ---------------------------------------------------------------- connect screen (shown until VCG prices flow)
-const BOOT_AT = Date.now();
-let connectingSince = 0;
+// ---------------------------------------------------------------- connect screen (shown until prices flow) → src/ui/connect
+function connectAction(k) {
+  if (k === 'login') { const ok = vcg.showTrader(); vcg.log('info', 'ผู้ใช้กดเข้าสู่ระบบ VCG จากหน้าเชื่อมต่อ', null, 'auth'); if (ok === false) toast('เปิดหน้า login ไม่ได้ — ดูแท็บ Log', 'error'); }
+  else if (k === 'demo') ui.setSource?.('demo');
+  else if (k === 'retry') { vcg.reloadTrader(); toast('กำลังเชื่อมต่อใหม่…', 'info'); setTimeout(loadChart, 8000); }
+  else if (k === 'guide') ui.setup?.open();
+  else if (k === 'mt5guide') ui.setup?.open('mt5', 0);
+  else if (k === 'log') { $('connect').classList.add('hidden'); document.querySelector('#tabs [data-tab="log"]').click(); }
+  else if (k === 'src:vcg' || k === 'src:mt5') { const src = k.slice(4); if (S.source !== src) ui.setSource?.(src); if (src === 'mt5') ui.setup?.open('mt5', 0); }
+}
 function renderConnect(st = connStatus) {
-  const box = $('connect'); if (!box) return;
-  const m5 = st.mt5 || {}, desktopMt5 = !!(vcg.capabilities && vcg.capabilities.mt5);
-  const waitVcg = S.source === 'vcg' && !st.connected, waitMt5 = S.source === 'mt5' && desktopMt5 && st.mt5 && !m5.connected;
-  const show = (waitVcg || waitMt5) && !S.replay && (Date.now() - BOOT_AT > 2500 || st.stage === 'login');
-  box.classList.toggle('hidden', !show);
-  if (!show) { connectingSince = 0; return; }
-  $('loading').classList.add('hidden');
-  const web = st.platform === 'web' || st.stage === 'web', mobile = document.body.classList.contains('mobile');
-  const stage = web ? 'web' : st.stage || (st.loggedIn ? 'connecting' : 'login');
-  if (stage === 'connecting') connectingSince = connectingSince || Date.now(); else connectingSince = 0;
-  const slow = connectingSince && Date.now() - connectingSince > 45000;
-  const netBad = st.net && /down|offline|error|lost/i.test(st.net.level || '');
-  const step = { starting: 0, login: 1, connecting: 2 }[stage] ?? 1;
-  const li = (i, t, sub) => `<li class="${i < step ? 'done' : i === step ? 'now' : ''}"><b>${i < step ? ICON.svg('check', 14) : i + 1}</b><span>${t}${sub ? `<small>${sub}</small>` : ''}</span></li>`;
-  const chip = (k, icon, t, sub) => `<button class="cn-src ${S.source === k ? 'on' : ''}" data-src="${k}"${k === 'demo' ? ' data-cn="demo"' : ''}><i>${ICON.svg(icon, 22)}</i><b>${t}</b><small>${sub}</small></button>`;
-  const choices = `<div class="cn-q">ดึงราคาจากไหน?</div><div class="cn-srcs">
-      ${chip('demo', 'graduation-cap', 'Demo', 'ฝึก ไม่ต้อง login')}${chip('vcg', 'globe', 'VCG', 'บัญชี VCG Markets')}${desktopMt5 ? chip('mt5', 'monitor', 'MT5', 'อ่านอย่างเดียว') : ''}</div>`;
-  const status = (cls, t) => `<div class="cn-status ${cls}"><span class="cn-dot"></span>${t}</div>`;
-  const foot = `<div class="cn-links"><button class="cn-link" data-cn="guide">${ICON.html('book-open', 14)}คู่มือเริ่มต้น</button><span>·</span><button class="cn-link" data-cn="log">ดู Log</button></div>
-    <p class="cn-ro">${ICON.html('shield-check', 14)}อ่านและแสดงราคาเท่านั้น · ไม่ส่งคำสั่งซื้อขาย · ไม่ใช่คำแนะนำการลงทุน</p>`;
-  let html;
-  if (web) {
-    html = `<div class="cn-card"><div class="cn-logo">${ICON.html('chart-line', 18)}Price Tracker</div><h3>เวอร์ชันเว็บใช้ข้อมูล Demo</h3>
-      <p class="cn-p">ราคาจริงจาก VCG / MT5 ใช้ได้ในแอป Mac และแอป Android · บนเว็บฝึกได้ทุกอย่างด้วยข้อมูล Demo</p>
-      <button class="cn-primary" data-cn="demo">เริ่มใช้ Demo</button><button class="cn-link" data-cn="guide">${ICON.html('book-open', 14)}วิธีติดตั้งแอป Mac / Android</button></div>`;
-  } else if (waitMt5) {
-    html = `<div class="cn-card"><div class="cn-logo">${ICON.html('chart-line', 18)}Price Tracker</div>${choices}
-      <h3>รอราคาจาก MT5</h3>
-      ${status('wait', `รอ EA PriceTrackerBridge ใน MT5 (พอร์ต ${m5.port || 7788})`)}
-      <ol class="cn-steps">${['เปิด MT5 และ login บัญชีโบรกเกอร์', 'อนุญาต WebRequest ให้ 127.0.0.1', 'ติด EA PriceTrackerBridge บนกราฟ'].map((t, i) => `<li><b>${i + 1}</b><span>${t}</span></li>`).join('')}</ol>
-      <button class="cn-primary" data-cn="mt5guide">ตัวช่วยเชื่อมต่อ MT5</button>
-      <p class="cn-safe">${ICON.html('lock', 14)}รหัสผ่านบัญชีกรอกใน MT5 เท่านั้น · EA อ่านอย่างเดียว ส่งออเดอร์ไม่ได้ — ดูออเดอร์/โพซิชันของตัวเองได้</p>${foot}</div>`;
-  } else {
-    const st1 = netBad ? status('bad', 'ไม่มีอินเทอร์เน็ต — ตรวจการเชื่อมต่อแล้วกดเชื่อมต่อใหม่')
-      : st.nativeOk === false ? status('bad', 'ส่วนเชื่อมต่อของแอปไม่ทำงาน — ปิดแล้วเปิดแอปใหม่')
-      : stage === 'starting' ? status('wait', 'กำลังเปิด VCG WebTrader…')
-      : stage === 'login' ? status('idle', st.overlay ? 'หน้า login เปิดอยู่ — กรอกอีเมลและรหัสผ่าน' : 'ยังไม่ได้เข้าสู่ระบบ')
-      : slow ? status('bad', 'login แล้วแต่ยังไม่มีราคา — ลองกดเชื่อมต่อใหม่') : status('wait', 'login แล้ว กำลังรอราคา…');
-    html = `<div class="cn-card"><div class="cn-logo">${ICON.html('chart-line', 18)}Price Tracker</div>${choices}
-      <h3>เชื่อมต่อ VCG Markets</h3>${st1}
-      <ol class="cn-steps">
-        ${li(0, 'เปิดหน้า VCG WebTrader', stage === 'starting' ? 'กำลังโหลด…' : '')}
-        ${li(1, 'เข้าสู่ระบบด้วยอีเมล + รหัสผ่าน', stage === 'login' ? (mobile ? 'ปุ่ม Google ใช้ในแอปไม่ได้ ใช้อีเมลแทน' : 'login ครั้งเดียว แอปจำไว้ให้') : '')}
-        ${li(2, 'รับราคาสด', stage === 'connecting' ? (slow ? 'นานกว่าปกติ' : 'ปกติใช้ไม่เกิน 10 วินาที') : '')}
-      </ol>
-      ${stage === 'connecting' && !slow ? '' : `<button class="cn-primary" data-cn="${slow || netBad ? 'retry' : 'login'}">${slow || netBad ? `${ICON.html('refresh-cw', 16)}เชื่อมต่อใหม่` : stage === 'connecting' ? 'เปิดหน้า VCG' : 'เข้าสู่ระบบ VCG'}</button>`}
-      <p class="cn-safe">${ICON.html('lock', 14)}รหัสผ่านกรอกในหน้าของ VCG เอง แอปนี้ไม่เห็นและไม่เก็บรหัสผ่าน · ${mobile ? 'login เสร็จหน้าจอจะปิดให้เอง' : 'login เสร็จปิดหน้าต่างนั้นได้เลย'}</p>
-      <div class="cn-row">${stage === 'connecting' && !slow ? '<button data-cn="login">เปิดหน้า VCG</button>' : ''}${slow || netBad ? '<button data-cn="login">เปิดหน้า VCG</button>' : `<button data-cn="retry">${ICON.html('refresh-cw', 14)}เชื่อมต่อใหม่</button>`}</div>
-      ${foot}
-      <div class="cn-diag">${esc(stage)}${st.page ? ' · ' + esc(st.page) : ''}${st.overlay ? ' · login window เปิดอยู่' : ''}</div>
-    </div>`;
-  }
-  if (html !== box._html) {
-    box._html = html; box.innerHTML = html;
-    box.querySelectorAll('[data-cn],[data-src]').forEach((b) => (b.onclick = () => {
-      const k = b.dataset.cn, src = b.dataset.src;
-      if (k === 'login') { const ok = vcg.showTrader(); vcg.log('info', 'ผู้ใช้กดเข้าสู่ระบบ VCG จากหน้าเชื่อมต่อ', null, 'auth'); if (ok === false) toast('เปิดหน้า login ไม่ได้ — ดูแท็บ Log', 'error'); }
-      else if (k === 'demo') ui.setSource?.('demo');
-      else if (k === 'retry') { vcg.reloadTrader(); toast('กำลังเชื่อมต่อใหม่…', 'info'); setTimeout(loadChart, 8000); }
-      else if (k === 'guide') ui.setup?.open();
-      else if (k === 'mt5guide') ui.setup?.open('mt5', 0);
-      else if (k === 'log') { box.classList.add('hidden'); document.querySelector('#tabs [data-tab="log"]').click(); }
-      else if (src === 'vcg' || src === 'mt5') { if (S.source !== src) ui.setSource?.(src); if (src === 'mt5') ui.setup?.open('mt5', 0); }
-    }));
-  }
+  connectView(st, { source: S.source, replay: !!S.replay, mobile: document.body.classList.contains('mobile'), desktopMt5: !!(vcg.capabilities && vcg.capabilities.mt5), onAction: connectAction });
 }
 setTimeout(() => renderConnect(), 2600);
-setInterval(() => { if (connectingSince) renderConnect(); }, 5000);   // flips to the "taking long" hint
+setInterval(() => { if (isConnecting()) renderConnect(); }, 5000);   // flips to the "taking long" hint
 vcg.onStatus((st) => {
   setConnStatus(st); renderConnect(st);
   const symChanged = JSON.stringify(st.symbols) !== JSON.stringify(S.symbols) || st.traySymbol !== S.traySymbol;
