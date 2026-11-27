@@ -3,6 +3,6 @@ export const ORDER = [
   'lessons.js', 'lessons-guide.js', 'icons.js',
   'app-core.js', 'app-chart.js', 'app-analysis.js', 'app-bounce.js', 'app-data.js', 'app-overlay.js',
   'mm-learn.js', 'app.js', 'text-tools.js', 'draw.js', 'planner.js', 'extras.js',
-  'learn.js', 'news.js', 'positions.js', 'mtf.js', 'ui.js', 'mobile.js', 'pages.js',
+  'learn.js', 'news.js', 'positions.js', 'ui.js', 'mobile.js', 'pages.js',
   'claude-bridge.js',
 ];

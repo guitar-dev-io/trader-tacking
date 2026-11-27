@@ -25,7 +25,7 @@ import '../learn.js';
 import '../news.js';
 import './ui/setup/index';
 import '../positions.js';
-import '../mtf.js';
+import './chart/mtf';
 import '../ui.js';
 import '../mobile.js';
 import '../pages.js';

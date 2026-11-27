@@ -11,7 +11,7 @@ declare module '*/app-core.js' {
   export const HistogramSeries: any; export const CandlestickSeries: any; export const LineStyle: any; export const CrosshairMode: any; export const digits: () => number; export const tf: () => { label: string; type: number; sec: number };
 }
 declare module '*/app-chart.js' { export const chart: any; export const main: any; export const customOut: Map<string, unknown>; export const chartThemeOptions: (...a: any[]) => any; export const applyChartTheme: (...a: any[]) => void; }
-declare module '*/app-data.js' { export const switchSymbol: (s: string) => void; export const loadChart: (...a: any[]) => any; export const dedupe: any; export const renderAlerts: any; export const toCandle: any; export const valid: any; export const connStatus: any; }
+declare module '*/app-data.js' { export const switchSymbol: (s: string) => void; export const loadChart: (...a: any[]) => any; export const dedupe: any; export const renderAlerts: any; export const toCandle: any; export const valid: any; export const connStatus: any; export const onQuotesMsg: (list: any[]) => void; }
 declare module '*/positions.js' { export const POSITIONS: any; }
 declare module '*/lessons.js' { export const LESSONS: any; }
 declare module '*/lessons-guide.js' { export const LESSON_CATS: any; export const LESSONS_EXTRA: any; export const LESSON_CAT_OF: any; }
@@ -20,7 +20,7 @@ declare module '*/mm-learn.js' { export const MM_LEARN: any; }
 declare module '*/app.js' { export const renderLessons: any; }
 declare module '*/app-analysis.js' { export const runAnalysis: (...a: any[]) => any; export const activeSignal: () => any; }
 declare module '*/app-bounce.js' { export const drawAutoFib: (W: number) => void; export const drawBounce: (W: number) => void; export const drawLiquidity: (W: number) => void; }
-declare module '*/draw.js' { export const DEFAULT_SESSIONS: any[]; export const SESSIONS_ALL: any[]; export const ZONES: [string, string][]; export const _sessionWindow: (x: any, y: number, m: number, d: number) => [number, number]; export const setSessions: (s: any[]) => void; }
+declare module '*/draw.js' { export const xOfT: (t: number) => number | null; export const DEFAULT_SESSIONS: any[]; export const SESSIONS_ALL: any[]; export const ZONES: [string, string][]; export const _sessionWindow: (x: any, y: number, m: number, d: number) => [number, number]; export const setSessions: (s: any[]) => void; }
 
 // the chart library is a classic <script> (src/legacy-order.mjs → VENDOR_SCRIPTS)
 declare const LightweightCharts: any;
