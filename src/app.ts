@@ -16,7 +16,7 @@ import '../app-data.js';
 import '../app-overlay.js';
 import '../mm-learn.js';
 import '../app.js';
-import '../text-tools.js';
+import './chart/text-tools';
 import '../draw.js';
 import '../planner.js';
 import './ui/settings/index';

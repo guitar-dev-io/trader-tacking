@@ -7,11 +7,11 @@ declare module '*/app-core.js' {
   export const $: (id: string) => any; export const esc: (s: unknown) => string; export const fmt: (v: number, d?: number) => string;
   export const S: Record<string, any>; export const store: { get<T = any>(k: string, d?: T): T; set(k: string, v: unknown): void };
   export const TFS: { label: string; type: number; sec: number }[]; export const THEME: any; export const TC: () => any;
-  export const TZ: number; export const zoneOffsetSec: (tz: string) => number; export const UP: string; export const DOWN: string; export const drawings: any[]; export const createChart: any; export const LineSeries: any; export const AreaSeries: any; export const BarSeries: any; export const IND_COLORS: string[];
+  export const TZ: number; export const zoneOffsetSec: (tz: string) => number; export const UP: string; export const DOWN: string; export const drawings: import('../chart/types').Drawing[]; export const saveDrawings: () => void; export const drawingsKey: () => string; export const createChart: any; export const LineSeries: any; export const AreaSeries: any; export const BarSeries: any; export const IND_COLORS: string[];
   export const HistogramSeries: any; export const CandlestickSeries: any; export const LineStyle: any; export const CrosshairMode: any; export const digits: () => number; export const tf: () => { label: string; type: number; sec: number };
 }
 declare module '*/app-chart.js' { export const chart: any; export const main: any; export const customOut: Map<string, unknown>; export const chartThemeOptions: (...a: any[]) => any; export const applyChartTheme: (...a: any[]) => void; }
-declare module '*/app-data.js' { export const switchSymbol: (s: string) => void; export const loadChart: (...a: any[]) => any; export const dedupe: any; export const renderAlerts: any; export const toCandle: any; export const valid: any; export const connStatus: any; export const onQuotesMsg: (list: any[]) => void; }
+declare module '*/app-data.js' { export const switchSymbol: (s: string) => void; export const loadChart: (...a: any[]) => any; export const dedupe: any; export const renderAlerts: any; export const toCandle: any; export const valid: any; export const connStatus: any; export const onQuotesMsg: (list: any[]) => void; export const addAlert: (price: number) => void; }
 declare module '*/positions.js' { export const POSITIONS: any; }
 declare module '*/lessons.js' { export const LESSONS: any; }
 declare module '*/lessons-guide.js' { export const LESSON_CATS: any; export const LESSONS_EXTRA: any; export const LESSON_CAT_OF: any; }

@@ -22,7 +22,8 @@ export interface TextStyle {
 }
 
 export interface Drawing extends TextStyle {
-  id: number;
+  /** number for user drawings; 'jr-…' strings for trades placed by the journal page */
+  id: number | string;
   type: DrawingKind;
   pts: DPoint[];
   color?: string;
@@ -38,6 +39,8 @@ export interface Drawing extends TextStyle {
   rr?: number;
   /** drawn by Claude (cleared by clear_drawings) */
   claude?: boolean;
+  /** who placed it automatically ('journal' = trade markers from the trading journal) */
+  by?: string;
   [extra: string]: unknown;
 }
 
