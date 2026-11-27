@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { onBack } from './src/ui/back.ts';
 import { ui } from './src/ui/registry.ts';
 import { view } from './src/state.ts';
 import { toast } from './src/ui/toast.ts';
@@ -225,12 +226,12 @@ import { pages } from './src/pages/registry.ts';
   goChart();
 
   // Android back: sheet → tool → sub page → page → minimise (registered before ui.js's handler via capture flag)
-  PT.__mobileBack = () => {
+  onBack(() => {
     if (MSHEET.isOpen()) { closeSheet(); return true; }
     if (S.tool && S.tool !== 'cursor') { setTool('cursor'); return true; }
     if (S.ui.side && SUB[page]) { showPage('more'); return true; }
     if (S.ui.side) { goChart(); return true; }
     return false;
-  };
+  });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheet(); });
 })();

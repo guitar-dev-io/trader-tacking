@@ -1,3 +1,4 @@
+import { onBack } from '../../ui/back';
 // "ผลการเทรด" page (Svelte). Desktop: a page tab (titlebar button, Ctrl/⌘+J). Phone: a full-screen page from the
 // More page. "ดูตัวอย่าง" shows sample data.
 import { mount, flushSync } from 'svelte';
@@ -84,8 +85,7 @@ export const JOURNALPAGE: PageApi = (() => {
   const visible = () => (mobile ? !root.classList.contains('hidden') : PAGES.active && PAGES.active() === 'journal');
   if (mobile) {
     document.body.appendChild(root);
-    const prevBack = PT.__mobileBack;
-    PT.__mobileBack = () => { if (visible()) { close(); return true; } return prevBack ? prevBack() : false; };
+    onBack(() => { if (visible()) { close(); return true; } return false; });
   } else {
     const btn = document.createElement('button');
     btn.id = 'journal-btn'; btn.className = 'ib'; btn.title = 'ผลการเทรด — สรุปกำไร/ขาดทุน รายวัน รายเดือน จาก MT5 (Ctrl/⌘ + J)';

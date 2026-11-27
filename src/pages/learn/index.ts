@@ -1,3 +1,4 @@
+import { onBack } from '../../ui/back';
 // Learning center page (Svelte). Desktop: a page tab (pages.js) with a titlebar button and Ctrl/⌘+L.
 // Phone: a full-screen page with list → reader → back.
 import { mount, flushSync } from 'svelte';
@@ -95,8 +96,7 @@ export const LEARN: PageApi = (() => {
   if (mobile) {
     // the Android back button: reader → list → close
     document.body.appendChild(root);
-    const prevBack = PT.__mobileBack;
-    PT.__mobileBack = () => { if (!root.classList.contains('hidden')) { if (!lc.mListMode) back(); else close(); return true; } return prevBack ? prevBack() : false; };
+    onBack(() => { if (!root.classList.contains('hidden')) { if (!lc.mListMode) back(); else close(); return true; } return false; });
   } else {
     const inner = (n: string) => (ICON.svg(n, 14) || '').replace(/^<svg[^>]*>|<\/svg>$/g, '');
     const btn = document.createElement('button');

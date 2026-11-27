@@ -1,3 +1,4 @@
+import { onBack } from '../../ui/back';
 // "ข่าวและปฏิทิน" page (Svelte). Desktop: a page tab with a titlebar button + unread badge.
 // Phone: a full-screen page from the More page. The ราคา tab keeps a small "ข่าวล่าสุด" teaser.
 import { mount } from 'svelte';
@@ -44,8 +45,7 @@ export const NEWSPAGE: PageApi = (() => {
   }
   if (mobile) {
     document.body.appendChild(root);
-    const prevBack = PT.__mobileBack;
-    PT.__mobileBack = () => { if (!root.classList.contains('hidden')) { close(); return true; } return prevBack ? prevBack() : false; };
+    onBack(() => { if (!root.classList.contains('hidden')) { close(); return true; } return false; });
   } else {
     const inner = (n: string) => (ICON.svg(n, 14) || '').replace(/^<svg[^>]*>|<\/svg>$/g, '');
     const btn = document.createElement('button');

@@ -1,4 +1,5 @@
 import { PT, def } from './src/pt.ts';
+import { back } from './src/ui/back.ts';
 import { ui } from './src/ui/registry.ts';
 import { view } from './src/state.ts';
 import { ICON } from './icons.js';
@@ -86,7 +87,7 @@ import { REPLAY } from './learn.js';
   });
   // Android back button: close popups → close side panel → minimise
   if (vcg.onBack) vcg.onBack(() => {
-    if (PT.__mobileBack && PT.__mobileBack()) return;
+    if (back()) return;
     const open = [...document.querySelectorAll('.menu:not(.hidden), .modal:not(.hidden)')];
     if (open.length) open.forEach((m) => m.classList.add('hidden'));
     else if (document.querySelector('#tools .fly')) document.querySelectorAll('#tools .fly').forEach((f) => f.remove());
